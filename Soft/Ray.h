@@ -10,8 +10,8 @@
 
 struct Ray
 {
-	Ray(glm::vec3 _ori, glm::vec3 _dir):
-		ori(_ori), dir(glm::normalize(_dir)) {}
+	Ray(const glm::vec3 &_ori, const glm::vec3 &_dir):
+		ori(_ori), dir(glm::normalize(_dir)){}
 
 	glm::vec3 ori;
 	glm::vec3 dir;
