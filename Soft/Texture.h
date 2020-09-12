@@ -12,30 +12,27 @@
 #include "Color.h"
 #include "FrameBuffer.h"
 
-typedef FrameBuffer<RGB24> TextureRGB24;
-typedef FrameBuffer<RGBA32> TextureRGBA32;
-typedef FrameBuffer<float> TextureFloat;
-
-enum
-{
-	LINEAR = 0,
-	NEAREST
-} TextureFilterType;
-
 template<typename T>
 T lerp(T x, T y, float a)
 {
 	return x + (y - x) * a;
 }
 
-namespace Texture
+class Texture
 {
-	BYTE* loadTexture(const char *filePath, int channels, int& width, int &height)
+public:
+	~Texture()
+	{
+		if (texRGB24 != nullptr) delete texRGB24;
+		if (texFloat != nullptr) delete texFloat;
+	}
+
+	void loadRGB24(const char *filePath)
 	{
 		std::cout << "Loading Texture: " << filePath << std::endl;
 
-		int bits;
-		BYTE *data = stbi_load(filePath, &width, &height, &bits, channels);
+		int width, height, bits;
+		BYTE *data = stbi_load(filePath, &width, &height, &bits, 3);
 
 		if (data == nullptr)
 		{
@@ -43,76 +40,152 @@ namespace Texture
 			exit(-1);
 		}
 
-		return data;
+		texRGB24 = new FrameBuffer<RGB24>(width, height);
+		memcpy(texRGB24->ptr(), data, width * height * sizeof(glm::vec3));
+
+		if (data != nullptr) stbi_image_free(data);
 	}
 
-	void load(TextureRGB24& tex, const char *filePath)
+	void loadFloat(const char *filePath)
 	{
-		int width, height;
-		BYTE *data = loadTexture(filePath, 3, width, height);
+		std::cout << "Loading Texture: " << filePath << std::endl;
 
-		tex.init(width, height);
+		int width, height, bits;
+		float *data = stbi_loadf(filePath, &width, &height, &bits, 0);
 
-		memcpy(tex.ptr(), data, width * height * sizeof(RGB24));
-		stbi_image_free(data);
+		if (data == nullptr)
+		{
+			std::cout << "Error loading texture" << std::endl;
+			exit(-1);
+		}
+
+		texFloat = new FrameBuffer<glm::vec3>(width, height);
+		memcpy(texFloat->ptr(), data, width * height * sizeof(glm::vec3));
+
+		if (data != nullptr) stbi_image_free(data);
 	}
 
-	/*TextureRGBA32 loadRGBA32(const char *filePath)
+	glm::vec4 get(float u, float v)
 	{
-		TextureRGBA32 tex;
-		int width, height;
-		BYTE *data = loadTexture(filePath, 4, width, height);
-
-		tex.init(width, height);
-
-		memcpy(tex.ptr(), data, width * height * 4 * sizeof(BYTE));
-		stbi_image_free(data);
-
-		return tex;
-	}*/
-}
-
-inline glm::vec4 texture(TextureRGB24* tex, glm::vec2 uv, int filterType)
-{
-	if (tex == nullptr) return glm::vec4(0.0f);
-
-	glm::vec4 res(1.0f);
-
-	float x = (tex->width - 1) * uv.x;
-	float y = (tex->height - 1) * uv.y;
-
-	int u1 = (int)(x);
-	int v1 = (int)(y);
-	int u2 = (int)(x + 1.0f);
-	int v2 = (int)(y + 1.0f);
-
-	if (filterType == NEAREST)
-	{
-		int u = (u2 - x) > (x - u1) ? u2 : u1;
-		int v = (v2 - y) > (y - v1) ? v2 : v1;
-		
-		u = (u + tex->width) % tex->width;
-		v = (v + tex->height) % tex->height;
-
-		return (*tex)(u, v).toVec4();
+		if (texRGB24 != nullptr) return getRGB24(u, v);
+		else return getFloat(u, v);
 	}
-	else if (filterType == LINEAR)
+
+	glm::vec4 getSpherical(glm::vec3 uv)
 	{
-		u1 = (u1 + tex->width) % tex->width;
-		v1 = (v1 + tex->height) % tex->height;
-		u2 = (u2 + tex->width) % tex->width;
-		v2 = (v2 + tex->height) % tex->height;
+		const float Pi = 3.14159265358979324;
 
-		glm::vec4 c1 = (*tex)(u1, v1).toVec4();
-		glm::vec4 c2 = (*tex)(u2, v1).toVec4();
-		glm::vec4 c3 = (*tex)(u1, v2).toVec4();
-		glm::vec4 c4 = (*tex)(u2, v2).toVec4();
+		float theta = glm::atan(uv.y, uv.x);
+    	if (theta < 0.0) theta += Pi * 2;
+    	float phi = glm::atan(length(glm::vec2(uv)), uv.z);
 
-		float lx = x - (int)x;
-		float ly = y - (int)y;
-
-		return lerp(lerp(c1, c2, lx), lerp(c3, c4, lx), ly);
+    	return get(theta / Pi / 2.0, phi / Pi);
 	}
-}
+
+	void setFilterType(int type)
+	{
+		filterType = type;
+	}
+
+public:
+	enum
+	{
+		NEAREST = 0,
+		LINEAR
+	};
+
+private:
+	glm::vec4 getRGB24(float u, float v)
+	{
+		glm::vec4 res(1.0f);
+		FrameBuffer<RGB24> *tex = texRGB24;
+
+		float x = (tex->width - 1) * u;
+		float y = (tex->height - 1) * v;
+
+		int u1 = (int)(x);
+		int v1 = (int)(y);
+		int u2 = (int)(x + 1.0f);
+		int v2 = (int)(y + 1.0f);
+
+		if (filterType == NEAREST)
+		{
+			int pu = (u2 - x) > (x - u1) ? u2 : u1;
+			int pv = (v2 - y) > (y - v1) ? v2 : v1;
+
+			pu = (pu + tex->width) % tex->width;
+			pv = (pv + tex->height) % tex->height;
+
+			return (*tex)(pu, pv).toVec4();
+		}
+
+		else if (filterType == LINEAR)
+		{
+			u1 = (u1 + tex->width) % tex->width;
+			v1 = (v1 + tex->height) % tex->height;
+			u2 = (u2 + tex->width) % tex->width;
+			v2 = (v2 + tex->height) % tex->height;
+
+			glm::vec4 c1 = (*tex)(u1, v1).toVec4();
+			glm::vec4 c2 = (*tex)(u2, v1).toVec4();
+			glm::vec4 c3 = (*tex)(u1, v2).toVec4();
+			glm::vec4 c4 = (*tex)(u2, v2).toVec4();
+
+			float lx = x - (int)x;
+			float ly = y - (int)y;
+
+			return lerp(lerp(c1, c2, lx), lerp(c3, c4, lx), ly);
+		}
+	}
+
+	glm::vec4 getFloat(float u, float v)
+	{
+		glm::vec4 res(1.0f);
+		FrameBuffer<glm::vec3> *tex = texFloat;
+
+		float x = (tex->width - 1) * u;
+		float y = (tex->height - 1) * v;
+
+		int u1 = (int)(x);
+		int v1 = (int)(y);
+		int u2 = (int)(x + 1.0f);
+		int v2 = (int)(y + 1.0f);
+
+		if (filterType == NEAREST)
+		{
+			int pu = (u2 - x) > (x - u1) ? u2 : u1;
+			int pv = (v2 - y) > (y - v1) ? v2 : v1;
+
+			pu = (pu + tex->width) % tex->width;
+			pv = (pv + tex->height) % tex->height;
+
+			return glm::vec4((*tex)(pu, pv), 1.0f);
+		}
+
+		else if (filterType == LINEAR)
+		{
+			u1 = (u1 + tex->width) % tex->width;
+			v1 = (v1 + tex->height) % tex->height;
+			u2 = (u2 + tex->width) % tex->width;
+			v2 = (v2 + tex->height) % tex->height;
+
+			glm::vec3 c1 = (*tex)(u1, v1);
+			glm::vec3 c2 = (*tex)(u2, v1);
+			glm::vec3 c3 = (*tex)(u1, v2);
+			glm::vec3 c4 = (*tex)(u2, v2);
+
+			float lx = x - (int)x;
+			float ly = y - (int)y;
+
+			return glm::vec4(lerp(lerp(c1, c2, lx), lerp(c3, c4, lx), ly), 1.0f);
+		}
+	}
+
+private:
+	FrameBuffer<RGB24> *texRGB24 = nullptr;
+	FrameBuffer<glm::vec3> *texFloat = nullptr;
+
+	int filterType = LINEAR;
+};
 
 #endif

@@ -1,20 +1,17 @@
-#ifndef MATERIAL_H
-#define MATERIAL_H
+#ifndef SAMPLER_H
+#define SAMPLER_H
 
 #include <iostream>
-#include <random>
-#include <cmath>
 
 #include "../glm/glm.hpp"
 #include "../glm/gtc/matrix_transform.hpp"
 #include "../glm/gtc/type_ptr.hpp"
 
-#include "../Ray.h"
+#include "../Math/RandomGenerator.h"
 
-class Material
+class Sampler
 {
 public:
-	virtual glm::vec3 reflectionRadiance(const glm::vec3 &Lo, const glm::vec3 &Li, const glm::vec3 &N, const glm::vec3 &radiance) = 0;
 	virtual glm::vec3 getSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Lo) = 0;
 };
 

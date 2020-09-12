@@ -19,6 +19,10 @@
 #include "Hittable/HittableShapes.h"
 #include "Shape/Shapes.h"
 #include "Light/Lights.h"
+#include "Material/Materials.h"
+#include "Math/Math.h"
+#include "Environment/Environments.h"
+#include "Sampler/Samplers.h"
 
 const int W_WIDTH = 1280;
 const int W_HEIGHT = 720;
@@ -27,13 +31,8 @@ const int MAX_THREADS = std::thread::hardware_concurrency();
 bool keyPressing[256] = { false };
 
 FrameBufferDouble<RGB24> colorBuffer(W_WIDTH, W_HEIGHT);
-Camera camera({ 0.0f, -5.0f, 0.0f });
-TextureRGB24 tex;
-TextureRGB24 env;
-
-glm::vec3 lightPos(1.0f, -2.0f, 3.0f);
-glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
-glm::vec3 atmosphereColor(0.1f);
+FrameBuffer<glm::vec3> resultBuffer(W_WIDTH, W_HEIGHT);
+Camera camera({ 2.0f, -3.0f, 0.0f });
 
 bool F1Pressed = false;
 bool cursorDisabled = false;
@@ -43,6 +42,7 @@ float aspect = (float)W_WIDTH / (float)W_HEIGHT;
 
 std::vector<std::shared_ptr<Shape>> shapeList;
 std::vector<std::shared_ptr<Light>> lightList;
+std::shared_ptr<Environment> env;
 
 void printVec3(const glm::vec3 &v, std::string info = "")
 {
@@ -66,8 +66,12 @@ inline Ray getRay(const glm::vec3 &front, const glm::vec3 &right, const glm::vec
 	return { cam.pos(), glm::normalize(rayDir) };
 }
 
+//glm::vec3 atmosphereColor(140.0f, 140.0f, 1000.0f);
+
 glm::vec3 trace(Ray ray, int depth)
 {
+	glm::vec3 atmosphereColor = env->getRadiance(ray.dir);
+
 	if (depth == 0) return atmosphereColor;
 
 	float minDistShape = 1000.0f;
@@ -87,45 +91,72 @@ glm::vec3 trace(Ray ray, int depth)
 	float minDistLight = 1000.0f;
 	std::shared_ptr<Light> closestLight;
 
-	for (auto &lt : lightList)
+	for (auto &sp : lightList)
 	{
-		HitInfo hInfo = lt->closestHit(ray);
+		HitInfo hInfo = sp->closestHit(ray);
 
 		if (hInfo.hit && hInfo.dist < minDistLight)
 		{
 			minDistLight = hInfo.dist;
-			closestLight = lt;
+			closestLight = sp;
 		}
 	}
 
-	if (closestShape == nullptr && closestLight == nullptr) return atmosphereColor;
+	if (closestLight != nullptr && minDistLight < minDistShape) return closestLight->getRadiance();
 
-	bool lightHit = minDistLight < minDistShape;
-
-	if (lightHit)
-	{
-		return closestLight->getRadiance();
-	}
+	if (closestShape == nullptr) return atmosphereColor;
 
 	glm::vec3 hitPoint = ray.ori + ray.dir * minDistShape;
 	SurfaceInfo sInfo = closestShape->surfaceInfo(hitPoint);
 
-	Ray rayIn = { hitPoint, ray.dir };
-	Ray scatterRay = sInfo.material->scatter(rayIn, sInfo.norm);
+	glm::vec3 dir = sInfo.material->getSample(hitPoint, sInfo.norm, -ray.dir);
+	Ray nextTrace(hitPoint, dir);
 
-	glm::vec3 radiance = trace(scatterRay, depth - 1);
+	glm::vec3 directRadiance(0.0f);
 
-	return radiance * sInfo.material->reflectionRate();
+	for (auto &lt : lightList)
+	{
+		glm::vec3 randomPoint = lt->getRandomPoint();
+
+		Ray lightRay(hitPoint, glm::normalize(randomPoint - hitPoint));
+		bool occlusion = false;
+		
+		for (auto &sp : shapeList)
+		{
+			HitInfo info = sp->closestHit(lightRay);
+			if (info.hit)
+			{
+				occlusion = true;
+				break;
+			}
+		}
+
+		if (occlusion) continue;
+
+		float dist = glm::length(randomPoint - hitPoint);
+
+		glm::vec3 lightRad = lt->getRadiance() / (dist * dist);
+		glm::vec3 outRad = sInfo.material->reflectionRadiance(-ray.dir, -lightRay.dir, sInfo.norm, lightRad);
+
+		directRadiance += outRad;
+	}
+
+	glm::vec3 indirectRadiance = sInfo.material->reflectionRadiance(-ray.dir, -nextTrace.dir, sInfo.norm, trace(nextTrace, depth - 1));
+
+	return directRadiance + indirectRadiance * glm::pi<float>();
 }
 
+const int MAX_SPP = 1000;
+int spp = 0;
+
 void doTracing(
-	FrameBufferDouble<RGB24> &fb,
+	FrameBuffer<glm::vec3> &fb,
 	const Camera &cam,
 	int startX,
 	int endX)
 {
-	int width = fb.width();
-	int height = fb.height();
+	int width = fb.width;
+	int height = fb.height;
 
 	glm::vec3 u(0.0f, 0.0f, 1.0f);
 	glm::vec3 f = camera.pointing();
@@ -139,21 +170,25 @@ void doTracing(
 			float sx = 2.0f * (float)x / width - 1.0f;
 			float sy = 1.0f - 2.0f * (float)y / height;
 
-			Ray ray = getRay(f, r, u, cam, sx, sy);
+			float sx1 = 2.0f * (float)(x + 1) / width - 1.0f;
+			float sy1 = 1.0f - 2.0f * (float)(y + 1) / height;
 
-			glm::vec3 color = trace(ray, 3);
+			RandomGenerator rg;
 
-			fb(x, y) = RGB24(color);
+			Ray ray = getRay(f, r, u, cam, rg.get(sx, sx1), rg.get(sy, sy1));
+			
+			glm::vec3 radiance = trace(ray, 6);
+			radiance = radiance / (radiance + glm::vec3(1.0f));
+			radiance = glm::pow(radiance, glm::vec3(1.0f / 2.2f));
+			
+			fb(x, y) = fb(x, y) * ((float)(spp) / (float)(spp + 1)) + radiance / (float)(spp + 1);
 		}
 	}
 }
 
 void render(int id)
 {
-	colorBuffer.fill({ 0, 0, 0 });
-
-	if (!cursorDisabled) processKey();
-	//fpsTimer.work();
+	if (spp == MAX_SPP) return;
 
 	std::thread threads[MAX_THREADS];
 
@@ -164,8 +199,8 @@ void render(int id)
 
 		threads[i] = std::thread
 		(
-		 	doTracing,
-			std::ref(colorBuffer),
+			doTracing,
+			std::ref(resultBuffer),
 			std::ref(camera),
 			start, end
 		);
@@ -175,6 +210,17 @@ void render(int id)
 	{
 		t.join();
 	}
+
+	for (int i = 0; i < W_WIDTH; i++)
+	{
+		for (int j = 0; j < W_HEIGHT; j++)
+		{
+			colorBuffer(i, j) = RGB24(resultBuffer(i, j)).toBGR24();
+		}
+	}
+
+	std::cout << "#";
+	spp++;
 
 	flushScreen((BYTE*)colorBuffer.getCurrentBuffer().bufPtr(), W_WIDTH, W_HEIGHT);
 	colorBuffer.swap();
@@ -220,13 +266,15 @@ int Setup()
 {
 	initWindow("Test", DEFAULT, DEFAULT, W_WIDTH, W_HEIGHT);
 
+	srand(time(0));
+
 	shapeList.push_back
 	(
 		std::make_shared<Sphere>
 		(
-			glm::vec3(0.0f),
+			glm::vec3(0.0f, 0.0f, -0.9f),
 			1.0f,
-			std::make_shared<SampleMaterial>(glm::vec3(1.0f, 0.6f, 0.2f))
+			std::make_shared<MaterialPBR>(glm::vec3(0.2f, 0.6f, 0.9f), 0.8f, 1.0f)
 		)
 	);
 
@@ -234,9 +282,19 @@ int Setup()
 	(
 		std::make_shared<Sphere>
 		(
-			glm::vec3(2.0f),
+			glm::vec3(3.5f, -0.5f, -1.5f),
 			0.5f,
-			std::make_shared<SampleMaterial>(glm::vec3(0.5f, 0.6f, 0.7f))
+			std::make_shared<MaterialPBR>(glm::vec3(0.7f, 0.6f, 0.5f), 0.0f, 0.1f)
+		)
+	);
+
+	shapeList.push_back
+	(
+		std::make_shared<Sphere>
+		(
+			glm::vec3(3.0f, 1.5f, 0.0f),
+			2.0f,
+			std::make_shared<MaterialPBR>(glm::vec3(0.9f, 0.05f, 0.05f), 0.85f, 0.024f)
 		)
 	);
 
@@ -244,29 +302,44 @@ int Setup()
 	(
 		std::make_shared<Triangle>
 		(
-			glm::vec3(-4.0f, -2.0f, -2.0f),
-			glm::vec3(4.0f, -2.0f, -2.0f),
-			glm::vec3(0.0f, 6.0f, -2.0f),
-			std::make_shared<SampleMaterial>(glm::vec3(0.8f, 0.7f, 0.6f))
+			glm::vec3(-100.0f, -10.0f, -2.0f),
+			glm::vec3(100.0f, -10.0f, -2.0f),
+			glm::vec3(0.0f, 100.0f, -2.0f),
+			std::make_shared<MaterialPBR>(glm::vec3(1.0f), 0.2f, 0.024f)
 		)
 	);
 
 	lightList.push_back
 	(
-		std::make_shared<SphereLight>
+		std::make_shared<TriangleLight>
 		(
-			glm::vec3(0.0f, -1.0f, 4.0f),
-			0.5f,
-			glm::vec3(0.5f, 0.6f, 0.7f)
+			glm::vec3(0.0f, -4.0f, 2.0f),
+			glm::vec3(4.5f, 4.0f, 2.0f),
+			glm::vec3(4.5f, -4.0f, 2.0f),
+			glm::vec3(50.0f)
 		)
 	);
 
+	/*lightList.push_back
+	(
+		std::make_shared<SphereLight>
+		(
+			glm::vec3(2.5f, -1.0f, 1.5f),
+			0.1f,
+			glm::vec3(10.0f)
+		)
+	);*/
+
+	colorBuffer.fill({ 0, 0, 0 });
+	resultBuffer.fill(glm::vec3(0.0f));
+
 	camera.setFOV(90.0f);
+	
+	env = std::make_shared<EnvSphereMapHDR>("res/texture/090.hdr");
+	//env = std::make_shared<EnvSingleColor>(glm::vec3(1.0f, 0.5f, 0.5f));
 
 	registerTimerEvent(render);
-	registerMouseEvent(mouse);
 	registerKeyboardEvent(keyboard);
 
-	//render(0);
 	startTimer(0, 10);
 }

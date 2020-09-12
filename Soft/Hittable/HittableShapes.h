@@ -2,6 +2,7 @@
 #define HITTABLE_SHAPES_H
 
 #include "Hittable.h"
+#include "../Math/Math.h"
 
 struct HittableSphere:
 	Hittable
@@ -28,6 +29,16 @@ struct HittableSphere:
 	glm::vec3 surfaceNormal(const glm::vec3 &surfacePoint)
 	{
 		return glm::normalize(surfacePoint - center);
+	}
+
+	glm::vec3 getRandomPoint()
+	{
+		RandomGenerator rg;
+
+		float t = rg.get(0.0f, glm::radians(360.0f));
+		float p = rg.get(0.0f, glm::radians(180.0f));
+
+		return glm::vec3(cos(t) * sin(p), sin(t) * sin(p), cos(p)) * radius + center;
 	}
 
 	glm::vec3 center;
@@ -78,6 +89,19 @@ struct HittableTriangle:
 	glm::vec3 surfaceNormal(const glm::vec3 &surfacePoint)
 	{
 		return glm::normalize(glm::cross(vb - va, vc - va));
+	}
+
+	glm::vec3 getRandomPoint()
+	{
+		RandomGenerator rg;
+
+		float wa = rg.get(0.000001f, 1.0f);
+		float wb = rg.get(0.000001f, 1.0f);
+		float wc = rg.get(0.000001f, 1.0f);
+
+		glm::vec3 weight = glm::vec3(wa, wb, wc) / (wa + wb + wc);
+
+		return va * weight.x + vb * weight.y + vc * weight.z;
 	}
 
 	glm::vec3 va, vb, vc;

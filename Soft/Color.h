@@ -27,6 +27,11 @@ struct RGB24
 		*this = RGB24(c.x, c.y, c.z);
 	}
 
+	RGB24 toBGR24()
+	{
+		return RGB24(b, g, r);
+	}
+
 	glm::vec3 toVec3()
 	{
 		return glm::vec3(r, g, b) / 255.0f;

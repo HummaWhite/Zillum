@@ -17,6 +17,11 @@ public:
 		return hittable->closestHit(ray);
 	}
 
+	glm::vec3 getRandomPoint()
+	{
+		return hittable->getRandomPoint();
+	}
+
 	glm::vec3 getRadiance() { return radiance; }
 
 protected:
