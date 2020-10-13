@@ -19,6 +19,11 @@ public:
 		return _min + get() * (_max - _min);
 	}
 
+	int get(int _min, int _max)
+	{
+		return _min + (int)(get() * (_max - _min));
+	}
+
 	void srand(unsigned int i)  
 	{  
 		seed  = (((long long int)i) << 16) | rand();  

@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "../Hittable/HittableShapes.h"
+#include "../Bound/AABB.h"
 
 class Light
 {
@@ -22,7 +23,27 @@ public:
 		return hittable->getRandomPoint();
 	}
 
-	glm::vec3 getRadiance() { return radiance; }
+	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	{
+		return hittable->surfaceNormal(p);
+	}
+
+	virtual glm::vec3 getRadiance() const { return radiance; }
+
+	virtual glm::vec3 getRadiance(float dist) const
+	{
+		return radiance / (dist * dist);
+	}
+
+	virtual glm::vec3 getRadiance(const glm::vec3 &Wi, const glm::vec3 &N, float dist)
+	{
+		return radiance * glm::max(0.0f, glm::dot(Wi, N)) / (dist * dist);
+	}
+
+	AABB bound() const
+	{
+		return hittable->bound();
+	}
 
 protected:
 	std::shared_ptr<Hittable> hittable;

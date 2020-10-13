@@ -1,12 +1,14 @@
 #ifndef HITTABLE_SHAPES_H
 #define HITTABLE_SHAPES_H
 
+#include <utility>
 #include "Hittable.h"
 #include "../Math/Math.h"
 
-struct HittableSphere:
-	Hittable
+class HittableSphere:
+	public Hittable
 {
+public:
 	HittableSphere(const glm::vec3 &_center, float _radius):
 		center(_center), radius(_radius) {}
 
@@ -23,12 +25,8 @@ struct HittableSphere:
 		if (e > r) return { false, 0.0f };
 
 		float res = t - sqrt(r * r - e * e);
-		return { res >= 0.0f, res };
-	}
 
-	glm::vec3 surfaceNormal(const glm::vec3 &surfacePoint)
-	{
-		return glm::normalize(surfacePoint - center);
+		return { res >= 0.0f, res };
 	}
 
 	glm::vec3 getRandomPoint()
@@ -41,54 +39,69 @@ struct HittableSphere:
 		return glm::vec3(cos(t) * sin(p), sin(t) * sin(p), cos(p)) * radius + center;
 	}
 
+	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	{
+		return glm::normalize(p - center);
+	}
+
+	glm::vec3 getCenter() const { return center; }
+
+	float getRadius() const { return radius; }
+
+	AABB bound()
+	{
+		return AABB(center, radius);
+	}
+
+private:
 	glm::vec3 center;
 	float radius;
 };
 
-struct HittableTriangle:
-	Hittable
+class HittableTriangle:
+	public Hittable
 {
+public:
 	HittableTriangle(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c):
 		va(a), vb(b), vc(c) {}
 
 	HitInfo closestHit(const Ray &ray)
 	{
+		const float eps = 1e-6;
+
 		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
 		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
 		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
 
-		glm::vec3 norm = glm::normalize(glm::cross(b - a, c - a));
+		glm::vec3 ab = b - a;
+		glm::vec3 ac = c - a;
 
 		glm::vec3 o = ray.ori;
 		glm::vec3 d = ray.dir;
 
-		const float eps = 1e-6;
+		glm::vec3 p = glm::cross(d, ac);
 
-		if (glm::abs(glm::dot(d, norm)) < eps) return { false, 0.0f };
-		if (glm::length(va - o) < eps) return { true, 0.0f };
+		float det = glm::dot(ab, p);
 
-		float t = glm::dot(va - o, norm) / glm::dot(d, norm);
-		glm::vec3 p = o + d * t;
+		if (glm::abs(det) < eps) return { false, 0.0f };
 
-		glm::vec3 ea = glm::normalize(a - p);
-		glm::vec3 eb = glm::normalize(b - p);
-		glm::vec3 ec = glm::normalize(c - p);
+		glm::vec3 ao = o - a;
+		if (det < 0.0f)
+		{
+			ao = -ao;
+			det = -det;
+		}
 
-		glm::vec3 crA = glm::cross(eb, ec);
-		glm::vec3 crB = glm::cross(ec, ea);
-		glm::vec3 crC = glm::cross(ea, eb);
+		float u = glm::dot(ao, p);
+		if (u < 0.0f || u > det) return { false, 0.0f };
 
-		float da = glm::dot(crB, crC);
-		float db = glm::dot(crC, crA);
-		float dc = glm::dot(crA, crB);
+		glm::vec3 q = glm::cross(ao, ab);
 
-		if (da >= 0.0f && db >= 0.0f && dc >= 0.0f) return { t > 0, t };
-		return { false, 0.0f };
-	}
+		float v = glm::dot(d, q);
+		if (v < 0.0f || u + v > det) return { false, 0.0f };
 
-	glm::vec3 surfaceNormal(const glm::vec3 &surfacePoint)
-	{
-		return glm::normalize(glm::cross(vb - va, vc - va));
+		float t = glm::dot(ac, q) / det;
+		return { t > 0.0f, t };
 	}
 
 	glm::vec3 getRandomPoint()
@@ -104,12 +117,40 @@ struct HittableTriangle:
 		return va * weight.x + vb * weight.y + vc * weight.z;
 	}
 
+	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	{
+		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
+		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
+		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
+
+		return glm::normalize(glm::cross(b - a, c - a));
+	}
+
+	bool onPlane(const glm::vec3 &p)
+	{
+		return glm::length(glm::cross(va - p, glm::cross(vb - p, vc - p))) < 1e-6;
+	}
+
+	glm::vec3 getVa() const { return va; }
+	
+	glm::vec3 getVb() const { return vb; }
+
+	glm::vec3 getVc() const { return vc; }
+
+	AABB bound()
+	{
+		return AABB(va, vb, vc);
+	}
+
+private:
 	glm::vec3 va, vb, vc;
 };
 
-struct HittableDisk:
-	Hittable
+/*
+class HittableDisk:
+	public Hittable
 {
+public:
 	HittableDisk(const glm::vec3 &_center, float _radius):
 		center(_center), radius(_radius) {}
 
@@ -124,12 +165,136 @@ struct HittableDisk:
 		const float eps = 1e-6;
 	}
 
-	glm::vec3 surfaceNormal(const glm::vec3 &surfacePoint)
+	glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
 	}
 
+	glm::vec3 getRandomPoint()
+	{
+	}
+
+	AABB bound()
+	{
+	}
+
+private:
 	glm::vec3 center;
 	float radius;
 };
+*/
+
+class HittableQuad:
+	public Hittable
+{
+public:
+	HittableQuad(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c):
+		va(a), vb(b), vc(c) {}
+
+	HitInfo closestHit(const Ray &ray)
+	{
+		glm::vec3 pa = glm::vec3(transform * glm::vec4(va, 1.0f));
+		glm::vec3 pb = glm::vec3(transform * glm::vec4(vb, 1.0f));
+		glm::vec3 pc = glm::vec3(transform * glm::vec4(vc, 1.0f));
+		glm::vec3 pd = glm::vec3(transform * glm::vec4(vb + vc - va, 1.0f));
+
+		HitInfo ha = HittableTriangle(pa, pb, pc).closestHit(ray);
+		HitInfo hb = HittableTriangle(pc, pb, pd).closestHit(ray);
+
+		if (ha.hit) return ha;
+		if (hb.hit) return hb;
+
+		return { false, 0.0f };
+	}
+
+	glm::vec3 getRandomPoint()
+	{
+		RandomGenerator rg;
+
+		float la = rg.get(0.0f, 1.0f);
+		float lb = rg.get(0.0f, 1.0f);
+
+		return (vb - va) * la + (vc - va) * lb + va;
+	}
+
+	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	{
+		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
+		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
+		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
+
+		return glm::normalize(glm::cross(b - a, c - a));
+	}
+
+	glm::vec3 getVa() const { return va; }
+	
+	glm::vec3 getVb() const { return vb; }
+
+	glm::vec3 getVc() const { return vc; }
+
+	AABB bound()
+	{
+		glm::vec3 vd = vb + vc - va;
+
+		return AABB(AABB(va, vb, vc), AABB(vb, vc, vd));
+	}
+
+private:
+	glm::vec3 va, vb, vc;
+};
+
+/*
+class HittableMesh:
+	public Hittable
+{
+public:
+	HittableMesh(const std::vector<glm::vec3> &_vertices):
+		vertices(_vertices) {}
+
+	HittableMesh(const std::vector<glm::vec3> &_vertices, const std::vector<unsigned int> &_indices):
+		vertices(_vertices), indices(_indices) {}
+
+	HitInfo closestHit(const Ray &ray)
+	{
+		glm::vec3 o = ray.ori;
+		glm::vec3 d = ray.dir;
+
+		HitInfo hit = { false, 1000.0f };
+
+		bool index = indices.size() > 0;
+		int verticesCount = index ? indices.size() : vertices.size();
+
+		for (int i = 0; i < verticesCount; i += 3)
+		{
+			unsigned int ia = index ? indices[i + 0] : i + 0;
+			unsigned int ib = index ? indices[i + 1] : i + 1;
+			unsigned int ic = index ? indices[i + 2] : i + 2;
+
+			glm::vec3 pa = glm::vec3(transform * glm::vec4(vertices[ia], 1.0f));
+			glm::vec3 pb = glm::vec3(transform * glm::vec4(vertices[ib], 1.0f));
+			glm::vec3 pc = glm::vec3(transform * glm::vec4(vertices[ic], 1.0f));
+
+			HitInfo triangleHit = HittableTriangle(pa, pb, pc).closestHit(ray);
+		}
+
+		return hit;
+	}
+
+	glm::vec3 getRandomPoint()
+	{
+	}
+
+	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	{
+	}
+
+	AABB bound()
+	{
+	}
+
+private:
+	std::vector<glm::vec3> vertices;
+	std::vector<unsigned int> indices;
+};
+*/
 
 #endif

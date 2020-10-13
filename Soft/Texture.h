@@ -11,12 +11,7 @@
 
 #include "Color.h"
 #include "FrameBuffer.h"
-
-template<typename T>
-T lerp(T x, T y, float a)
-{
-	return x + (y - x) * a;
-}
+#include "Math/Math.h"
 
 class Texture
 {
@@ -52,6 +47,8 @@ public:
 
 		int width, height, bits;
 		float *data = stbi_loadf(filePath, &width, &height, &bits, 0);
+
+		std::cout << data << " " << width << " " << height << " " << bits << "\n";
 
 		if (data == nullptr)
 		{
@@ -118,7 +115,6 @@ private:
 
 			return (*tex)(pu, pv).toVec4();
 		}
-
 		else if (filterType == LINEAR)
 		{
 			u1 = (u1 + tex->width) % tex->width;
@@ -134,8 +130,9 @@ private:
 			float lx = x - (int)x;
 			float ly = y - (int)y;
 
-			return lerp(lerp(c1, c2, lx), lerp(c3, c4, lx), ly);
+			return Math::lerp(Math::lerp(c1, c2, lx), Math::lerp(c3, c4, lx), ly);
 		}
+		else return glm::vec4(0.0f);
 	}
 
 	glm::vec4 getFloat(float u, float v)
@@ -161,7 +158,6 @@ private:
 
 			return glm::vec4((*tex)(pu, pv), 1.0f);
 		}
-
 		else if (filterType == LINEAR)
 		{
 			u1 = (u1 + tex->width) % tex->width;
@@ -177,8 +173,9 @@ private:
 			float lx = x - (int)x;
 			float ly = y - (int)y;
 
-			return glm::vec4(lerp(lerp(c1, c2, lx), lerp(c3, c4, lx), ly), 1.0f);
+			return glm::vec4(Math::lerp(Math::lerp(c1, c2, lx), Math::lerp(c3, c4, lx), ly), 1.0f);
 		}
+		else return glm::vec4(0.0f);
 	}
 
 private:

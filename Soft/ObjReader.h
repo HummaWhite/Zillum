@@ -11,11 +11,16 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-#include "Buffer.h"
-
-struct ObjReader
+namespace ObjReader
 {
-	std::vector<float> readFile(const char* filePath)
+	struct VertexInfo
+	{
+		sdt::vector<glm::vec3> *vertices = nullptr;
+		std::vector<glm::vec2> *texCoords = nullptr;
+		std::vector<glm::vec3> *normals = nullptr;
+	};
+
+	VertexInfo readFile(const char* filePath)
 	{
 		std::vector<float> data;
 		std::fstream file(filePath);

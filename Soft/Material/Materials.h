@@ -13,34 +13,36 @@ class SampleMaterial:
 {
 public:
 	SampleMaterial(const glm::vec3 &_reflRate, float _roughness):
-		reflRate(_reflRate), roughness(_roughness) {}
+		reflRate(_reflRate), roughness(_roughness), sampler(_roughness) {}
 
-	glm::vec3 reflectionRadiance(const glm::vec3 &Lo, const glm::vec3 &Li, const glm::vec3 &N, const glm::vec3 &radiance)
+	glm::vec3 reflectionRadiance(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, const glm::vec3 &radiance)
 	{
+		/*
 		RandomGenerator rg;
 
 		float theta = rg.get(0.0f, glm::radians(360.0f));
 		float phi = rg.get(0.0f, glm::radians(180.0f));
 
 		glm::vec3 randomVec(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
-
 		glm::vec3 biasedNorm = glm::normalize(N + randomVec * roughness);
+		*/
 
-		glm::vec3 H = glm::normalize(Lo - Li);
+		glm::vec3 H = glm::normalize(Wi + Wo);
+		glm::vec3 F = Math::fresnelSchlickRoughness(std::max(glm::dot(H, Wo), 0.0f), reflRate, roughness);
 
-		return radiance * reflRate * std::max(0.0f, glm::dot(H, Lo));
+		return radiance * F * std::max(0.0f, glm::dot(N, Wi));
 	}
 
-	glm::vec3 getSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Lo)
+	glm::vec3 getSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Wo)
 	{
-		return sampler.getSample(hitPoint, N, Lo);
+		return sampler.getSample(hitPoint, N, Wo);
 	}
 
 private:
 	glm::vec3 reflRate;
 	float roughness;
 
-	RandomSampler sampler;
+	RoughnessSampler sampler;
 };
 
 class MaterialPBR:
@@ -51,92 +53,60 @@ public:
 		albedo(_albedo), metallic(_metallic), roughness(_roughness)
 	{
 		diffuseSampler = std::make_shared<RandomSampler>();
-		specularSampler = std::make_shared<IBLImportanceSampler>(_roughness);
+		specularSampler = std::make_shared<RoughnessSampler>(_roughness);
 	}
 
-	glm::vec3 reflectionRadiance(const glm::vec3 &Lo, const glm::vec3 &Li, const glm::vec3 &N, const glm::vec3 &radiance)
+	glm::vec3 reflectionRadiance(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, const glm::vec3 &radiance)
 	{
-		glm::vec3 L = -Li;
-		glm::vec3 V = Lo;
+		return reflectionRadiance(Wo, Wi, N, radiance, false);
+	}
+
+	glm::vec3 getSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Wo)
+	{
+		RandomGenerator rg;
+
+		float rd = rg.get(0.0f, 1.0f);
+
+		if (rd < 0.5f * (1.0f - metallic)) return diffuseSampler->getSample(hitPoint, N, Wo);
+		return specularSampler->getSample(hitPoint, N, Wo);
+	}
+
+	glm::vec3 reflectionRadiance(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, const glm::vec3 &radiance, bool IBL)
+	{
+		using namespace Math;
+
+		glm::vec3 L = Wi;
+		glm::vec3 V = Wo;
 		glm::vec3 H = glm::normalize(V + L);
 
-		//metallic = 1.0f;
+		float NdotL = std::max(glm::dot(N, L), 0.0f);
+		float NdotV = std::max(glm::dot(N, V), 0.0f);
 
 		glm::vec3 F0 = glm::mix(glm::vec3(0.04f), albedo, metallic);
 
 		glm::vec3 F = fresnelSchlickRoughness(std::max(glm::dot(H, V), 0.0f), F0, roughness);
-		//glm::vec3 F = fresnelSchlick(std::max(glm::dot(N, V), 0.0f), F0);
 		float	  D = distributionGGX(N, H, roughness);
-		float	  G = geometrySmith(N, V, L, roughness, false);
+		float	  G = geometrySmith(N, V, L, roughness, IBL);
 
 		glm::vec3 kS = F;
 		glm::vec3 kD = glm::vec3(1.0f) - kS;
 		kD *= 1.0f - metallic;
 
 		glm::vec3 FDG = F * D * G;
-		float denominator = 4.0f * std::max(glm::dot(N, V), 0.0f) * std::max(glm::dot(N, L), 0.0f) + 0.001f;
+		float denominator = 4.0f * NdotV * NdotL + 0.001f;
 		glm::vec3 specular = FDG / denominator;
 
-		float NdotL = std::max(glm::dot(N, L), 0.0f);
 		return (kD * albedo / glm::pi<float>() + specular) * radiance * NdotL;
 	}
 
-	glm::vec3 getSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Lo)
+	glm::vec3 getDiffuseSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Wo)
 	{
-		//return specularSampler->getSample(hitPoint, N, Lo);
-		RandomGenerator rg;
-
-		float rd = rg.get(0.0f, 1.0f);
-
-		if (rd < 0.4f) return diffuseSampler->getSample(hitPoint, N, Lo);
-		return specularSampler->getSample(hitPoint, N, Lo);
+		return diffuseSampler->getSample(hitPoint, N, Wo);
 	}
 
-private:
-	glm::vec3 fresnelSchlick(float cosTheta, const glm::vec3 &F0)
+	glm::vec3 getSpecularSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Wo)
 	{
-		return F0 + (glm::vec3(1.0) - F0) * (float)glm::pow(1.0 - cosTheta, 5.0);
-	}
-
-	glm::vec3 fresnelSchlickRoughness(float cosTheta, const glm::vec3 &F0, float roughness)
-	{
-		return F0 + (glm::max(glm::vec3(1.0 - roughness), F0) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
-	}
-
-	float distributionGGX(const glm::vec3 &N, const glm::vec3 &H, float roughness)
-	{
-		float a = roughness * roughness;
-		float a2 = a * a;
-		float NdotH = std::max(glm::dot(N, H), 0.0f);
-		float NdotH2 = NdotH * NdotH;
-
-		float nom = a2;
-		float denom = NdotH2 * (a2 - 1.0f) + 1.0f;
-		denom = denom * denom * glm::pi<float>();
-
-		return nom / denom;
-	}
-
-	float geometrySchlickGGX(float NdotV, float roughness, bool IBL)
-	{
-		float r = roughness + 1.0f;
-		float k = IBL ? roughness * roughness / 2.0f : r * r / 8.0f;
-
-		float nom = NdotV;
-		float denom = NdotV * (1.0f - k) + k;
-
-		return nom / denom;
-	}
-
-	float geometrySmith(const glm::vec3 &N, const glm::vec3 &V, const glm::vec3 &L, float roughness, bool IBL)
-	{
-		float NdotV = std::max(glm::dot(N, V), 0.0f);
-		float NdotL = std::max(glm::dot(N, L), 0.0f);
-
-		float ggx2 = geometrySchlickGGX(NdotV, roughness, IBL);
-		float ggx1 = geometrySchlickGGX(NdotL, roughness, IBL);
-
-		return ggx1 * ggx2;
+		return specularSampler->getSample(hitPoint, N, Wo);
 	}
 
 private:

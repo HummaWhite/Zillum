@@ -7,12 +7,12 @@
 #include "../glm/gtc/matrix_transform.hpp"
 #include "../glm/gtc/type_ptr.hpp"
 
-#include "../Math/RandomGenerator.h"
+#include "../Math/Math.h"
 
 class Sampler
 {
 public:
-	virtual glm::vec3 getSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Lo) = 0;
+	virtual glm::vec3 getSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Wo) = 0;
 };
 
 #endif
