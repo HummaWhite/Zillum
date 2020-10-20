@@ -25,14 +25,14 @@ struct AABB
 
 	AABB(const glm::vec3 &va, const glm::vec3 &vb, const glm::vec3 &vc)
 	{
-		pMin = Math::min(Math::min(va, vb), vc);
-		pMax = Math::max(Math::max(va, vb), vc);
+		pMin = glm::min(glm::min(va, vb), vc);
+		pMax = glm::max(glm::max(va, vb), vc);
 	}
 
 	AABB(const AABB &boundA, const AABB &boundB)
 	{
-		pMin = Math::min(boundA.pMin, boundB.pMin);
-		pMax = Math::max(boundA.pMax, boundB.pMax);
+		pMin = glm::min(boundA.pMin, boundB.pMin);
+		pMax = glm::max(boundA.pMax, boundB.pMax);
 	}
 
 	inline bool hit(const Ray &ray, float &tMin, float &tMax)

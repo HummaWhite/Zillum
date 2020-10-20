@@ -15,6 +15,12 @@ public:
 		buf[1].init(w, h);
 	}
 
+	void init(int w, int h)
+	{
+		buf[0].init(w, h);
+		buf[1].init(w, h);
+	}
+
 	void release()
 	{
 		buf[0].release();

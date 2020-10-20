@@ -19,7 +19,7 @@ public:
 	
 	virtual glm::vec3 getRandomPoint() = 0;
 
-	void setTransform(const glm::mat4 trans)
+	void setTransform(const glm::mat4& trans)
 	{
 		transform = trans;
 	}

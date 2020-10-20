@@ -108,13 +108,17 @@ public:
 	{
 		RandomGenerator rg;
 
+		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
+		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
+		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
+
 		float wa = rg.get(0.000001f, 1.0f);
 		float wb = rg.get(0.000001f, 1.0f);
 		float wc = rg.get(0.000001f, 1.0f);
 
 		glm::vec3 weight = glm::vec3(wa, wb, wc) / (wa + wb + wc);
 
-		return va * weight.x + vb * weight.y + vc * weight.z;
+		return a * weight.x + b * weight.y + c * weight.z;
 	}
 
 	glm::vec3 surfaceNormal(const glm::vec3 &p)
@@ -131,15 +135,19 @@ public:
 		return glm::length(glm::cross(va - p, glm::cross(vb - p, vc - p))) < 1e-6;
 	}
 
-	glm::vec3 getVa() const { return va; }
+	glm::vec3 getVa() const { return transform * glm::vec4(va, 1.0f); }
 	
-	glm::vec3 getVb() const { return vb; }
+	glm::vec3 getVb() const { return transform * glm::vec4(vb, 1.0f); }
 
-	glm::vec3 getVc() const { return vc; }
+	glm::vec3 getVc() const { return transform * glm::vec4(vc, 1.0f); }
 
 	AABB bound()
 	{
-		return AABB(va, vb, vc);
+		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
+		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
+		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
+
+		return AABB(a, b, c);
 	}
 
 private:

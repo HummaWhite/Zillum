@@ -48,8 +48,6 @@ public:
 		int width, height, bits;
 		float *data = stbi_loadf(filePath, &width, &height, &bits, 0);
 
-		std::cout << data << " " << width << " " << height << " " << bits << "\n";
-
 		if (data == nullptr)
 		{
 			std::cout << "Error loading texture" << std::endl;
@@ -68,15 +66,11 @@ public:
 		else return getFloat(u, v);
 	}
 
-	glm::vec4 getSpherical(glm::vec3 uv)
+	glm::vec4 getSpherical(const glm::vec3 &uv)
 	{
-		const float Pi = 3.14159265358979324;
-
-		float theta = glm::atan(uv.y, uv.x);
-    	if (theta < 0.0) theta += Pi * 2;
-    	float phi = glm::atan(length(glm::vec2(uv)), uv.z);
-
-    	return get(theta / Pi / 2.0, phi / Pi);
+		if (glm::isnan(uv.x) || glm::isnan(uv.y) || glm::isnan(uv.z)) return get(0.0f, 0.0f);
+		glm::vec2 planeUV = Math::sphereToPlane(uv);
+    	return get(planeUV.x, planeUV.y);
 	}
 
 	void setFilterType(int type)

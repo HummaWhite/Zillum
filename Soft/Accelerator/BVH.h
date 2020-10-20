@@ -6,6 +6,8 @@
 
 #include "BVHnode.h"
 
+enum class BVHSplitMethod { SAH, Middle, EqualCounts };
+
 template<typename H>
 class BVH
 {
@@ -19,9 +21,10 @@ public:
 public:
 	BVH() {}
 
-	BVH(const std::vector<std::shared_ptr<H>> &_hittables):
-		hittables(_hittables)
+	BVH(const std::vector<std::shared_ptr<H>> &_hittables, BVHSplitMethod method = BVHSplitMethod::SAH):
+		hittables(_hittables), splitMethod(method)
 	{
+		if (hittables.size() == 0) return;
 		std::vector<HittableInfo> hittableInfo(hittables.size());
 
 		AABB bound;
@@ -48,6 +51,11 @@ public:
 		//destroyRecursive(root);
 	}
 
+	void makeCompact()
+	{
+		makeCompact(root);
+	}
+
 	std::shared_ptr<H> closestHit(const Ray &ray, float &tMin, float &tMax)
 	{
 		return closestHit(root, ray, tMin, tMax);
@@ -62,9 +70,9 @@ public:
 
 	DepthInfo dfsDetailed()
 	{
-		auto res = dfsDetailed(root, 1);
-		res.avgDepth /= treeSize;
-		return res;
+		int sumDepth = 0;
+		int maxDepth = dfsDetailed(root, 1, sumDepth);
+		return { maxDepth, (float)sumDepth / treeSize };
 	}
 
 private:
@@ -83,12 +91,8 @@ private:
 		k = new BVHnode<H>(nodeBound, l, r - l + 1, dim);
 		treeSize++;
 
-		//glm::vec3 vol = nodeBound.pMax - nodeBound.pMin;
-		//std::cout << l << "  " << r << "\n";
-		//std::cout << vol.x << "  " << vol.y << "  " << vol.z << "\n";
+		//std::cout << l << "  " << r << "  SplitAxis: " << dim << "\n";
 		if (l == r) return;
-
-		//std::cout << "SplitAxis: " << dim << "\n";
 
 		auto cmp =
 			dim == 0 ?
@@ -115,9 +119,9 @@ private:
 			buildRecursive(k->rch, hittableInfo, hittableInfo[r].bound, r, r);
 			return;
 		}
-		
-		AABB boundInfo[hittableCount];
-		AABB boundInfoRev[hittableCount];
+
+		AABB *boundInfo = new AABB[hittableCount];
+		AABB *boundInfoRev = new AABB[hittableCount];
 
 		boundInfo[0] = hittableInfo[l].bound;
 		boundInfoRev[hittableCount - 1] = hittableInfo[r].bound;
@@ -127,22 +131,61 @@ private:
 			boundInfo[i] = AABB(boundInfo[i - 1], hittableInfo[l + i].bound);
 			boundInfoRev[hittableCount - 1 - i] = AABB(boundInfoRev[hittableCount - i], hittableInfo[r - i].bound);
 		}
-		
-		int m = l;
-		float cost = boundInfo[0].surfaceArea() + boundInfoRev[1].surfaceArea() * (r - l);
 
-		for (int i = 1; i < hittableCount - 1; i++)
+		int m = l;
+		switch (splitMethod)
 		{
-			float c = boundInfo[i].surfaceArea() * (i + 1) + boundInfoRev[i + 1].surfaceArea() * (hittableCount - i - 1);
-			if (c < cost)
-			{
-				cost = c;
-				m = l + i;
-			}
+			case BVHSplitMethod::SAH:
+				{
+					m = l;
+					float cost = boundInfo[0].surfaceArea() + boundInfoRev[1].surfaceArea() * (r - l);
+
+					for (int i = 1; i < hittableCount - 1; i++)
+					{
+						float c = boundInfo[i].surfaceArea() * (i + 1) + boundInfoRev[i + 1].surfaceArea() * (hittableCount - i - 1);
+						if (c < cost)
+						{
+							cost = c;
+							m = l + i;
+						}
+					}
+				} break;
+
+			case BVHSplitMethod::Middle:
+				{
+					glm::vec3 nodeCentroid = nodeBound.centroid();
+					float mid =
+						dim == 0 ? nodeCentroid.x :
+						dim == 1 ? nodeCentroid.y :
+						nodeCentroid.z;
+					for (m = l; m < r - 1; m++)
+					{
+						float tmp =
+							dim == 0 ? hittableInfo[m].centroid.x :
+							dim == 1 ? hittableInfo[m].centroid.y :
+							hittableInfo[m].centroid.z;
+						if (tmp >= mid) break;
+					}
+				} break;
+
+			case BVHSplitMethod::EqualCounts:
+				m = (l + r) >> 1;
+				break;
+
+			default: break;
 		}
 
-		buildRecursive(k->lch, hittableInfo, boundInfo[m - l], l, m);
-		buildRecursive(k->rch, hittableInfo, boundInfoRev[m + 1 - l], m + 1, r);
+		AABB lBound = boundInfo[m - l];
+		AABB rBound = boundInfoRev[m + 1 - l];
+		delete[] boundInfo;
+		delete[] boundInfoRev;
+
+		buildRecursive(k->lch, hittableInfo, lBound, l, m);
+		buildRecursive(k->rch, hittableInfo, rBound, m + 1, r);
+	}
+
+	void makeCompact(BVHnode<H> *k)
+	{
 	}
 
 	void destroyRecursive(BVHnode<H> *k)
@@ -235,15 +278,15 @@ private:
 		if (k->rch != nullptr) dfs(k->rch, depth + 1);
 	}
 
-	DepthInfo dfsDetailed(BVHnode<H> *k, int depth)
+	int dfsDetailed(BVHnode<H> *k, int depth, int &sumDepth)
 	{
-		if (k == nullptr) return DepthInfo();
+		if (k == nullptr) return 0;
 
-		DepthInfo lRes = dfsDetailed(k->lch, depth + 1);
-		DepthInfo rRes = dfsDetailed(k->rch, depth + 1);
+		sumDepth += depth;
+		int lDep = dfsDetailed(k->lch, depth + 1, sumDepth);
+		int rDep = dfsDetailed(k->rch, depth + 1, sumDepth);
 
-		int curDepth = std::max(lRes.maxDepth, rRes.maxDepth) + 1;
-		return DepthInfo{ curDepth, lRes.avgDepth + rRes.avgDepth + curDepth };
+		return std::max(lDep, rDep) + 1;
 	}
 	
 private:
@@ -252,6 +295,7 @@ private:
 
 	BVHnode<H> *root = nullptr;
 	int treeSize = 0;
+	BVHSplitMethod splitMethod;
 };
 
 #endif

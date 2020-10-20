@@ -15,14 +15,14 @@ namespace ObjReader
 {
 	struct VertexInfo
 	{
-		sdt::vector<glm::vec3> *vertices = nullptr;
-		std::vector<glm::vec2> *texCoords = nullptr;
-		std::vector<glm::vec3> *normals = nullptr;
+		std::vector<glm::vec3> vertices;
+		std::vector<glm::vec2> texCoords;
+		std::vector<glm::vec3> normals;
 	};
 
 	VertexInfo readFile(const char* filePath)
 	{
-		std::vector<float> data;
+		VertexInfo data;
 		std::fstream file(filePath);
 		std::cout << "Loading Obj: " << filePath << std::endl;
 
@@ -64,13 +64,9 @@ namespace ObjReader
 
 				for (int i = 0; i < 3; i++)
 				{
-					glm::vec3 p = points[indexP[i] - 1];
-					glm::vec2 t = texCoords[indexT[i] - 1];
-					glm::vec3 n = normals[indexT[i] - 1];
-
-					for (int j = 0; j < 3; j++) data.push_back(p[j]);
-					for (int j = 0; j < 2; j++) data.push_back(t[j]);
-					for (int j = 0; j < 3; j++) data.push_back(n[j]);
+					data.vertices.push_back(points[indexP[i] - 1]);
+					data.texCoords.push_back(texCoords[indexT[i] - 1]);
+					data.normals.push_back(normals[indexT[i] - 1]);
 				}
 			}
 			else if (type == "v")
