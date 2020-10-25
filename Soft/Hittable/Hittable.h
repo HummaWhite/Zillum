@@ -11,6 +11,7 @@
 #include "../Ray.h"
 #include "../Hit/HitInfo.h"
 #include "../Bound/AABB.h"
+#include "../Math/Transform.h"
 
 class Hittable
 {
@@ -21,17 +22,19 @@ public:
 
 	void setTransform(const glm::mat4& trans)
 	{
-		transform = trans;
+		transform->set(trans);
 	}
 
 	virtual glm::vec3 surfaceNormal(const glm::vec3 &p) = 0;
 
 	virtual AABB bound() = 0;
 
-	glm::mat4 getTransform() const { return transform; }
+	void setTransform(std::shared_ptr<Transform> trans) { transform = trans; }
+
+	std::shared_ptr<Transform> getTransform() const { return transform; }
 
 protected:
-	glm::mat4 transform = glm::mat4(1.0f);
+	std::shared_ptr<Transform> transform = std::make_shared<Transform>();
 };
 
 #endif

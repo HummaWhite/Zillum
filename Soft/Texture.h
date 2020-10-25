@@ -68,7 +68,10 @@ public:
 
 	glm::vec4 getSpherical(const glm::vec3 &uv)
 	{
-		if (glm::isnan(uv.x) || glm::isnan(uv.y) || glm::isnan(uv.z)) return get(0.0f, 0.0f);
+		if (glm::isnan(uv.x) || glm::isnan(uv.y) || glm::isnan(uv.z))
+		{
+			return get(0.0f, 0.0f);
+		}
 		glm::vec2 planeUV = Math::sphereToPlane(uv);
     	return get(planeUV.x, planeUV.y);
 	}

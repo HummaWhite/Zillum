@@ -48,13 +48,7 @@ public:
 
 	virtual SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
 	{
-		glm::vec3 va = triangle.getVa();
-		glm::vec3 vb = triangle.getVb();
-		glm::vec3 vc = triangle.getVc();
-
-		glm::vec3 norm = glm::normalize(glm::cross(vb - va, vc - va));
-
-		return { glm::vec2(0.0f), norm, material };
+		return { glm::vec2(0.0f), triangle.surfaceNormal(surfacePoint), material };
 	}
 
 	AABB bound()
@@ -72,7 +66,12 @@ public:
 		return material;
 	}
 
-	glm::mat4 getTransform() const
+	void setTransform(std::shared_ptr<Transform> trans)
+	{
+		triangle.setTransform(trans);
+	}
+
+	std::shared_ptr<Transform> getTransform() const
 	{
 		return triangle.getTransform();
 	}
@@ -92,20 +91,19 @@ public:
 
 	SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
 	{
+		auto trans = getTransform();
+
 		glm::vec3 va = triangle.getVa();
 		glm::vec3 vb = triangle.getVb();
 		glm::vec3 vc = triangle.getVc();
+		glm::vec3 p = trans->getInversed(surfacePoint);
 
 		float area = glm::length(glm::cross(vb - va, vc - va));
-		float la = glm::length(glm::cross(vb - surfacePoint, vc - surfacePoint)) / area;
-		float lb = glm::length(glm::cross(vc - surfacePoint, va - surfacePoint)) / area;
-		float lc = glm::length(glm::cross(va - surfacePoint, vb - surfacePoint)) / area;
+		float la = glm::length(glm::cross(vb - p, vc - p)) / area;
+		float lb = glm::length(glm::cross(vc - p, va - p)) / area;
+		float lc = glm::length(glm::cross(va - p, vb - p)) / area;
 
-		glm::mat3 transInv = glm::transpose(glm::inverse(getTransform()));
-		glm::vec3 norm = glm::normalize(transInv * (na * la + nb * lb + nc * lc));
-
-		//std::cout << norm.x << "  " << norm.y  << "  " << norm.z << "\n";
-
+		glm::vec3 norm = glm::normalize(trans->getInversedNormal(na * la + nb * lb + nc * lc));
 		return { ta * la + tb * lb + tc * lc, norm, getMaterial() };
 	}
 
@@ -128,13 +126,7 @@ public:
 
 	SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
 	{
-		glm::vec3 va = quad.getVa();
-		glm::vec3 vb = quad.getVb();
-		glm::vec3 vc = quad.getVc();
-
-		glm::vec3 norm = glm::normalize(glm::cross(vb - va, vc - va));
-
-		return { glm::vec2(0.0f), norm, material };
+		return { glm::vec2(0.0f), quad.surfaceNormal(surfacePoint), material };
 	}
 
 	AABB bound()

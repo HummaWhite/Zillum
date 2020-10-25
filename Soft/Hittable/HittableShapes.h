@@ -69,15 +69,11 @@ public:
 	{
 		const float eps = 1e-6;
 
-		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
-		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
-		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
+		glm::vec3 ab = vb - va;
+		glm::vec3 ac = vc - va;
 
-		glm::vec3 ab = b - a;
-		glm::vec3 ac = c - a;
-
-		glm::vec3 o = ray.ori;
-		glm::vec3 d = ray.dir;
+		glm::vec3 o = transform->getInversed(ray.ori);
+		glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
 
 		glm::vec3 p = glm::cross(d, ac);
 
@@ -85,7 +81,7 @@ public:
 
 		if (glm::abs(det) < eps) return { false, 0.0f };
 
-		glm::vec3 ao = o - a;
+		glm::vec3 ao = o - va;
 		if (det < 0.0f)
 		{
 			ao = -ao;
@@ -108,46 +104,35 @@ public:
 	{
 		RandomGenerator rg;
 
-		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
-		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
-		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
-
 		float wa = rg.get(0.000001f, 1.0f);
 		float wb = rg.get(0.000001f, 1.0f);
 		float wc = rg.get(0.000001f, 1.0f);
 
 		glm::vec3 weight = glm::vec3(wa, wb, wc) / (wa + wb + wc);
+		glm::vec3 p = va * weight.x + vb * weight.y + vc * weight.z;
 
-		return a * weight.x + b * weight.y + c * weight.z;
+		return transform->get(p);
 	}
 
 	glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
-		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
-		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
-		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
-
-		return glm::normalize(glm::cross(b - a, c - a));
+		glm::vec3 N = glm::normalize(glm::cross(vb - va, vc - va));
+		return glm::normalize(transform->getInversedNormal(N));
 	}
 
 	bool onPlane(const glm::vec3 &p)
 	{
-		return glm::length(glm::cross(va - p, glm::cross(vb - p, vc - p))) < 1e-6;
+		glm::vec3 invP = transform->getInversed(p);
+		return glm::length(glm::cross(va - invP, glm::cross(vb - invP, vc - invP))) < 1e-6;
 	}
 
-	glm::vec3 getVa() const { return transform * glm::vec4(va, 1.0f); }
-	
-	glm::vec3 getVb() const { return transform * glm::vec4(vb, 1.0f); }
-
-	glm::vec3 getVc() const { return transform * glm::vec4(vc, 1.0f); }
+	glm::vec3 getVa() const { return va; }
+	glm::vec3 getVb() const { return vb; }
+	glm::vec3 getVc() const { return vc; }
 
 	AABB bound()
 	{
-		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
-		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
-		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
-
-		return AABB(a, b, c);
+		return AABB(transform->get(va), transform->get(vb), transform->get(vc));
 	}
 
 private:
@@ -200,13 +185,14 @@ public:
 
 	HitInfo closestHit(const Ray &ray)
 	{
-		glm::vec3 pa = glm::vec3(transform * glm::vec4(va, 1.0f));
-		glm::vec3 pb = glm::vec3(transform * glm::vec4(vb, 1.0f));
-		glm::vec3 pc = glm::vec3(transform * glm::vec4(vc, 1.0f));
-		glm::vec3 pd = glm::vec3(transform * glm::vec4(vb + vc - va, 1.0f));
+		glm::vec3 o = transform->getInversed(ray.ori);
+		glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
 
-		HitInfo ha = HittableTriangle(pa, pb, pc).closestHit(ray);
-		HitInfo hb = HittableTriangle(pc, pb, pd).closestHit(ray);
+		Ray inversedRay = { o, d };
+		glm::vec3 vd = vb + vc - va;
+
+		HitInfo ha = HittableTriangle(va, vb, vc).closestHit(inversedRay);
+		HitInfo hb = HittableTriangle(vc, vb, vd).closestHit(inversedRay);
 
 		if (ha.hit) return ha;
 		if (hb.hit) return hb;
@@ -221,29 +207,26 @@ public:
 		float la = rg.get(0.0f, 1.0f);
 		float lb = rg.get(0.0f, 1.0f);
 
-		return (vb - va) * la + (vc - va) * lb + va;
+		return transform->get((vb - va) * la + (vc - va) * lb + va);
 	}
 
 	glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
-		glm::vec3 a = glm::vec3(transform * glm::vec4(va, 1.0f));
-		glm::vec3 b = glm::vec3(transform * glm::vec4(vb, 1.0f));
-		glm::vec3 c = glm::vec3(transform * glm::vec4(vc, 1.0f));
-
-		return glm::normalize(glm::cross(b - a, c - a));
+		glm::vec3 N = glm::normalize(glm::cross(vb - va, vc - va));
+		return glm::normalize(transform->getInversedNormal(N));
 	}
 
 	glm::vec3 getVa() const { return va; }
-	
 	glm::vec3 getVb() const { return vb; }
-
 	glm::vec3 getVc() const { return vc; }
 
 	AABB bound()
 	{
-		glm::vec3 vd = vb + vc - va;
-
-		return AABB(AABB(va, vb, vc), AABB(vb, vc, vd));
+		glm::vec3 pa = transform->get(va);
+		glm::vec3 pb = transform->get(vb);
+		glm::vec3 pc = transform->get(vc);
+		glm::vec3 pd = pb + pc - pa;
+		return AABB(AABB(pa, pb, pc), AABB(pb, pc, pd));
 	}
 
 private:
