@@ -24,14 +24,14 @@ public:
 
 	void loadRGB24(const char *filePath)
 	{
-		std::cout << "Loading Texture: " << filePath << std::endl;
+		std::cout << "Texture::loading RGB: " << filePath << std::endl;
 
 		int width, height, bits;
 		BYTE *data = stbi_load(filePath, &width, &height, &bits, 3);
 
 		if (data == nullptr)
 		{
-			std::cout << "Error loading texture" << std::endl;
+			std::cout << "Texture::error loading" << std::endl;
 			exit(-1);
 		}
 
@@ -43,14 +43,14 @@ public:
 
 	void loadFloat(const char *filePath)
 	{
-		std::cout << "Loading Texture: " << filePath << std::endl;
+		std::cout << "Texture::loading HDR: " << filePath << std::endl;
 
 		int width, height, bits;
 		float *data = stbi_loadf(filePath, &width, &height, &bits, 0);
 
 		if (data == nullptr)
 		{
-			std::cout << "Error loading texture" << std::endl;
+			std::cout << "Texture::error loading" << std::endl;
 			exit(-1);
 		}
 
@@ -68,11 +68,12 @@ public:
 
 	glm::vec4 getSpherical(const glm::vec3 &uv)
 	{
-		if (glm::isnan(uv.x) || glm::isnan(uv.y) || glm::isnan(uv.z))
+		if (Math::isNan(uv.x) || Math::isNan(uv.y) || Math::isNan(uv.z))
 		{
+			std::cout << "Texture::getSpherical: Invalid uv with NAN(s)\n";
 			return get(0.0f, 0.0f);
 		}
-		glm::vec2 planeUV = Math::sphereToPlane(uv);
+		glm::vec2 planeUV = Math::sphereToPlane(glm::normalize(uv));
     	return get(planeUV.x, planeUV.y);
 	}
 
@@ -91,6 +92,8 @@ public:
 private:
 	glm::vec4 getRGB24(float u, float v)
 	{
+		if (Math::isNan(u) || Math::isNan(v)) return glm::vec4(0.0f);
+
 		glm::vec4 res(1.0f);
 		FrameBuffer<RGB24> *tex = texRGB24;
 
@@ -134,6 +137,8 @@ private:
 
 	glm::vec4 getFloat(float u, float v)
 	{
+		if (Math::isNan(u) || Math::isNan(v)) return glm::vec4(0.0f);
+
 		glm::vec4 res(1.0f);
 		FrameBuffer<glm::vec3> *tex = texFloat;
 

@@ -36,7 +36,7 @@ struct FrameBuffer:
 
 	T& operator () (int i, int j)
 	{
-		return (*((Buffer<T>*)this)) [j * width + i];
+		return this->data[j * width + i];
 	}
 
 	int width = 0;

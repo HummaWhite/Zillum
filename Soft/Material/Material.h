@@ -11,12 +11,20 @@
 
 #include "../Hit/SurfaceInteraction.h"
 #include "../Ray.h"
+#include "../BXDF/BXDF.h"
 
 class Material
 {
 public:
-	virtual glm::vec3 reflectionRadiance(const SurfaceInteraction &si, const glm::vec3 &radiance) = 0;
+	Material(int bxdfType): matBXDF(bxdfType) {}
+
+	virtual glm::vec3 outRadiance(const SurfaceInteraction &si, const glm::vec3 &radiance) = 0;
 	virtual glm::vec3 getSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Wo, float &pdf) = 0;
+
+	const BXDF& bxdf() const { return matBXDF; }
+
+protected:
+	BXDF matBXDF;
 };
 
 #endif

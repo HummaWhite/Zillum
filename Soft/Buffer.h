@@ -17,7 +17,7 @@ struct Buffer
 
 	~Buffer()
 	{
-		release();
+		//release();
 	}
 
 	virtual void init(int count)

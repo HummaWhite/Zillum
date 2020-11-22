@@ -10,7 +10,7 @@
 class BXDF
 {
 public:
-	enum Type
+	enum
 	{
 		REFLECTION 		= 1 << 0,
 		TRANSMISSION 	= 1 << 1,
@@ -21,10 +21,17 @@ public:
 	};
 
 public:
-	BXDF(Type _type): type(_type) {}
+	BXDF(int type): mType(type) {}
+
+	bool hasType(int type) const
+	{
+		return type & mType;
+	}
+
+	int type() const { return mType; }
 
 protected:
-	Type type;
+	int mType;
 };
 
 #endif

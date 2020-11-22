@@ -8,8 +8,8 @@ class Sphere:
 	public Shape
 {
 public:
-	Sphere(const glm::vec3 &center, float radius, std::shared_ptr<Material> _material):
-		Shape(_material), sphere(center, radius) {}
+	Sphere(const glm::vec3 &center, float radius, std::shared_ptr<Material> material, bool intersectFromInside = false):
+		Shape(material), sphere(center, radius, intersectFromInside) {}
 
 	HitInfo closestHit(const Ray &ray)
 	{
@@ -23,6 +23,11 @@ public:
 		glm::vec2 texCoord = Math::sphereToPlane(p);
 
 		return { texCoord, p, material };
+	}
+
+	void setTransform(std::shared_ptr<Transform> trans)
+	{
+		sphere.setTransform(trans);
 	}
 
 	AABB bound()

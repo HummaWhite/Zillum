@@ -11,10 +11,38 @@
 
 namespace Math
 {
+	const unsigned int FLOAT_SIG_MASK = 0x80000000;
+	const unsigned int FLOAT_EXP_MASK = 0xff << 23;
+	const unsigned int FLOAT_VAL_MASK = 0x7fffff;
+
 	template<typename T>
 	T lerp(T x, T y, float a)
 	{
 		return x + (y - x) * a;
+	}
+
+	static void printBits32(void *bits, std::string info = "")
+	{
+		unsigned int v = *(unsigned int*)bits;
+		for (unsigned int i = 0x80000000; i; i >>= 1)
+			std::cout << (i & v ? 1 : 0);
+		std::cout << info;
+	}
+
+	static void printVec3(const glm::vec3 &v, std::string info = "")
+	{
+		std::cout << info << ":  " << v.x << "  " << v.y << "  " << v.z << std::endl;
+	}
+
+	static bool isNan(float v)
+	{
+		unsigned int u = *(int*)&v;
+		return ((u & FLOAT_EXP_MASK) == FLOAT_EXP_MASK && (u & FLOAT_VAL_MASK) != 0);
+	}
+
+	inline static bool hasNan(const glm::vec3 &v)
+	{
+		return isNan(v.x) || isNan(v.y) || isNan(v.z);
 	}
 
 	inline static glm::vec2 sphereToPlane(const glm::vec3 &uv)
@@ -65,6 +93,37 @@ namespace Math
 		return glm::vec2((float)i / (float)n, radicalInverseVDC(i));
 	}
 
+	inline static bool refract(glm::vec3& Wt, const glm::vec3& Wi, const glm::vec3 &N, float eta)
+	{
+		// 与PBRT不同，这个的结果只与光路上折射率的比值eta有关，与N的取向无关
+		float cosTi = glm::dot(N, Wi);
+		float sin2Ti = 1.0f - cosTi * cosTi;
+		float sin2Tt = eta * eta * sin2Ti;
+
+		if (sin2Tt >= 1.0f) return false;
+
+		float dirN = cosTi < 0 ? -1.0f : 1.0f;
+		float cosTt = glm::sqrt(1.0f - sin2Tt) * dirN;
+		Wt = glm::normalize(-Wi * eta + N * (eta * cosTi - cosTt));
+		return true;
+	}
+
+	inline static float fresnelDieletric(float cosTi, float etaI, float etaT)
+	{
+		cosTi = glm::clamp(cosTi, -1.0f, 1.0f);
+		float sinTi = glm::sqrt(1 - cosTi * cosTi);
+		float sinTt = etaI / etaT * sinTi;
+		if (sinTt >= 1.0f) return 1.0f;
+		
+		float cosTt = glm::sqrt(1.0f - sinTt * sinTt);
+
+		float rPa = (etaT * cosTi - etaI * cosTt) / (etaT * cosTi + etaI * cosTt);
+		float rPe = (etaI * cosTi - etaT * cosTt) / (etaI * cosTi + etaT * cosTt);
+
+		float res = (rPa * rPa + rPe * rPe) * 0.5f;
+		return res;
+	}
+
 	inline static glm::vec3 fresnelSchlick(float cosTheta, const glm::vec3 &F0)
 	{
 		return F0 + (glm::vec3(1.0) - F0) * (float)glm::pow(1.0 - cosTheta, 5.0);
@@ -109,20 +168,6 @@ namespace Math
 		float ggx1 = geometrySchlickGGX(NdotL, roughness, IBL);
 
 		return ggx1 * ggx2;
-	}
-
-	inline static glm::vec3 importanceSampleGGX(const glm::vec2 &xi, const glm::vec3 &N, float roughness)
-	{
-		float r4 = glm::pow(roughness, 4.0f);
-
-		float phi = 2.0 * glm::pi<float>() * xi.x;
-		float cosTheta = glm::sqrt((1.0f - xi.y) / (1.000001f + (r4 - 1.0f) * xi.y));
-		//当roughness较小的时候，r4约等于0，遇到xi.y = 1.0f的情况，原式分母1.0f + (r4 - 1.0f) * xi.y
-		//有可能为零，导致除0输出nan。需加上一个较小的值防止分母为零
-		float sinTheta = glm::sqrt(1.0 - cosTheta * cosTheta);
-
-		glm::vec3 H(glm::cos(phi) * sinTheta, glm::sin(phi) * sinTheta, cosTheta);
-    	return glm::normalize(TBNMatrix(N) * H);
 	}
 }
 

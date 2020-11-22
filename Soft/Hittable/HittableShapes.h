@@ -9,13 +9,13 @@ class HittableSphere:
 	public Hittable
 {
 public:
-	HittableSphere(const glm::vec3 &_center, float _radius):
-		center(_center), radius(_radius) {}
+	HittableSphere(const glm::vec3 &center, float radius, bool intersectFromInside):
+		center(center), radius(radius), intersectFromInside(intersectFromInside) {}
 
 	HitInfo closestHit(const Ray &ray)
 	{
-		glm::vec3 d = ray.dir;
-		glm::vec3 o = ray.ori;
+		glm::vec3 o = transform->getInversed(ray.ori);
+		glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
 		glm::vec3 c = center;
 
 		float t = dot(d, c - o) / dot(d, d);
@@ -24,9 +24,16 @@ public:
 		float e = glm::length(o + d * t - c);
 		if (e > r) return { false, 0.0f };
 
-		float res = t - sqrt(r * r - e * e);
-
-		return { res >= 0.0f, res };
+		float q = sqrt(glm::max(r * r - e * e, 0.0f));
+		// 想不到吧，r * r - e * e还是可能小于0
+		if (glm::length(o - c) < r)
+		{
+			if (!intersectFromInside) return { false, 0.0f };
+			float res = t + q;
+			return { res >= 0, res };
+		}
+		float res = t - q;
+		return { res >= 0, res };
 	}
 
 	glm::vec3 getRandomPoint()
@@ -41,7 +48,7 @@ public:
 
 	glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
-		return glm::normalize(p - center);
+		return transform->getInversedNormal(glm::normalize(p - center));
 	}
 
 	glm::vec3 getCenter() const { return center; }
@@ -56,6 +63,7 @@ public:
 private:
 	glm::vec3 center;
 	float radius;
+	bool intersectFromInside;
 };
 
 class HittableTriangle:
