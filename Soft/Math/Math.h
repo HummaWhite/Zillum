@@ -142,30 +142,30 @@ namespace Math
 		float NdotH2 = NdotH * NdotH;
 
 		float nom = a2;
-		float denom = NdotH2 * (a2 - 1.0) + 1.000001f;
+		float denom = NdotH2 * (a2 - 1.0) + 1.0f + 1e-6f;
 		denom = denom * denom * glm::pi<float>();
 
 		return nom / denom;
 	}
 
-	inline static float geometrySchlickGGX(float NdotV, float roughness, bool IBL)
+	inline static float geometrySchlickGGX(float NdotV, float roughness)
 	{
 		float r = roughness + 1.0f;
-		float k = IBL ? roughness * roughness / 2.0f : r * r / 8.0f;
+		float k = roughness * roughness / 2.0f;
 
 		float nom = NdotV;
-		float denom = NdotV * (1.0f - k) + k + 1e-6f;
+		float denom = NdotV * (1.0f - k) + k;
 
 		return nom / denom;
 	}
 
-	inline static float geometrySmith(const glm::vec3 &N, const glm::vec3 &V, const glm::vec3 &L, float roughness, bool IBL)
+	inline static float geometrySmith(const glm::vec3 &N, const glm::vec3 &V, const glm::vec3 &L, float roughness)
 	{
 		float NdotV = glm::max(glm::dot(N, V), 0.0f);
 		float NdotL = glm::max(glm::dot(N, L), 0.0f);
 
-		float ggx2 = geometrySchlickGGX(NdotV, roughness, IBL);
-		float ggx1 = geometrySchlickGGX(NdotL, roughness, IBL);
+		float ggx2 = geometrySchlickGGX(NdotV, roughness);
+		float ggx1 = geometrySchlickGGX(NdotL, roughness);
 
 		return ggx1 * ggx2;
 	}

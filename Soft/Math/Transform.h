@@ -31,7 +31,7 @@ public:
 
 	inline glm::vec3 getInversedNormal(const glm::vec3 &N)
 	{
-		return matInvT * N;
+		return glm::normalize(matInvT * N);
 	}
 
 public:

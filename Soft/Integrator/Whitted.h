@@ -7,20 +7,20 @@ class WhittedIntegrator:
 	public Integrator
 {
 public:
-	WhittedIntegrator(int width, int height, int maxSpp):
-		Integrator(width, height, maxSpp) {}
+	WhittedIntegrator(int width, int height, int maxSpp, bool lowDiscrepSeries = false):
+		Integrator(width, height, maxSpp), lowDiscrepSeries(lowDiscrepSeries) {}
 
 	inline void render()
 	{
-		std::thread threads[maxThreads];
-
 		if (modified)
 		{
 			resultBuffer.fill(glm::vec3(0.0f));
 			curSpp = 0;
 			modified = false;
 		}
+		if (lowDiscrepSeries && curSpp >= maxSpp) return;
 
+		std::thread threads[maxThreads];
 		for (int i = 0; i < maxThreads; i++)
 		{
 			int start = (width / maxThreads) * i;
@@ -53,8 +53,7 @@ private:
 				float sy1 = 1.0f - 2.0f * (float)(y + 1) / height;
 
 				RandomGenerator rg;
-				glm::vec2 sample(rg.get(0.0f, 1.0f), rg.get(0.0f, 1.0f));
-				//glm::vec2 sample = Math::hammersley(spp, MAX_SPP);
+				glm::vec2 sample = lowDiscrepSeries ? Math::hammersley(curSpp, maxSpp) : glm::vec2(rg.get(0.0f, 1.0f), rg.get(0.0f, 1.0f));
 				float sampleX = Math::lerp(sx, sx1, sample.x);
 				float sampleY = Math::lerp(sy, sy1, sample.y);
 				Ray ray = getRay(sampleX, sampleY);
@@ -98,7 +97,7 @@ private:
 
 	glm::vec3 trace(Ray ray, SurfaceInfo surfaceInfo, int depth)
 	{
-		if (depth == 0) return scene->environment->getRadiance(ray.dir);
+		if (depth == 0) return returnEnvColorAtEnd ? scene->environment->getRadiance(ray.dir) : glm::vec3(0.0f);
 
 		glm::vec3 hitPoint = ray.ori;
 		glm::vec3 Wo = -ray.dir;
@@ -110,26 +109,31 @@ private:
 		{
 			for (auto &lt : scene->lightList)
 			{
-				glm::vec3 randomPoint = lt->getRandomPoint();
-				glm::vec3 rayDir = glm::normalize(randomPoint - hitPoint);
-				float lightDist = glm::length(randomPoint - hitPoint);
+				for (int i = 0; i < sampleDirectLight; i++)
+				{
+					glm::vec3 randomPoint = lt->getRandomPoint();
+					glm::vec3 rayDir = glm::normalize(randomPoint - hitPoint);
+					float lightDist = glm::length(randomPoint - hitPoint);
 
-				Ray lightRay(hitPoint + rayDir * 0.0001f, rayDir);
+					Ray lightRay(hitPoint + rayDir * 0.0001f, rayDir);
 
-				float tMin, tMax;
-				auto occShape = scene->shapeBVH->closestHit(lightRay, tMin, tMax);
+					float tMin, tMax;
+					auto occShape = scene->shapeBVH->closestHit(lightRay, tMin, tMax);
 
-				if (occShape != nullptr && tMin < lightDist) continue;
+					if (occShape != nullptr && tMin < lightDist) continue;
 
-				glm::vec3 Wi = rayDir;
-				glm::vec3 lightN = lt->surfaceNormal(randomPoint);
-				glm::vec3 lightRad = lt->getRadiance(-Wi, lightN, lightDist);
-				SurfaceInteraction si = { Wo, Wi, N };
-				glm::vec3 outRad = surfaceInfo.material->outRadiance(si, lightRad);
+					glm::vec3 Wi = rayDir;
+					glm::vec3 lightN = lt->surfaceNormal(randomPoint);
+					glm::vec3 lightRad = lt->getRadiance(-Wi, lightN, lightDist);
+					SurfaceInteraction si = { Wo, Wi, N };
+					glm::vec3 outRad = surfaceInfo.material->outRadiance(si, lightRad);
 
-				directRadiance += outRad;
+					directRadiance += outRad;
+				}
 			}
 		}
+
+		directRadiance /= (float)sampleDirectLight;
 
 		float pdf;
 		glm::vec3 Wi = surfaceInfo.material->getSample(hitPoint, N, Wo, pdf);
@@ -172,8 +176,27 @@ private:
 
 		SurfaceInteraction si = { Wo, Wi, N };
 		glm::vec3 indirectRadiance = surfaceInfo.material->outRadiance(si, nextRadiance);
+		/*
+		if (indirectRadiance.x > pdf * 1000.0f)
+		{
+			auto H = glm::normalize(Wi + Wo);
+			std::cout << std::setprecision(6) << indirectRadiance.x << " " << pdf << "\n";
+			std::cout << std::setprecision(6) << "NdotL:  " << glm::dot(Wi, N) << "\nNdotV:  " << glm::dot(Wo, N) << "\nL/VdotH:" << glm::dot(Wi, H) << "\nNdotH:  " << glm::dot(N, H) << "\n";
+			Math::printVec3(Wo, "Wo");
+			Math::printVec3(Wi, "Wi");
+			Math::printVec3(N, "N");
+			Math::printVec3(H, "H");
+			Math::printVec3(hitPoint, "P");
+			std::cout << "\n";
+		}
+		*/
 		return directRadiance + indirectRadiance / pdf;
 	}
+
+private:
+	bool lowDiscrepSeries;
+	int sampleDirectLight = 2;
+	bool returnEnvColorAtEnd = true;
 };
 
 #endif

@@ -23,14 +23,9 @@ namespace HemisphereSampling
 
 		float theta = rg.get(0.0f, glm::radians(360.0f));
 		float phi = rg.get(0.0f, glm::radians(90.0f));
-		float r = rg.get(0.0f, 1.0f);
 
-		glm::vec2 vp(r * glm::cos(theta), r * glm::sin(theta));
-		glm::vec3 randomVec(vp, glm::sqrt(1.0f - r * r));
-		pdf = randomVec.z / glm::pi<float>();
-
-		//glm::vec3 randomVec(glm::cos(theta) * glm::sin(phi), glm::sin(theta) * glm::sin(phi), glm::cos(phi));
-		//pdf = glm::sin(phi) * glm::cos(phi) / glm::pi<float>();
+		glm::vec3 randomVec(glm::cos(theta) * glm::sin(phi), glm::sin(theta) * glm::sin(phi), glm::cos(phi));
+		pdf = glm::cos(phi) / glm::pi<float>();
 
 		return glm::normalize(Math::TBNMatrix(N) * randomVec);
 	}
@@ -61,8 +56,9 @@ namespace HemisphereSampling
         float HdotV = glm::max(glm::dot(H, V), 0.0f);
 
         float D = Math::distributionGGX(N, H, roughness);
-		pdf = D * NdotH / (4.0 * HdotV + 1e-16f);
+		pdf = D * NdotH / (4.0 * HdotV + 1e-8f);
 
+		if (HdotV < 1e-6f) pdf = 0.0f;
 		if (pdf < 1e-10f) pdf = 0.0f;
 		return L;
 	}
