@@ -7,10 +7,10 @@ class WhittedIntegrator:
 	public Integrator
 {
 public:
-	WhittedIntegrator(int width, int height, int maxSpp, bool lowDiscrepSeries = false):
-		Integrator(width, height, maxSpp), lowDiscrepSeries(lowDiscrepSeries) {}
+	WhittedIntegrator(int width, int height, int maxSpp):
+		Integrator(width, height, maxSpp) {}
 
-	inline void render()
+	void render()
 	{
 		if (modified)
 		{
@@ -59,28 +59,16 @@ private:
 				Ray ray = getRay(sampleX, sampleY);
 
 				glm::vec3 radiance(0.0f);
+				auto scHitInfo = scene->closestHit(ray);
 
-				float minDistShape = 1000.0f;
-
-				float tmp;
-				auto closestShape = scene->shapeBVH->closestHit(ray, minDistShape, tmp);
-
-				float minDistLight = 1000.0f;
-				auto closestLight = scene->lightBVH->closestHit(ray, minDistLight, tmp);
-
-				if (closestShape != nullptr)
+				if(scHitInfo.type == SceneHitInfo::LIGHT) radiance = scHitInfo.light->getRadiance();
+				else if (scHitInfo.type == SceneHitInfo::SHAPE)
 				{
-					if (closestLight != nullptr && minDistLight < minDistShape) radiance = closestLight->getRadiance();
-					else
-					{
-						glm::vec3 hitPoint = ray.get(minDistShape);
-						SurfaceInfo sInfo = closestShape->surfaceInfo(hitPoint);
-
-						ray.ori = hitPoint;
-						radiance = trace(ray, sInfo, 5);
-					}
+					glm::vec3 hitPoint = ray.get(scHitInfo.dist);
+					SurfaceInfo sInfo = scHitInfo.shape->surfaceInfo(hitPoint);
+					ray.ori = hitPoint;
+					radiance = trace(ray, sInfo, tracingDepth);
 				}
-				else if (closestLight != nullptr) radiance = closestLight->getRadiance();
 				else radiance = scene->environment->getRadiance(ray.dir);
 
 				if (Math::isNan(radiance.x) || Math::isNan(radiance.y) || Math::isNan(radiance.z))
@@ -97,7 +85,8 @@ private:
 
 	glm::vec3 trace(Ray ray, SurfaceInfo surfaceInfo, int depth)
 	{
-		if (depth == 0) return returnEnvColorAtEnd ? scene->environment->getRadiance(ray.dir) : glm::vec3(0.0f);
+		glm::vec3 endRadiance = returnEnvColorAtEnd ? scene->environment->getRadiance(ray.dir) : glm::vec3(0.0f);
+		if (!roulette && depth == 0) return endRadiance;
 
 		glm::vec3 hitPoint = ray.ori;
 		glm::vec3 Wo = -ray.dir;
@@ -119,7 +108,6 @@ private:
 
 					float tMin, tMax;
 					auto occShape = scene->shapeBVH->closestHit(lightRay, tMin, tMax);
-
 					if (occShape != nullptr && tMin < lightDist) continue;
 
 					glm::vec3 Wi = rayDir;
@@ -135,68 +123,48 @@ private:
 
 		directRadiance /= (float)sampleDirectLight;
 
-		float pdf;
-		glm::vec3 Wi = surfaceInfo.material->getSample(hitPoint, N, Wo, pdf);
+		RandomGenerator rg;
+		if (roulette && rg.get(0.0f, 1.0f) > rouletteProb) return directRadiance;
+
+		glm::vec4 sample = surfaceInfo.material->getSample(hitPoint, N, Wo);
+		glm::vec3 Wi(sample);
+		float pdf = sample.w;
+		if (roulette) pdf *= rouletteProb;
 
 		if (pdf == 0.0f || pdf < 1e-8f) return directRadiance;
 
 		Ray newRay(hitPoint + Wi * 0.0001f, Wi);
-
-		float tmp;
-		float minDistShape = 1000.0f;
-		auto closestShape = scene->shapeBVH->closestHit(newRay, minDistShape, tmp);
-
-		float minDistLight = 1000.0f;
-		glm::vec3 closestHitNorm;
-
-		auto closestLight = scene->lightBVH->closestHit(newRay, minDistLight, tmp);
-		if (closestLight != nullptr) closestHitNorm = closestLight->surfaceNormal(newRay.get(minDistLight));
-
 		glm::vec3 nextRadiance(0.0f);
+		auto scHitInfo = scene->closestHit(newRay);
 
-		if (closestShape == nullptr)
+		if (scHitInfo.type == SceneHitInfo::LIGHT)
 		{
-			if (closestLight != nullptr) nextRadiance += closestLight->getRadiance(-Wi, closestHitNorm, minDistLight);
-			else nextRadiance += scene->environment->getRadiance(Wi);
+			glm::vec3 lightNorm = scHitInfo.light->surfaceNormal(newRay.get(scHitInfo.dist));
+			nextRadiance = scHitInfo.light->getRadiance(-Wi, lightNorm, scHitInfo.dist);
 		}
-		else
+		else if (scHitInfo.type == SceneHitInfo::SHAPE)
 		{
-			if (closestLight != nullptr && minDistLight < minDistShape)
-			{
-				nextRadiance += closestLight->getRadiance(-Wi, closestHitNorm, minDistLight);
-			}
-			else
-			{
-				glm::vec3 nextHitPoint = newRay.get(minDistShape);
-				SurfaceInfo nextSInfo = closestShape->surfaceInfo(nextHitPoint);
-				newRay.ori = nextHitPoint;
-				nextRadiance += trace(newRay, nextSInfo, depth - 1);
-			}
+			glm::vec3 nextHitPoint = newRay.get(scHitInfo.dist);
+			SurfaceInfo nextSInfo = scHitInfo.shape->surfaceInfo(nextHitPoint);
+			newRay.ori = nextHitPoint;
+			nextRadiance = trace(newRay, nextSInfo, depth - 1);
 		}
+		else nextRadiance = scene->environment->getRadiance(Wi);
 
 		SurfaceInteraction si = { Wo, Wi, N };
-		glm::vec3 indirectRadiance = surfaceInfo.material->outRadiance(si, nextRadiance);
-		/*
-		if (indirectRadiance.x > pdf * 1000.0f)
-		{
-			auto H = glm::normalize(Wi + Wo);
-			std::cout << std::setprecision(6) << indirectRadiance.x << " " << pdf << "\n";
-			std::cout << std::setprecision(6) << "NdotL:  " << glm::dot(Wi, N) << "\nNdotV:  " << glm::dot(Wo, N) << "\nL/VdotH:" << glm::dot(Wi, H) << "\nNdotH:  " << glm::dot(N, H) << "\n";
-			Math::printVec3(Wo, "Wo");
-			Math::printVec3(Wi, "Wi");
-			Math::printVec3(N, "N");
-			Math::printVec3(H, "H");
-			Math::printVec3(hitPoint, "P");
-			std::cout << "\n";
-		}
-		*/
-		return directRadiance + indirectRadiance / pdf;
+		glm::vec3 indirectRadiance = surfaceInfo.material->outRadiance(si, nextRadiance) / pdf;
+		indirectRadiance = glm::clamp(indirectRadiance, 0.0f, indirectClamp);
+		return directRadiance + indirectRadiance;
 	}
 
-private:
-	bool lowDiscrepSeries;
+public:
+	bool lowDiscrepSeries = false;
+	bool roulette = true;
+	float rouletteProb = 0.6f;
+	int tracingDepth = 5;
 	int sampleDirectLight = 2;
-	bool returnEnvColorAtEnd = true;
+	bool returnEnvColorAtEnd = false;
+	float indirectClamp = 20.0f;
 };
 
 #endif
