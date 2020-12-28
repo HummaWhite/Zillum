@@ -7,19 +7,19 @@
 class RandomGenerator
 {
 public:
-	float get()  
+	inline float get()  
 	{  
 		seed = (a * seed + c) & 0xFFFFFFFFFFFFLL;  
 		unsigned int x = seed >> 16;  
 		return  ((float)x / (float)m);  
 	}
 
-	float get(float _min, float _max)
+	inline float get(float _min, float _max)
 	{
 		return _min + get() * (_max - _min);
 	}
 
-	int get(int _min, int _max)
+	inline int get(int _min, int _max)
 	{
 		return _min + (int)(get() * (_max - _min));
 	}

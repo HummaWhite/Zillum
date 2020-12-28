@@ -53,19 +53,47 @@ namespace ObjReader
 				int indexP[3], indexT[3], indexN[3];
 
 				const char *buf = line.c_str();
-				sscanf
-				(
-					buf + 1,
-					"%d/%d/%d %d/%d/%d %d/%d/%d",
-					&indexP[0], &indexT[0], &indexN[0],
-					&indexP[1], &indexT[1], &indexN[1],
-					&indexP[2], &indexT[2], &indexN[2]
-				);
+				bool withTexCoord = true;
+
+				for (int i = 0; i < line.length(); i++)
+				{
+					if (i == line.length() - 1) break;
+					if (line[i] == '/' && line[i + 1] == '/')
+					{
+						withTexCoord = false;
+						break;
+					}
+				}
+
+				//std::cout << "##\n";
+
+				if (withTexCoord)
+				{
+					sscanf
+					(
+						buf + 1,
+						"%d/%d/%d %d/%d/%d %d/%d/%d",
+						&indexP[0], &indexT[0], &indexN[0],
+						&indexP[1], &indexT[1], &indexN[1],
+						&indexP[2], &indexT[2], &indexN[2]
+					);
+				}
+				else
+				{
+					sscanf
+					(
+					 	buf + 1,
+						"%d//%d %d//%d %d//%d",
+						&indexP[0], &indexN[0],
+						&indexP[1], &indexN[1],
+						&indexP[2], &indexN[2]
+					);
+				}
 
 				for (int i = 0; i < 3; i++)
 				{
 					data.vertices.push_back(points[indexP[i] - 1]);
-					data.texCoords.push_back(texCoords[indexT[i] - 1]);
+					data.texCoords.push_back(withTexCoord ? texCoords[indexT[i] - 1] : glm::vec2(0.0f));
 					data.normals.push_back(normals[indexT[i] - 1]);
 				}
 			}

@@ -2,18 +2,20 @@
 #define MATH_H
 
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 
 #include "../glm/glm.hpp"
 #include "../glm/gtc/matrix_transform.hpp"
 #include "../glm/gtc/type_ptr.hpp"
 #include "RandomGenerator.h"
+#include "ToneMapping.h"
 
 namespace Math
 {
-	const unsigned int FLOAT_SIG_MASK = 0x80000000;
-	const unsigned int FLOAT_EXP_MASK = 0xff << 23;
-	const unsigned int FLOAT_VAL_MASK = 0x7fffff;
+	const uint32_t FLOAT_SIG_MASK = 0x80000000;
+	const uint32_t FLOAT_EXP_MASK = 0xff << 23;
+	const uint32_t FLOAT_VAL_MASK = 0x7fffff;
 
 	template<typename T>
 	T lerp(T x, T y, float a)
@@ -23,20 +25,20 @@ namespace Math
 
 	static void printBits32(void *bits, std::string info = "")
 	{
-		unsigned int v = *(unsigned int*)bits;
-		for (unsigned int i = 0x80000000; i; i >>= 1)
+		uint32_t v = *(uint32_t*)bits;
+		for (uint32_t i = 0x80000000; i; i >>= 1)
 			std::cout << (i & v ? 1 : 0);
 		std::cout << info;
 	}
 
 	static void printVec3(const glm::vec3 &v, std::string info = "")
 	{
-		std::cout << info << ":  " << v.x << "  " << v.y << "  " << v.z << std::endl;
+		std::cout << std::setprecision(6) << info << ":  " << v.x << "  " << v.y << "  " << v.z << std::endl;
 	}
 
 	static bool isNan(float v)
 	{
-		unsigned int u = *(int*)&v;
+		uint32_t u = *(int*)&v;
 		return ((u & FLOAT_EXP_MASK) == FLOAT_EXP_MASK && (u & FLOAT_VAL_MASK) != 0);
 	}
 
@@ -73,7 +75,7 @@ namespace Math
 		return glm::mat3(T, B, N);
 	}
 
-	inline static unsigned int inverseBits(unsigned int bits)
+	inline static uint32_t inverseBits(uint32_t bits)
 	{
 		bits = (bits << 16u) | (bits >> 16u);
     	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
@@ -83,12 +85,12 @@ namespace Math
 		return bits;
 	}
 
-	inline static float radicalInverseVDC(unsigned int bits)
+	inline static float radicalInverseVDC(uint32_t bits)
 	{
     	return float(inverseBits(bits)) * 2.3283064365386963e-10;
 	}
 
-	inline static glm::vec2 hammersley(unsigned int i, unsigned int n)
+	inline static glm::vec2 hammersley(uint32_t i, uint32_t n)
 	{
 		return glm::vec2((float)i / (float)n, radicalInverseVDC(i));
 	}
