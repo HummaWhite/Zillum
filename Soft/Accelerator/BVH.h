@@ -2,7 +2,8 @@
 #define BVH_H
 
 #include <algorithm>
-#include <tuple>
+#include <stack>
+#include <list>
 
 #include "BVHnode.h"
 
@@ -48,27 +49,47 @@ public:
 
 	~BVH()
 	{
-		//destroyRecursive(root);
+		//if (compactNodes != nullptr) delete[] compactNodes;
 	}
 
 	void makeCompact()
 	{
-		makeCompact(root);
+		compactNodes = new BVHnodeCompact[treeSize];
+
+		int offset = 0;
+		std::stack<BVHnode*> st;
+		st.push(root);
+
+		while (!st.empty())
+		{
+			BVHnode *k = st.top();
+			st.pop();
+
+			compactNodes[offset].box = k->box;
+			compactNodes[offset].sizeIndex = k->isLeaf() ? -k->offset : k->primCount;
+			offset++;
+
+			if (k->rch != nullptr) st.push(k->rch);
+			if (k->lch != nullptr) st.push(k->lch);
+		}
+
+		destroyRecursive(root);
+		std::cout << "[BVH] made compact\n";
 	}
 
-	std::shared_ptr<H> closestHit(const Ray &ray, float &tMin, float &tMax)
+	inline std::shared_ptr<H> closestHit(const Ray &ray, float &tMin, float &tMax)
 	{
-		return closestHit(root, ray, tMin, tMax);
+		return closestHitCompact(ray, tMin, tMax);
 	}
 
-	void dfs()
+	inline void dfs()
 	{
 		dfs(root, 1);
 	}
 
-	int size() const { return treeSize; }
+	inline int size() const { return treeSize; }
 
-	DepthInfo dfsDetailed()
+	inline DepthInfo dfsDetailed()
 	{
 		int sumDepth = 0;
 		int maxDepth = dfsDetailed(root, 1, sumDepth);
@@ -84,31 +105,20 @@ private:
 	};
 
 private:
-	void buildRecursive(BVHnode<H> *&k, std::vector<HittableInfo> &hittableInfo, const AABB &nodeBound, int l, int r)
+	void buildRecursive(BVHnode *&k, std::vector<HittableInfo> &hittableInfo, const AABB &nodeBound, int l, int r)
 	{
 		// [l, r]
 		int dim = (l == r) ? -1 : nodeBound.maxExtent();
-		k = new BVHnode<H>(nodeBound, l, r - l + 1, dim);
+		k = new BVHnode(nodeBound, l, (r - l) * 2 + 1, dim);
 		treeSize++;
 
 		//std::cout << l << "  " << r << "  SplitAxis: " << dim << "\n";
 		if (l == r) return;
 
-		auto cmp =
-			dim == 0 ?
-				[](const HittableInfo &a, const HittableInfo &b)
-				{	
-					return a.centroid.x < b.centroid.x;
-				} :
-			dim == 1 ?
-				[](const HittableInfo &a, const HittableInfo &b)
-				{
-					return a.centroid.y < b.centroid.y;
-				} :
-				[](const HittableInfo &a, const HittableInfo &b)
-				{
-					return a.centroid.z < b.centroid.z;
-				};
+		auto cmp = [dim, this](const HittableInfo &a, const HittableInfo &b)
+		{
+			return getVec(a.centroid, dim) < getVec(b.centroid, dim);
+		};
 
 		std::sort(hittableInfo.begin() + l, hittableInfo.begin() + r, cmp);
 		int hittableCount = r - l + 1;
@@ -154,16 +164,10 @@ private:
 			case BVHSplitMethod::Middle:
 				{
 					glm::vec3 nodeCentroid = nodeBound.centroid();
-					float mid =
-						dim == 0 ? nodeCentroid.x :
-						dim == 1 ? nodeCentroid.y :
-						nodeCentroid.z;
+					float mid = getVec(nodeCentroid, dim);
 					for (m = l; m < r - 1; m++)
 					{
-						float tmp =
-							dim == 0 ? hittableInfo[m].centroid.x :
-							dim == 1 ? hittableInfo[m].centroid.y :
-							hittableInfo[m].centroid.z;
+						float tmp = getVec(hittableInfo[m].centroid, dim);
 						if (tmp >= mid) break;
 					}
 				} break;
@@ -184,92 +188,51 @@ private:
 		buildRecursive(k->rch, hittableInfo, rBound, m + 1, r);
 	}
 
-	void makeCompact(BVHnode<H> *k)
-	{
-	}
-
-	void destroyRecursive(BVHnode<H> *k)
+	void destroyRecursive(BVHnode *&k)
 	{
 		if (k == nullptr) return;
-
-		if (k->lch != nullptr)
-		{
-			if (k->lch->isLeaf()) delete k;
-			else destroyRecursive(k->lch);
-		}
-		if (k->rch != nullptr)
-		{
-			if (k->rch->isLeaf()) delete k;
-			else destroyRecursive(k->rch);
-		}
+		if (k->lch != nullptr) destroyRecursive(k->lch);
+		if (k->rch != nullptr) destroyRecursive(k->rch);
+		delete k;
 	}
 
-	std::shared_ptr<H> closestHit(BVHnode<H> *k, const Ray &ray, float &tMin, float &tMax)
+	std::shared_ptr<H> closestHitCompact(const Ray &ray, float &tMin, float &tMax)
 	{
-		if (k == nullptr) return nullptr;
+		if (treeSize == 0) return nullptr;
+		std::shared_ptr<H> hit;
+		std::stack<int> st;
 
-		//std::cout << k->offset << " " << k->primCount << std::endl;
+		st.push(0);
 
-		if (k == root && !k->hit(ray, tMin, tMax)) return nullptr;
-
-		if (k->isLeaf())
+		while (!st.empty())
 		{
-			HitInfo hInfo = hittables[k->offset]->closestHit(ray);
-			if (!hInfo.hit) return nullptr;
-			tMin = hInfo.dist;
-			return hittables[k->offset];
-		}
+			int k = st.top();
+			st.pop();
+			auto node = compactNodes[k];
 
-		bool lhit = false, rhit = false;
-		float lMin, lMax, rMin, rMax;
+			float tpMin, tpMax;
+			if (!node.box.hit(ray, tpMin, tpMax)) continue;
 
-		if (k->lch != nullptr) lhit = k->lch->box.hit(ray, lMin, lMax);
-		if (k->rch != nullptr) rhit = k->rch->box.hit(ray, rMin, rMax);
-
-		//左右包围盒都相交，进而检查两个子结点内的形状是否真的与光线相交
-		//（有可能光线与包围盒相交而不与包围盒内的形状相交）
-		if (lhit && rhit)
-		{
-			auto lRes = closestHit(k->lch, ray, lMin, lMax);
-			auto rRes = closestHit(k->rch, ray, rMin, rMax);
-
-			//左右子树都有形状与光线相交，取近
-			if (lRes != nullptr && rRes != nullptr)
+			if (node.sizeIndex <= 0)
 			{
-				if (lMin < rMin)
+				auto hitInfo = hittables[-node.sizeIndex]->closestHit(ray);
+				if (hitInfo.hit && hitInfo.dist < tMin)
 				{
-					tMin = lMin, tMax = lMax;
-					return lRes;
+					hit = hittables[-node.sizeIndex];
+					tMin = hitInfo.dist;
 				}
-				else
-				{
-					tMin = rMin, tMax = rMax;
-					return rRes;
-				}
-			}
-			
-			if (lRes != nullptr)
-			{
-				tMin = lMin, tMax = lMax;
-				return lRes;
+				continue;
 			}
 
-			if (rRes != nullptr)
-			{
-				tMin = rMin, tMax = rMax;
-				return rRes;
-			}
-
-			return nullptr;
+			int lSize = compactNodes[k + 1].sizeIndex;
+			if (lSize <= 0) lSize = 1;
+			st.push(k + 1 + lSize);
+			st.push(k + 1);
 		}
-
-		if (lhit) return closestHit(k->lch, ray, tMin, tMax);
-		if (rhit) return closestHit(k->rch, ray, tMin, tMax);
-
-		return nullptr;
+		return hit;
 	}
 
-	void dfs(BVHnode<H> *k, int depth)
+	void dfs(BVHnode *k, int depth)
 	{
 		if (k == nullptr) return;
 		std::cout << depth << "  " << k->offset << " " << k->primCount << " " << k->splitAxis << std::endl;
@@ -278,7 +241,7 @@ private:
 		if (k->rch != nullptr) dfs(k->rch, depth + 1);
 	}
 
-	int dfsDetailed(BVHnode<H> *k, int depth, int &sumDepth)
+	int dfsDetailed(BVHnode *k, int depth, int &sumDepth)
 	{
 		if (k == nullptr) return 0;
 
@@ -288,14 +251,21 @@ private:
 
 		return std::max(lDep, rDep) + 1;
 	}
+
+	float getVec(const glm::vec3 &v, int dim)
+	{
+		return *(float*)(&v.x + dim);
+	}
 	
 private:
 	const int maxHittablesInNode = 1;
 	std::vector<std::shared_ptr<H>> hittables;
 
-	BVHnode<H> *root = nullptr;
+	BVHnode *root = nullptr;
 	int treeSize = 0;
 	BVHSplitMethod splitMethod;
+
+	BVHnodeCompact *compactNodes = nullptr;
 };
 
 #endif
