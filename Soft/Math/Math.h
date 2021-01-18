@@ -136,18 +136,24 @@ namespace Math
 		return F0 + (glm::max(glm::vec3(1.0 - roughness), F0) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
 	}
 
-	inline static float distributionGGX(const glm::vec3 &N, const glm::vec3 &H, float roughness)
+	inline static float distributionGGX(float NoH, float a)
 	{
-		float a = roughness * roughness;
 		float a2 = a * a;
-		float NdotH = std::max(glm::dot(N, H), 0.0f);
-		float NdotH2 = NdotH * NdotH;
-
-		float nom = a2;
-		float denom = NdotH2 * (a2 - 1.0) + 1.0f + 1e-6f;
+		float denom = NoH * NoH * (a2 - 1.0f) + 1.0f + 1e-6f;
 		denom = denom * denom * glm::pi<float>();
 
-		return nom / denom;
+		return a2 / denom;
+	}
+
+	inline static float distributionGGX(const glm::vec3 &N, const glm::vec3 &H, float roughness)
+	{
+		float NdotH = std::max(glm::dot(N, H), 0.0f);
+		return distributionGGX(NdotH, roughness);
+	}
+
+	inline static float pdfGGX(float NoH, float HoV, float a)
+	{
+		return distributionGGX(NoH, a) * NoH / (4.0 * HoV + 1e-6f);
 	}
 
 	inline static float geometrySchlickGGX(float NdotV, float roughness)

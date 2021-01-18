@@ -15,7 +15,7 @@ struct Sample
 
 namespace HemisphereSampling
 {
-	inline static glm::vec4 random(const glm::vec3 &N)
+	inline static glm::vec3 randomNoPdf(const glm::vec3 &N)
 	{
 		RandomGenerator rg;
 
@@ -23,21 +23,22 @@ namespace HemisphereSampling
 		float phi = rg.get(0.0f, glm::radians(90.0f));
 		glm::vec3 randomVec(glm::cos(theta) * glm::sin(phi), glm::sin(theta) * glm::sin(phi), glm::cos(phi));
 
-		return glm::vec4(glm::normalize(Math::TBNMatrix(N) * randomVec), 0.5f / glm::pi<float>());
+		return glm::normalize(Math::TBNMatrix(N) * randomVec);
+	}
+
+	inline static glm::vec4 random(const glm::vec3 &N)
+	{
+		auto vec = randomNoPdf(N);
+		return glm::vec4(vec, 0.5f / glm::pi<float>());
 	}
 
 	inline static glm::vec4 cosineWeighted(const glm::vec3 &N)
 	{
-		RandomGenerator rg;
-
-		float theta = rg.get(0.0f, glm::radians(360.0f));
-		float phi = rg.get(0.0f, glm::radians(90.0f));
-		glm::vec3 randomVec(glm::cos(theta) * glm::sin(phi), glm::sin(theta) * glm::sin(phi), glm::cos(phi));
-
-		return glm::vec4(glm::normalize(Math::TBNMatrix(N) * randomVec), glm::cos(phi) / glm::pi<float>());
+		auto vec = randomNoPdf(N);
+		return glm::vec4(vec, glm::dot(N, vec) / glm::pi<float>());
 	}
 
-	inline static glm::vec4 GGX(const glm::vec2 &xi, const glm::vec3 &N, const glm::vec3 &Wo, float roughness)
+	inline static glm::vec3 GGXNoPdf(const glm::vec2 &xi, const glm::vec3 &N, const glm::vec3 &Wo, float roughness)
 	{
 		float r4 = glm::pow(roughness, 4.0f);
 		float phi = 2.0 * glm::pi<float>() * xi.x;
@@ -56,18 +57,28 @@ namespace HemisphereSampling
 
 		glm::vec3 H(glm::cos(phi) * sinTheta, glm::sin(phi) * sinTheta, cosTheta);
 		H = glm::normalize(Math::TBNMatrix(N) * H);
-		glm::vec3 L = glm::normalize(H * 2.0f * glm::dot(Wo, H) - Wo);
-		glm::vec3 V = Wo;
+		return glm::normalize(H * 2.0f * glm::dot(Wo, H) - Wo);
+	}
+
+	inline static glm::vec3 GGXNoPdf(const glm::vec3 &N, const glm::vec3 &Wo, float roughness)
+	{
+		RandomGenerator rg;
+		glm::vec2 xi(rg.get(0.0f, 1.0f), rg.get(0.0f, 1.0f));
+		return GGXNoPdf(xi, N, Wo, roughness);
+	}
+
+	inline static glm::vec4 GGX(const glm::vec2 &xi, const glm::vec3 &N, const glm::vec3 &Wo, float roughness)
+	{
+		auto Wi = GGXNoPdf(xi, N, Wo, roughness);
+		auto H = glm::normalize(Wi + Wo);
 
         float NdotH = glm::max(glm::dot(N, H), 0.0f);
-        float HdotV = glm::max(glm::dot(H, V), 0.0f);
-
-        float D = Math::distributionGGX(N, H, roughness);
-		float pdf = D * NdotH / (4.0 * HdotV + 1e-8f);
+        float HdotV = glm::max(glm::dot(H, Wo), 0.0f);
+		float pdf = Math::pdfGGX(NdotH, HdotV, roughness);
 
 		if (HdotV < 1e-6f) pdf = 0.0f;
 		if (pdf < 1e-10f) pdf = 0.0f;
-		return glm::vec4(L, pdf);
+		return glm::vec4(Wi, pdf);
 	}
 
 	inline static glm::vec4 GGX(const glm::vec3 &N, const glm::vec3 &Wo, float roughness)

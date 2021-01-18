@@ -107,11 +107,21 @@ public:
 	Sample getSample(const glm::vec3 &hitPoint, const glm::vec3 &N, const glm::vec3 &Wo)
 	{
 		RandomGenerator rg;
-		float rd = rg.get(0.0f, 1.0f);
-		bool sampleDiffuse = (rd < 0.5f * (1.0f - metallic));
 
-		auto sample = sampleDiffuse ? HemisphereSampling::cosineWeighted(N) : HemisphereSampling::GGX(N, Wo, roughness);
-		uint8_t param = sampleDiffuse ? DIFFUSE : SPECULAR;
+		float pSpec = 1.0f / (2.0f - metallic);
+		bool sampleDiff = rg.get() > pSpec;
+
+		glm::vec3 Wi = sampleDiff ? HemisphereSampling::cosineWeighted(N) : HemisphereSampling::GGXNoPdf(N, Wo, roughness);
+		glm::vec3 H = glm::normalize(Wi + Wo);
+
+		float pdfDiff = glm::dot(Wi, N) / glm::pi<float>();
+		float pdfSpec = Math::pdfGGX(dot(N, H), dot(H, Wo), roughness);
+
+		glm::vec4 sample;
+		*(glm::vec3*)&sample.x = Wi;
+		sample.w = Math::lerp(pdfDiff, pdfSpec, pSpec);
+
+		uint8_t param = sampleDiff ? DIFFUSE : SPECULAR;
 		return Sample(sample, param);
 	}
 

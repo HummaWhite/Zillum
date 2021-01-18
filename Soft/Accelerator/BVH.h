@@ -212,6 +212,7 @@ private:
 
 			float tpMin, tpMax;
 			if (!node.box.hit(ray, tpMin, tpMax)) continue;
+			if (tpMin > tMin) continue;
 
 			if (node.sizeIndex <= 0)
 			{
