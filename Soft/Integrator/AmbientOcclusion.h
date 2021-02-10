@@ -35,7 +35,7 @@ private:
 
 		for (int i = 0; i < samples; i++)
 		{
-			glm::vec3 Wi = HemisphereSampling::random(N);
+			auto Wi = Transform::normalToWorld(N, Math::randHemisphere());
 
 			Ray newRay(hitPoint + Wi * 0.0001f, Wi);
 			auto scHitInfo = scene->closestHit(newRay);

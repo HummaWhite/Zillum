@@ -3,11 +3,11 @@
 
 #include "Integrator.h"
 
-class WhittedIntegrator:
+class PathIntegrator:
 	public PixelIndependentIntegrator
 {
 public:
-	WhittedIntegrator(int width, int height, int maxSpp):
+	PathIntegrator(int width, int height, int maxSpp):
 		PixelIndependentIntegrator(width, height, maxSpp) {}
 
 	glm::vec3 tracePixel(Ray ray)
@@ -74,7 +74,7 @@ private:
 			RandomGenerator rg;
 			if (roulette && rg.get() > rouletteProb) break;
 
-			Sample sample = surfaceInfo.material->getSample(P, N, Wo);
+			Sample sample = surfaceInfo.material->getSample(N, Wo);
 			glm::vec3 Wi = sample.dir;
 			float pdf = sample.pdf;
 			uint8_t param = sample.param;

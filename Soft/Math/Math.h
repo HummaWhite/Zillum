@@ -17,6 +17,9 @@ namespace Math
 	const uint32_t FLOAT_EXP_MASK = 0xff << 23;
 	const uint32_t FLOAT_VAL_MASK = 0x7fffff;
 
+	const float Pi = glm::pi<float>();
+	const float PiInv = 1.0f / glm::pi<float>();
+
 	template<typename T>
 	T lerp(T x, T y, float a)
 	{
@@ -47,26 +50,6 @@ namespace Math
 		return isNan(v.x) || isNan(v.y) || isNan(v.z);
 	}
 
-	inline static glm::vec2 sphereToPlane(const glm::vec3 &uv)
-	{
-		float pi = glm::pi<float>();
-
-		float theta = glm::atan(uv.y, uv.x);
-		if (theta < 0.0f) theta += pi * 2.0f;
-		
-		float phi = glm::atan(glm::length(glm::vec2(uv)), uv.z);
-		if (phi < 0.0f) phi += pi * 2.0f;
-
-		return { theta / (pi * 2.0f), phi / pi };
-	}
-
-	inline static glm::vec3 planeToSphere(const glm::vec2 &uv)
-	{
-		float theta = uv.x * glm::pi<float>() * 2.0f;
-		float phi = uv.y * glm::pi<float>();
-		return { cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi) };
-	}
-
 	inline static glm::mat3 TBNMatrix(const glm::vec3 &N)
 	{
 		glm::vec3 T = (glm::abs(N.z) > 0.99f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, 0.0f, 1.0f);
@@ -95,87 +78,24 @@ namespace Math
 		return glm::vec2((float)i / (float)n, radicalInverseVDC(i));
 	}
 
-	inline static bool refract(glm::vec3& Wt, const glm::vec3& Wi, const glm::vec3 &N, float eta)
+	inline static float satDot(const glm::vec3 &a, const glm::vec3 &b)
 	{
-		// 与PBRT不同，这个的结果只与光路上折射率的比值eta有关，与N的取向无关
-		float cosTi = glm::dot(N, Wi);
-		float sin2Ti = 1.0f - cosTi * cosTi;
-		float sin2Tt = eta * eta * sin2Ti;
-
-		if (sin2Tt >= 1.0f) return false;
-
-		float dirN = cosTi < 0 ? -1.0f : 1.0f;
-		float cosTt = glm::sqrt(1.0f - sin2Tt) * dirN;
-		Wt = glm::normalize(-Wi * eta + N * (eta * cosTi - cosTt));
-		return true;
+		return glm::max(glm::dot(a, b), 0.0f);
 	}
 
-	inline static float fresnelDieletric(float cosTi, float etaI, float etaT)
+	inline static glm::vec2 randBox()
 	{
-		cosTi = glm::clamp(cosTi, -1.0f, 1.0f);
-		float sinTi = glm::sqrt(1 - cosTi * cosTi);
-		float sinTt = etaI / etaT * sinTi;
-		if (sinTt >= 1.0f) return 1.0f;
-		
-		float cosTt = glm::sqrt(1.0f - sinTt * sinTt);
-
-		float rPa = (etaT * cosTi - etaI * cosTt) / (etaT * cosTi + etaI * cosTt);
-		float rPe = (etaI * cosTi - etaT * cosTt) / (etaI * cosTi + etaT * cosTt);
-
-		float res = (rPa * rPa + rPe * rPe) * 0.5f;
-		return res;
+		RandomGenerator rg;
+		return glm::vec2(rg.get(), rg.get());
 	}
 
-	inline static glm::vec3 fresnelSchlick(float cosTheta, const glm::vec3 &F0)
+	inline static glm::vec3 randHemisphere()
 	{
-		return F0 + (glm::vec3(1.0) - F0) * (float)glm::pow(1.0 - cosTheta, 5.0);
-	}
+		RandomGenerator rg;
+		float phi = rg.get() * Pi * 2.0f;
+		float theta = rg.get() * Pi * 0.5f;
 
-	inline static glm::vec3 fresnelSchlickRoughness(float cosTheta, const glm::vec3 &F0, float roughness)
-	{
-		return F0 + (glm::max(glm::vec3(1.0 - roughness), F0) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
-	}
-
-	inline static float distributionGGX(float NoH, float a)
-	{
-		float a2 = a * a;
-		float denom = NoH * NoH * (a2 - 1.0f) + 1.0f + 1e-6f;
-		denom = denom * denom * glm::pi<float>();
-
-		return a2 / denom;
-	}
-
-	inline static float distributionGGX(const glm::vec3 &N, const glm::vec3 &H, float roughness)
-	{
-		float NdotH = std::max(glm::dot(N, H), 0.0f);
-		return distributionGGX(NdotH, roughness);
-	}
-
-	inline static float pdfGGX(float NoH, float HoV, float a)
-	{
-		return distributionGGX(NoH, a) * NoH / (4.0 * HoV + 1e-6f);
-	}
-
-	inline static float geometrySchlickGGX(float NdotV, float roughness)
-	{
-		float r = roughness + 1.0f;
-		float k = roughness * roughness / 2.0f;
-
-		float nom = NdotV;
-		float denom = NdotV * (1.0f - k) + k;
-
-		return nom / denom;
-	}
-
-	inline static float geometrySmith(const glm::vec3 &N, const glm::vec3 &V, const glm::vec3 &L, float roughness)
-	{
-		float NdotV = glm::max(glm::dot(N, V), 0.0f);
-		float NdotL = glm::max(glm::dot(N, L), 0.0f);
-
-		float ggx2 = geometrySchlickGGX(NdotV, roughness);
-		float ggx1 = geometrySchlickGGX(NdotL, roughness);
-
-		return ggx1 * ggx2;
+		return glm::vec3(glm::cos(phi) * glm::sin(theta), glm::sin(phi) * glm::sin(theta), glm::cos(theta));
 	}
 }
 

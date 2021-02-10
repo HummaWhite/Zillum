@@ -7,11 +7,15 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
+
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
+#include "stb_image/stb_image_write.h"
 
 #include "Color.h"
 #include "FrameBuffer.h"
-#include "Math/Math.h"
+#include "Math/Transform.h"
 
 class Texture
 {
@@ -73,7 +77,7 @@ public:
 			std::cout << "Texture::getSpherical: Invalid uv with NAN(s)\n";
 			return get(0.0f, 0.0f);
 		}
-		glm::vec2 planeUV = Math::sphereToPlane(glm::normalize(uv));
+		glm::vec2 planeUV = Transform::sphereToPlane(glm::normalize(uv));
     	return get(planeUV.x, planeUV.y);
 	}
 

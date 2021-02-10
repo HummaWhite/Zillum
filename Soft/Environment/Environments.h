@@ -3,7 +3,7 @@
 
 #include "Environment.h"
 #include "../Texture.h"
-#include "../Math/Math.h"
+#include "../Math/Transform.h"
 
 class EnvSingleColor:
 	public Environment
@@ -48,7 +48,7 @@ public:
 
 	glm::vec3 getRadiance(const glm::vec3 &dir)
 	{
-		glm::vec2 uv = Math::sphereToPlane(dir);
+		glm::vec2 uv = Transform::sphereToPlane(dir);
 
 		int r = (int)(uv.x * row);
 		int c = (int)(uv.y * col);

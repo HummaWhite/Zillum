@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "Shape.h"
+#include "../Math/Transform.h"
 
 class Sphere:
 	public Shape
@@ -11,26 +12,26 @@ public:
 	Sphere(const glm::vec3 &center, float radius, std::shared_ptr<Material> material, bool intersectFromInside = false):
 		Shape(material), sphere(center, radius, intersectFromInside) {}
 
-	HitInfo closestHit(const Ray &ray)
+	inline HitInfo closestHit(const Ray &ray)
 	{
 		return sphere.closestHit(ray);
 	}
 
-	SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
+	inline SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
 	{
 		glm::vec3 p = glm::normalize(surfacePoint - sphere.getCenter());
 
-		glm::vec2 texCoord = Math::sphereToPlane(p);
+		glm::vec2 texCoord = Transform::sphereToPlane(p);
 
 		return { texCoord, p, material };
 	}
 
-	void setTransform(std::shared_ptr<Transform> trans)
+	inline void setTransform(std::shared_ptr<Transform> trans)
 	{
 		sphere.setTransform(trans);
 	}
 
-	AABB bound()
+	inline AABB bound()
 	{
 		return sphere.bound();
 	}
@@ -46,37 +47,37 @@ public:
 	Triangle(const glm::vec3 &va, const glm::vec3 &vb, const glm::vec3 &vc, std::shared_ptr<Material> _material):
 		Shape(_material), triangle(va, vb, vc) {}
 
-	HitInfo closestHit(const Ray &ray)
+	inline HitInfo closestHit(const Ray &ray)
 	{
 		return triangle.closestHit(ray);
 	}
 
-	virtual SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
+	inline virtual SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
 	{
 		return { glm::vec2(0.0f), triangle.surfaceNormal(surfacePoint), material };
 	}
 
-	AABB bound()
+	inline AABB bound()
 	{
 		return triangle.bound();
 	}
 
-	void setTransform(const glm::mat4 &mat)
+	inline void setTransform(const glm::mat4 &mat)
 	{
 		triangle.setTransform(mat);
 	}
 
-	std::shared_ptr<Material> getMaterial()
+	inline std::shared_ptr<Material> getMaterial()
 	{
 		return material;
 	}
 
-	void setTransform(std::shared_ptr<Transform> trans)
+	inline void setTransform(std::shared_ptr<Transform> trans)
 	{
 		triangle.setTransform(trans);
 	}
 
-	std::shared_ptr<Transform> getTransform() const
+	inline std::shared_ptr<Transform> getTransform() const
 	{
 		return triangle.getTransform();
 	}
@@ -94,7 +95,7 @@ public:
 		ta(uvs[0]), tb(uvs[1]), tc(uvs[2]), 
 		na(normals[0]), nb(normals[1]), nc(normals[2]) {}
 
-	SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
+	inline SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
 	{
 		auto trans = getTransform();
 
@@ -103,10 +104,10 @@ public:
 		glm::vec3 vc = triangle.getVc();
 		glm::vec3 p = trans->getInversed(surfacePoint);
 
-		float area = glm::length(glm::cross(vb - va, vc - va));
-		float la = glm::length(glm::cross(vb - p, vc - p)) / area;
-		float lb = glm::length(glm::cross(vc - p, va - p)) / area;
-		float lc = glm::length(glm::cross(va - p, vb - p)) / area;
+		float areaInv = 1.0f / glm::length(glm::cross(vb - va, vc - va));
+		float la = glm::length(glm::cross(vb - p, vc - p)) * areaInv;
+		float lb = glm::length(glm::cross(vc - p, va - p)) * areaInv;
+		float lc = glm::length(glm::cross(va - p, vb - p)) * areaInv;
 
 		glm::vec3 norm = glm::normalize(trans->getInversedNormal(na * la + nb * lb + nc * lc));
 		return { ta * la + tb * lb + tc * lc, norm, getMaterial() };
@@ -124,17 +125,17 @@ public:
 	Quad(const glm::vec3 &va, const glm::vec3 &vb, const glm::vec3 &vc, std::shared_ptr<Material> _material):
 		Shape(_material), quad(va, vb, vc) {}
 
-	HitInfo closestHit(const Ray &ray)
+	inline HitInfo closestHit(const Ray &ray)
 	{
 		return quad.closestHit(ray);
 	}
 
-	SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
+	inline SurfaceInfo surfaceInfo(const glm::vec3 &surfacePoint)
 	{
 		return { glm::vec2(0.0f), quad.surfaceNormal(surfacePoint), material };
 	}
 
-	AABB bound()
+	inline AABB bound()
 	{
 		return quad.bound();
 	}

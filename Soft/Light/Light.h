@@ -10,20 +10,20 @@
 class Light
 {
 public:
-	Light(std::shared_ptr<Hittable> _hittable, const glm::vec3 &_radiance):
-		hittable(_hittable), radiance(_radiance) {}
+	Light(std::shared_ptr<Hittable> _hittable, const glm::vec3 &_radiance, bool directional):
+		hittable(_hittable), radiance(_radiance), directional(directional) {}
 		
-	HitInfo closestHit(const Ray &ray)
+	inline HitInfo closestHit(const Ray &ray)
 	{
 		return hittable->closestHit(ray);
 	}
 
-	glm::vec3 getRandomPoint()
+	inline glm::vec3 getRandomPoint()
 	{
 		return hittable->getRandomPoint();
 	}
 
-	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	inline glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
 		return hittable->surfaceNormal(p);
 	}
@@ -37,10 +37,19 @@ public:
 
 	virtual glm::vec3 getRadiance(const glm::vec3 &Wi, const glm::vec3 &N, float dist)
 	{
+		if (directional) return (glm::length(Wi - N) < 0.1f) ? radiance : glm::vec3(0.0f);
 		return radiance * glm::max(0.0f, glm::dot(Wi, N)) / (dist * dist);
 	}
 
-	AABB bound() const
+	inline Ray getRandomRay()
+	{
+		glm::vec3 ori = getRandomPoint();
+		glm::vec3 N = surfaceNormal(ori);
+		glm::vec3 dir = directional ? N : Transform::normalToWorld(N, Math::randHemisphere());
+		return { ori + dir * 1e-4f, dir };
+	}
+
+	inline AABB bound() const
 	{
 		return hittable->bound();
 	}
@@ -48,6 +57,7 @@ public:
 protected:
 	std::shared_ptr<Hittable> hittable;
 	glm::vec3 radiance;
+	bool directional;
 };
 
 #endif
