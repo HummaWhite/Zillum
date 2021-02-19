@@ -11,6 +11,15 @@
 #include "Camera.h"
 #include "ObjReader.h"
 
+struct SceneHitInfo
+{
+	enum Type { NONE = 0, SHAPE, LIGHT };
+	Type type;
+	float dist;
+	std::shared_ptr<Shape> shape;
+	std::shared_ptr<Light> light;
+};
+
 class Scene
 {
 public:
@@ -28,6 +37,35 @@ public:
 		std::cout << "BVHShapes::  TreeSize: " << shapeBVH->size() << "  MaxDepth: " << shapeBVHInfo.maxDepth << "  AvgDepth: " << shapeBVHInfo.avgDepth << "\n";
 		auto lightBVHInfo = lightBVH->dfsDetailed();
 		std::cout << "BVHLights::  TreeSize: " << lightBVH->size() << "  MaxDepth: " << lightBVHInfo.maxDepth << "  AvgDepth: " << lightBVHInfo.avgDepth << "\n";
+	}
+
+	SceneHitInfo closestHit(const Ray &ray)
+	{
+		float minDistShape = 1000.0f, minDistLight = 1000.0f;
+		auto shape = shapeBVH->closestHit(ray, minDistShape, false);
+		auto light = lightBVH->closestHit(ray, minDistLight, false);
+
+		auto ret = SceneHitInfo{ SceneHitInfo::NONE, 1000.0f, shape, light };
+		if (shape != nullptr)
+		{
+			if (light != nullptr && minDistLight < minDistShape)
+			{
+				ret.type = SceneHitInfo::LIGHT;
+				ret.dist = minDistLight;
+			}
+			else
+			{
+				ret.type = SceneHitInfo::SHAPE;
+				ret.dist = minDistShape;
+			}
+		}
+		else if (light != nullptr)
+		{
+			ret.type = SceneHitInfo::LIGHT;
+			ret.dist = minDistLight;
+		}
+
+		return ret;
 	}
 
 public:
