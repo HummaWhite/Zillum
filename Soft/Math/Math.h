@@ -83,6 +83,11 @@ namespace Math
 		return glm::max(glm::dot(a, b), 0.0f);
 	}
 
+	inline static float absDot(const glm::vec3 &a, const glm::vec3 &b)
+	{
+		return glm::abs(glm::dot(a, b));
+	}
+
 	inline static glm::vec2 randBox()
 	{
 		RandomGenerator rg;

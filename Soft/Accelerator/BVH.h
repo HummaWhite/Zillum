@@ -54,6 +54,7 @@ public:
 
 	void makeCompact()
 	{
+		if (root == nullptr) return;
 		compactNodes = new BVHnodeCompact[treeSize];
 
 		int offset = 0;
@@ -77,9 +78,43 @@ public:
 		std::cout << "[BVH] made compact\n";
 	}
 
-	inline std::shared_ptr<H> closestHit(const Ray &ray, float &tMin, float &tMax)
+	inline std::shared_ptr<H> closestHit(const Ray &ray, float &dist, bool quickCheck)
 	{
-		return closestHitCompact(ray, tMin, tMax);
+		if (hittables.size() == 0) return nullptr;
+		if (!quickCheck) dist = 1e8f;
+		std::shared_ptr<H> hit;
+		std::stack<int> st;
+
+		st.push(0);
+
+		while (!st.empty())
+		{
+			int k = st.top();
+			st.pop();
+			auto node = compactNodes[k];
+
+			float tpMin, tpMax;
+			if (!node.box.hit(ray, tpMin, tpMax)) continue;
+			if (tpMin > dist) continue;
+
+			if (node.sizeIndex <= 0)
+			{
+				auto hitInfo = hittables[-node.sizeIndex]->closestHit(ray);
+				if (hitInfo.hit && hitInfo.dist < dist)
+				{
+					if (quickCheck) return hittables[0];
+					hit = hittables[-node.sizeIndex];
+					dist = hitInfo.dist;
+				}
+				continue;
+			}
+
+			int lSize = compactNodes[k + 1].sizeIndex;
+			if (lSize <= 0) lSize = 1;
+			st.push(k + 1 + lSize);
+			st.push(k + 1);
+		}
+		return hit;
 	}
 
 	inline void dfs()
@@ -194,43 +229,6 @@ private:
 		if (k->lch != nullptr) destroyRecursive(k->lch);
 		if (k->rch != nullptr) destroyRecursive(k->rch);
 		delete k;
-	}
-
-	std::shared_ptr<H> closestHitCompact(const Ray &ray, float &tMin, float &tMax)
-	{
-		if (treeSize == 0) return nullptr;
-		std::shared_ptr<H> hit;
-		std::stack<int> st;
-
-		st.push(0);
-
-		while (!st.empty())
-		{
-			int k = st.top();
-			st.pop();
-			auto node = compactNodes[k];
-
-			float tpMin, tpMax;
-			if (!node.box.hit(ray, tpMin, tpMax)) continue;
-			if (tpMin > tMin) continue;
-
-			if (node.sizeIndex <= 0)
-			{
-				auto hitInfo = hittables[-node.sizeIndex]->closestHit(ray);
-				if (hitInfo.hit && hitInfo.dist < tMin)
-				{
-					hit = hittables[-node.sizeIndex];
-					tMin = hitInfo.dist;
-				}
-				continue;
-			}
-
-			int lSize = compactNodes[k + 1].sizeIndex;
-			if (lSize <= 0) lSize = 1;
-			st.push(k + 1 + lSize);
-			st.push(k + 1);
-		}
-		return hit;
 	}
 
 	void dfs(BVHnode *k, int depth)
