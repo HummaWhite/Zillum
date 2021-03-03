@@ -13,9 +13,9 @@ class Lambertian:
 public:
 	Lambertian(const glm::vec3 &albedo): albedo(albedo), Material(BXDF::Diffuse) {}
 
-	glm::vec3 bsdf(const SurfaceInteraction &si, uint8_t param)
+	glm::vec3 bsdf(const SurfaceInteraction &si, int type)
 	{
-		return albedo * glm::max(glm::dot(si.Wi, si.N), 0.0f) / glm::pi<float>();
+		return albedo * glm::pi<float>();
 	}
 
 	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
@@ -42,10 +42,10 @@ public:
 public:
 	MetalWorkflow(const glm::vec3 &albedo, float metallic, float roughness):
 		albedo(albedo), metallic(metallic), roughness(roughness),
-		ggxDistrib(roughness), Material(BXDF::Diffuse | BXDF::Glossy)
+		ggxDistrib(roughness, true), Material(BXDF::Diffuse | BXDF::GlosRefl)
 	{}
 
-	glm::vec3 bsdf(const SurfaceInteraction &si, uint8_t param)
+	glm::vec3 bsdf(const SurfaceInteraction &si, int type)
 	{
 		glm::vec3 Wi = si.Wi;
 		glm::vec3 Wo = si.Wo;
@@ -75,7 +75,7 @@ public:
 
 		glm::vec3 glossy = FDG / denom;
 
-		return (kd * albedo * Math::PiInv + glossy) * NoL;
+		return (kd * albedo * Math::PiInv + glossy);
 	}
 
 	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
@@ -84,13 +84,18 @@ public:
 		float spec = 1.0f / (2.0f - metallic);
 		bool sampleDiff = rg.get() > spec;
 
-		auto Wi = sampleDiff ? Transform::normalToWorld(N, Math::randHemisphere()) : ggxDistrib.sampleVndf(N, Wo);
-		if (!sampleDiff) Wi = glm::reflect(-Wo, Wi);
+		glm::vec3 Wi;
+		if (sampleDiff) Wi = Transform::normalToWorld(N, Math::randHemisphere());
+		else
+		{
+			auto H = ggxDistrib.sampleWm(N, Wo);
+			Wi = glm::reflect(-Wo, H);
+		}
 
 		float NoWi = glm::dot(N, Wi);
 		if (NoWi < 0.0f) return Sample();
 
-		return Sample(Wi, pdf(Wo, Wi, N), sampleDiff ? BXDF::Diffuse : BXDF::Glossy);
+		return Sample(Wi, pdf(Wo, Wi, N), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl);
 	}
 
 	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
@@ -99,7 +104,7 @@ public:
 		glm::vec3 H = glm::normalize(Wo + Wi);
 
 		float pdfDiff = NoWi * Math::PiInv;
-		float pdfSpec = ggxDistrib.pdfVndf(N, H, Wo);
+		float pdfSpec = ggxDistrib.pdf(N, H, Wo) / (4.0f * glm::dot(H, Wo));
 		return Math::lerp(pdfDiff, pdfSpec, 1.0f / (2.0f - metallic));
 	}
 
@@ -110,13 +115,12 @@ private:
 	GGXDistrib ggxDistrib;
 };
 
-class Dieletric:
+class Dielectric:
 	public Material
 {
 public:
-	Dieletric(const glm::vec3 &tint, float roughness, float etaB, float etaA = 1.0f):
-		tint(tint), etaB(etaB), etaA(etaA),
-		ggxDistrib(roughness * roughness), Material(BXDF::Specular | BXDF::SpecTrans)
+	Dielectric(const glm::vec3 &tint, float roughness, float ior):
+		tint(tint), ior(ior), ggxDistrib(roughness, false), Material(BXDF::SpecRefl | BXDF::SpecTrans)
 	{
 		approximateDelta = roughness < 0.014f;
 	}
@@ -128,27 +132,23 @@ public:
 
 	glm::vec4 getSampleForward(const glm::vec3 &N, const glm::vec3 &Wi)
 	{
-		bool entering = glm::dot(N, Wi) > 0.0f;
-		float etaI = entering ? etaA : etaB;
-		float etaT = entering ? etaB : etaA;
+		float eta = (glm::dot(N, Wi)) ? ior : 1.0f / ior;
 
 		glm::vec3 dirReflect = -glm::reflect(Wi, N), dirRefract;
-		float portionReflect = fresnelDieletric(glm::abs(glm::dot(N, Wi)), etaI, etaT);
-		refract(dirRefract, Wi, N, etaI / etaT);
+		float portionReflect = fresnelDielectric(glm::abs(glm::dot(N, Wi)), eta);
+		refract(dirRefract, Wi, N, eta);
 
 		RandomGenerator rg;
 		return glm::vec4(rg.get(0.0f, 1.0f) < portionReflect ? dirReflect : dirRefract, 0.5f);
 	}
 
-	glm::vec3 bsdf(const SurfaceInteraction &si, uint8_t param)
+	glm::vec3 bsdf(const SurfaceInteraction &si, int type)
 	{
 		float cosTi = glm::dot(si.N, si.Wi);
-		bool entering = cosTi > 0.0f;
-		float etaI = entering ? etaA : etaB;
-		float etaT = entering ? etaB : etaA;
+		float eta = (cosTi > 0.0f) ? ior : 1.0f / ior;
 
 		glm::vec3 dirReflect = -glm::reflect(si.Wi, si.N), dirRefract;
-		float reflectRatio = fresnelDieletric(glm::abs(cosTi), etaI, etaT);
+		float reflectRatio = fresnelDielectric(glm::abs(cosTi), eta);
 
 		bool reflect = cosTi * glm::dot(si.N, si.Wo) >= 0.0f;
 		if (reflect)
@@ -157,7 +157,7 @@ public:
 			return glm::vec3(reflectRatio);
 		}
 		
-		refract(dirRefract, si.Wi, si.N, etaI / etaT);
+		refract(dirRefract, si.Wi, si.N, eta);
 		if (glm::length(dirRefract - si.Wo) > 1e-6f) return glm::vec3(0.0f);
 		return glm::vec3(1.0f - reflectRatio);
 	}
@@ -172,67 +172,75 @@ public:
 		RandomGenerator rg;
 		if (approximateDelta)
 		{
-			float refl = fresnelDieletric(glm::dot(N, Wo), etaA, etaB), trans = 1 - refl;
+			float refl = fresnelDielectric(glm::dot(N, Wo), ior), trans = 1 - refl;
+
 			if (rg.get() < refl)
 			{
 				glm::vec3 Wi = -glm::reflect(Wo, N);
-				glm::vec3 r(tint * refl /* Math::absDot(N, Wi)*/);
-				return SampleWithBsdf(Sample(Wi, refl, BXDF::Specular), r);
+				return SampleWithBsdf(Sample(Wi, 1.0f, BXDF::SpecRefl), tint);
 			}
 			else
 			{
-				bool entering = glm::dot(N, Wo) > 0.0f;
-				float etaI = entering ? etaA : etaB;
-				float etaT = entering ? etaB : etaA;
+				float eta = (glm::dot(N, Wo) > 0.0f) ? ior : 1.0f / ior;
 
 				glm::vec3 Wi;
-				bool refr = refract(Wi, Wo, N, etaI / etaT);
-				if (!refr) return SampleWithBsdf(Sample(), glm::vec3(0.0f));
+				bool refr = refract(Wi, Wo, N, eta);
+				if (!refr) return INVALID_BSDF_SAMPLE;
 
-				glm::vec3 r(tint * trans);
-				return SampleWithBsdf(Sample(Wi, trans, BXDF::SpecTrans), r);
+				return SampleWithBsdf(Sample(Wi, 1.0f, BXDF::SpecTrans), tint);
 			}
 		}
 		else
 		{
-			glm::vec3 H = ggxDistrib.sampleM(N);
-			if (glm::dot(H, Wo) < 0.0f) return SampleWithBsdf(Sample(), glm::vec3(0.0f));
-			float refl = fresnelDieletric(glm::dot(N, H), etaA, etaB), trans = 1.0f - refl;
+			glm::vec3 H = ggxDistrib.sampleWm(N, Wo);
+			if (glm::dot(N, H) < 0.0f) H = -H;
+			float refl = fresnelDielectric(glm::dot(H, Wo), ior);
+			float trans = 1.0f - refl;
 
 			if (rg.get() < refl)
 			{
-				auto Wi = glm::reflect(-Wo, H);
-				float p = ggxDistrib.pdf(N, H, Wo) * refl / (4.0f * glm::dot(H, Wo));
+				auto Wi = -glm::reflect(Wo, H);
+				//if (glm::dot(H, Wo) <= 0.0f) return INVALID_BSDF_SAMPLE;
+				if (!Math::sameHemisphere(N, Wo, Wi)) return INVALID_BSDF_SAMPLE;
+
+				float p = ggxDistrib.pdf(N, H, Wo) / (4.0f * Math::absDot(H, Wo));
 				float HoWo = Math::absDot(H, Wo);
 				float HoWi = Math::absDot(H, Wi);
-				glm::vec3 r =
-					tint * ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) * refl /
+
+				glm::vec3 r = (HoWo * HoWi < 1e-7f) ? glm::vec3(0.0f) :
+					tint * ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) /
 					(4.0f * HoWo * HoWi);
 
-				return SampleWithBsdf(Sample(Wi, p, BXDF::Glossy), r);
+				if (Math::isNan(p)) p = 0.0f;
+				return SampleWithBsdf(Sample(Wi, p, BXDF::GlosRefl), r);
 			}
 			else
 			{
-				bool entering = glm::dot(N, Wo) > 0.0f;
-				float etaI = entering ? etaA : etaB;
-				float etaT = entering ? etaB : etaA;
+				float eta = (glm::dot(H, Wo) > 0.0f) ? ior : 1.0f / ior;
 
 				glm::vec3 Wi;
-				bool refr = refract(Wi, Wo, H, etaI / etaT);
-				if (!refr) return SampleWithBsdf(Sample(), glm::vec3(0.0f));
+				bool refr = refract(Wi, Wo, H, eta);
+				if (!refr) return INVALID_BSDF_SAMPLE;
+				if (Math::sameHemisphere(N, Wo, Wi)) return INVALID_BSDF_SAMPLE;
+				if (Math::absDot(N, Wi) < 1e-10f) return INVALID_BSDF_SAMPLE;
 
 				float HoWo = Math::absDot(H, Wo);
 				float HoWi = Math::absDot(H, Wi);
 
-				float sqrtDenom = glm::sqrt(glm::dot(H, Wo) + etaI / etaT * glm::dot(H, Wi));
-				glm::vec3 r =
-					tint * trans * 
-					glm::abs(ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) * HoWo * HoWi) /
-					(Math::absDot(N, Wi) * Math::absDot(N, Wo) * sqrtDenom);
+				float sqrtDenom = glm::dot(H, Wo) + eta * glm::dot(H, Wi);
+				float denom = sqrtDenom * sqrtDenom;
+				float dHdWi = HoWi / denom;
 
-				float dHdWi = HoWi / sqrtDenom;
-				float p = ggxDistrib.pdf(N, H, Wo) * dHdWi * trans;
-				return SampleWithBsdf(Sample(Wi, p, BXDF::Glossy), r);
+				denom *= Math::absDot(N, Wi) * Math::absDot(N, Wo);
+
+				glm::vec3 r = (denom < 1e-7f) ? glm::vec3(0.0f) :
+					tint * 
+					glm::abs(ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) * HoWo * HoWi) / denom;
+
+				float p = ggxDistrib.pdf(N, H, Wo) * dHdWi;
+
+				if (Math::isNan(p)) p = 0.0f;
+				return SampleWithBsdf(Sample(Wi, p, BXDF::GlosTrans), r);
 			}
 		}
 	}
@@ -240,37 +248,40 @@ public:
 private:
 	inline static bool refract(glm::vec3& Wt, const glm::vec3& Wi, const glm::vec3 &N, float eta)
 	{
-		// 与PBRT不同，这个的结果只与光路上折射率的比值eta有关，与N的取向无关
 		float cosTi = glm::dot(N, Wi);
-		float sin2Ti = 1.0f - cosTi * cosTi;
-		float sin2Tt = eta * eta * sin2Ti;
+		float sin2Ti = glm::max(0.0f, 1.0f - cosTi * cosTi);
+		float sin2Tt = sin2Ti / (eta * eta);
 
 		if (sin2Tt >= 1.0f) return false;
 
-		float dirN = cosTi < 0 ? -1.0f : 1.0f;
+		float dirN = cosTi > 0.0f ? 1.0f : -1.0f;
 		float cosTt = glm::sqrt(1.0f - sin2Tt) * dirN;
-		Wt = glm::normalize(-Wi * eta + N * (eta * cosTi - cosTt));
+		Wt = glm::normalize(-Wi / eta + N * dirN * (cosTi / eta - cosTt));
 		return true;
 	}
 
-	inline static float fresnelDieletric(float cosTi, float etaI, float etaT)
+	inline static float fresnelDielectric(float cosTi, float eta)
 	{
 		cosTi = glm::clamp(cosTi, -1.0f, 1.0f);
-		float sinTi = glm::sqrt(1 - cosTi * cosTi);
-		float sinTt = etaI / etaT * sinTi;
+		if (cosTi < 0.0f)
+		{
+			eta = 1.0f / eta;
+			cosTi = -cosTi;
+		}
+
+		float sinTi = glm::sqrt(1.0f - cosTi * cosTi);
+		float sinTt = sinTi / eta;
 		if (sinTt >= 1.0f) return 1.0f;
-		
+
 		float cosTt = glm::sqrt(1.0f - sinTt * sinTt);
 
-		float rPa = (etaT * cosTi - etaI * cosTt) / (etaT * cosTi + etaI * cosTt);
-		float rPe = (etaI * cosTi - etaT * cosTt) / (etaI * cosTi + etaT * cosTt);
-
-		float res = (rPa * rPa + rPe * rPe) * 0.5f;
-		return res;
+		float rPa = (cosTi - eta * cosTt) / (cosTi + eta * cosTt);
+		float rPe = (eta * cosTi - cosTt) / (eta * cosTi + cosTt);
+		return (rPa * rPa + rPe * rPe) * 0.5f;
 	}
 
 private:
-	float etaA, etaB;
+	float ior;
 	glm::vec3 tint;
 	GGXDistrib ggxDistrib;
 	bool approximateDelta;
@@ -298,10 +309,10 @@ public:
 		return Sample(glm::vec4(Wi, this->pdf(Wo, Wi, N)), 0);
 	}
 
-	glm::vec3 bsdf(const SurfaceInteraction &si, uint8_t param)
+	glm::vec3 bsdf(const SurfaceInteraction &si, int type)
 	{
-		glm::vec3 radianceA = ma->bsdf(si, param);
-		glm::vec3 radianceB = mb->bsdf(si, param);
+		glm::vec3 radianceA = ma->bsdf(si, type);
+		glm::vec3 radianceB = mb->bsdf(si, type);
 		return Math::lerp(radianceA, radianceB, mix);
 	}
 

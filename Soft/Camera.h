@@ -135,7 +135,7 @@ public:
 
 	inline Ray getRay(float x, float y)
 	{
-		glm::vec3 rayDir = (front + (up * y + right * x * aspect) * (float)tan(glm::radians(FOV * 0.5f))) * zNear;
+		glm::vec3 rayDir = glm::normalize(front + (up * y + right * x * aspect) * (float)tan(glm::radians(FOV * 0.5f)));
 		return { pos, glm::normalize(rayDir) };
 	}
 
@@ -169,8 +169,8 @@ private:
 		float aZ = sin(glm::radians(angle.y));
 		front = glm::normalize(glm::vec3(aX, aY, aZ));
 		glm::vec3 u(0.0f, 0.0f, 1.0f);
-		right = glm::cross(front, u);
-		up = glm::cross(right, front);
+		right = glm::normalize(glm::cross(front, u));
+		up = glm::normalize(glm::cross(right, front));
 	}
 
 private:

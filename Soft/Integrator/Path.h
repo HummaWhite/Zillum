@@ -30,14 +30,11 @@ private:
 	glm::vec3 trace(Ray ray, SurfaceInfo surfaceInfo)
 	{
 		glm::vec3 result(0.0f);
-		glm::vec3 accumBsdf(1.0f);
-		float accumPdf = 1.0f;
 		glm::vec3 beta(1.0f);
 
 		for (int bounce = 1; ; bounce++)
 		{
-			if (accumPdf < 1e-8f) break;
-
+			//if (accumPdf < 1e-10f) break;
 			if (((bounce == maxSpp) && (limitSpp || lowDiscrepSeries))
 				|| bounce == roletteMaxDepth)
 			{
@@ -58,42 +55,54 @@ private:
 					float dist = glm::length(randP - P);
 
 					Ray lightRay(P + rayDir * 1e-4f, rayDir);
-					float tMin, tMax;
-					auto occ = scene->shapeBVH->closestHit(lightRay, tMin, tMax);
-					if (occ != nullptr && tMin < dist) continue;
+					if(scene->shapeBVH->closestHit(lightRay, dist, true) != nullptr) continue;
 
 					glm::vec3 Wi = rayDir;
 					glm::vec3 lightN = lt->surfaceNormal(randP);
 					glm::vec3 lightRad = lt->getRadiance(-Wi, lightN, dist);
 
 					SurfaceInteraction si = { Wo, Wi, N };
-					result += surfaceInfo.material->bsdf(si, ~0) * lightRad * beta / (float)sampleDirectLight;
+					result += surfaceInfo.material->bsdf(si, 0) * lightRad * beta * Math::satDot(N, Wi) / (float)sampleDirectLight;
+				}
+			}
+
+			if (envImportanceSample)
+			{
+				auto eSp = scene->environment->importanceSample();
+				glm::vec3 eWi(eSp);
+				auto rad = scene->environment->getRadiance(eWi);
+				Ray eRay(P + eWi * 1e-4f, eWi);
+				float tmp = 1e6;
+				if(scene->shapeBVH->closestHit(eRay, tmp, true) == nullptr)
+				{
+					SurfaceInteraction si = { Wo, eWi, N };
+					result += surfaceInfo.material->bsdf(si, 0) * rad * beta * Math::satDot(N, eWi) / eSp.w;
 				}
 			}
 
 			RandomGenerator rg;
 			if (roulette && rg.get() > rouletteProb) break;
 
-			Sample sample = surfaceInfo.material->getSample(N, Wo);
-			glm::vec3 Wi = sample.dir;
-			float pdf = sample.pdf;
-			uint8_t param = sample.param;
+			auto sample = surfaceInfo.material->sampleWithBsdf(N, Wo);
+			auto Wi = sample.first.dir;
+			auto pdf = sample.first.pdf;
+			auto type = sample.first.type;
+			auto bsdf = sample.second;
+
+			float NoWi = type.isDelta() ? 1.0f : Math::absDot(N, Wi);
 
 			if (roulette) pdf *= rouletteProb;
-			if (pdf < 1e-8f) break;
+			if (pdf < 1e-8f || Math::isNan(pdf) || Math::isInf(pdf)) break;
 
-			SurfaceInteraction si = { Wo, Wi, N };
-			accumBsdf *= surfaceInfo.material->bsdf(si, param);
-			accumPdf *= pdf;
-			beta = accumBsdf / accumPdf;
+			beta *= bsdf * NoWi / pdf;
 
 			Ray newRay(P + Wi * 1e-4f, Wi);
 			auto scHitInfo = scene->closestHit(newRay);
 
 			if (scHitInfo.type == SceneHitInfo::LIGHT)
 			{
-				glm::vec3 lightN = scHitInfo.light->surfaceNormal(newRay.get(scHitInfo.dist));
-				result += scHitInfo.light->getRadiance(-Wi, lightN, scHitInfo.dist) * beta;
+				//glm::vec3 lightN = scHitInfo.light->surfaceNormal(newRay.get(scHitInfo.dist));
+				result += scHitInfo.light->getRadiance() * beta;
 				break;
 			}
 			else if (scHitInfo.type == SceneHitInfo::NONE)
@@ -107,7 +116,6 @@ private:
 			newRay.ori = nextP;
 			ray = newRay;
 		}
-
 		return result;
 	}
 
@@ -120,6 +128,7 @@ public:
 	bool returnEnvColorAtEnd = false;
 	float indirectClamp = 20.0f;
 	float envStrength = 1.0f;
+	bool envImportanceSample = false;
 };
 
 #endif

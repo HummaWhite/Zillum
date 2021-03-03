@@ -17,27 +17,28 @@
 
 struct Sample
 {
-	Sample(): dir(0.0f), pdf(0.0f), param(0) {}
+	Sample(): dir(0.0f), pdf(0.0f), type(0) {}
 
-	Sample(const glm::vec4 &sample, uint8_t param):
-		dir(sample), pdf(sample.w), param(param) {}
+	Sample(const glm::vec4 &sample, int type):
+		dir(sample), pdf(sample.w), type(type) {}
 
-	Sample(const glm::vec3 &dir, float pdf, uint8_t param):
-		dir(dir), pdf(pdf), param(param) {}
+	Sample(const glm::vec3 &dir, float pdf, int type):
+		dir(dir), pdf(pdf), type(type) {}
 
 	glm::vec3 dir;
 	float pdf;
-	uint8_t param;
+	BXDF type;
 };
 
 typedef std::pair<Sample, glm::vec3> SampleWithBsdf;
+const SampleWithBsdf INVALID_BSDF_SAMPLE = SampleWithBsdf(Sample(), glm::vec3(0.0f));
 
 class Material
 {
 public:
-	Material(int bxdfType): matBXDF(bxdfType) {}
+	Material(int bxdfType): matBxdf(bxdfType) {}
 
-	virtual glm::vec3 bsdf(const SurfaceInteraction &si, uint8_t param) = 0;
+	virtual glm::vec3 bsdf(const SurfaceInteraction &si, int type) = 0;
 	virtual Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo) = 0;
 
 	virtual glm::vec4 getSampleForward(const glm::vec3 &N, const glm::vec3 &Wi)
@@ -52,11 +53,11 @@ public:
 	{
 		Sample sample = getSample(N, Wo);
 		SurfaceInteraction si = { Wo, sample.dir, N };
-		glm::vec3 bsdf = this->bsdf(si, sample.param);
+		glm::vec3 bsdf = this->bsdf(si, sample.type.type());
 		return SampleWithBsdf(sample, bsdf);
 	}
 
-	const BXDF& bxdf() const { return matBXDF; }
+	const BXDF& bxdf() const { return matBxdf; }
 
 protected:
 	inline static glm::vec3 schlickF(float cosTheta, const glm::vec3 &F0)
@@ -70,7 +71,7 @@ protected:
 	}
 
 protected:
-	BXDF matBXDF;
+	BXDF matBxdf;
 };
 
 #endif

@@ -12,12 +12,12 @@ class BXDF
 public:
 	enum
 	{
-		REFLECTION 		= 1 << 0,
-		TRANSMISSION 	= 1 << 1,
-		DIFFUSE			= 1 << 2,
-		GLOSSY			= 1 << 3,
-		SPECULAR		= 1 << 4,
-		ALL				= 0b11111
+		Diffuse			= 1 << 0,
+		GlosRefl		= 1 << 1,
+		SpecRefl		= 1 << 2,
+		SpecTrans		= 1 << 3,
+		GlosTrans		= 1 << 4,
+		All				= 0b11111
 	};
 
 public:
@@ -26,6 +26,11 @@ public:
 	bool hasType(int type) const
 	{
 		return type & mType;
+	}
+
+	bool isDelta() const
+	{
+		return (mType & SpecRefl) || (mType & SpecTrans);
 	}
 
 	int type() const { return mType; }

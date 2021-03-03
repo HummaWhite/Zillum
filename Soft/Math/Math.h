@@ -26,7 +26,7 @@ namespace Math
 		return x + (y - x) * a;
 	}
 
-	static void printBits32(void *bits, std::string info = "")
+	void printBits32(void *bits, std::string info = "")
 	{
 		uint32_t v = *(uint32_t*)bits;
 		for (uint32_t i = 0x80000000; i; i >>= 1)
@@ -34,23 +34,35 @@ namespace Math
 		std::cout << info;
 	}
 
-	static void printVec3(const glm::vec3 &v, std::string info = "")
+	template<typename T>
+	void print(T val, int precision, std::string info = "\n")
+	{
+		std::cout << std::setprecision(precision) << val << info;
+	}
+
+	void printVec3(const glm::vec3 &v, std::string info = "")
 	{
 		std::cout << std::setprecision(6) << info << ":  " << v.x << "  " << v.y << "  " << v.z << std::endl;
 	}
 
-	static bool isNan(float v)
+	inline bool isNan(float v)
 	{
 		uint32_t u = *(int*)&v;
 		return ((u & FLOAT_EXP_MASK) == FLOAT_EXP_MASK && (u & FLOAT_VAL_MASK) != 0);
 	}
 
-	inline static bool hasNan(const glm::vec3 &v)
+	inline bool hasNan(const glm::vec3 &v)
 	{
 		return isNan(v.x) || isNan(v.y) || isNan(v.z);
 	}
 
-	inline static glm::mat3 TBNMatrix(const glm::vec3 &N)
+	inline bool isInf(float v)
+	{
+		uint32_t u = *(uint32_t*)&v;
+		return ((u & FLOAT_EXP_MASK) == FLOAT_EXP_MASK && (u & FLOAT_VAL_MASK) == 0);
+	}
+
+	inline glm::mat3 TBNMatrix(const glm::vec3 &N)
 	{
 		glm::vec3 T = (glm::abs(N.z) > 0.99f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, 0.0f, 1.0f);
 		glm::vec3 B = glm::normalize(glm::cross(N, T));
@@ -58,7 +70,7 @@ namespace Math
 		return glm::mat3(T, B, N);
 	}
 
-	inline static uint32_t inverseBits(uint32_t bits)
+	inline uint32_t inverseBits(uint32_t bits)
 	{
 		bits = (bits << 16u) | (bits >> 16u);
     	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
@@ -68,39 +80,54 @@ namespace Math
 		return bits;
 	}
 
-	inline static float radicalInverseVDC(uint32_t bits)
+	inline float radicalInverseVDC(uint32_t bits)
 	{
     	return float(inverseBits(bits)) * 2.3283064365386963e-10;
 	}
 
-	inline static glm::vec2 hammersley(uint32_t i, uint32_t n)
+	inline glm::vec2 hammersley(uint32_t i, uint32_t n)
 	{
 		return glm::vec2((float)i / (float)n, radicalInverseVDC(i));
 	}
 
-	inline static float satDot(const glm::vec3 &a, const glm::vec3 &b)
+	inline float satDot(const glm::vec3 &a, const glm::vec3 &b)
 	{
 		return glm::max(glm::dot(a, b), 0.0f);
 	}
 
-	inline static float absDot(const glm::vec3 &a, const glm::vec3 &b)
+	inline float absDot(const glm::vec3 &a, const glm::vec3 &b)
 	{
 		return glm::abs(glm::dot(a, b));
 	}
 
-	inline static glm::vec2 randBox()
+	inline glm::vec2 randBox()
 	{
 		RandomGenerator rg;
 		return glm::vec2(rg.get(), rg.get());
 	}
 
-	inline static glm::vec3 randHemisphere()
+	inline glm::vec3 randHemisphere()
 	{
 		RandomGenerator rg;
 		float phi = rg.get() * Pi * 2.0f;
 		float theta = rg.get() * Pi * 0.5f;
 
 		return glm::vec3(glm::cos(phi) * glm::sin(theta), glm::sin(phi) * glm::sin(theta), glm::cos(theta));
+	}
+
+	inline bool sameHemisphere(const glm::vec3 &N, const glm::vec3 &A, const glm::vec3 &B)
+	{
+		return glm::dot(N, A) * glm::dot(N, B) > 0.0f;
+	}
+
+	inline float maxComponent(const glm::vec3 &v)
+	{
+		return glm::max(glm::max(v.x, v.y), v.z);
+	}
+
+	inline float minComponent(const glm::vec3 &v)
+	{
+		return glm::min(glm::min(v.x, v.y), v.z);
 	}
 }
 
