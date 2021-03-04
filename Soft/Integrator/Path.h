@@ -34,7 +34,6 @@ private:
 
 		for (int bounce = 1; ; bounce++)
 		{
-			//if (accumPdf < 1e-10f) break;
 			if (((bounce == maxSpp) && (limitSpp || lowDiscrepSeries))
 				|| bounce == roletteMaxDepth)
 			{
@@ -45,71 +44,53 @@ private:
 			glm::vec3 P = ray.ori;
 			glm::vec3 Wo = -ray.dir;
 			glm::vec3 N = surfaceInfo.norm;
+			auto &mat = surfaceInfo.material;
 
-			for (auto &lt : scene->lightList)
+			if (!surfaceInfo.material->bxdf().isDelta())
 			{
-				for (int i = 0; i < sampleDirectLight; i++)
+				for (auto &lt : scene->lightList)
 				{
-					glm::vec3 randP = lt->getRandomPoint();
-					glm::vec3 rayDir = glm::normalize(randP - P);
-					float dist = glm::length(randP - P);
-
-					Ray lightRay(P + rayDir * 1e-4f, rayDir);
-					if(scene->shapeBVH->closestHit(lightRay, dist, true) != nullptr) continue;
-
-					glm::vec3 Wi = rayDir;
-					glm::vec3 lightN = lt->surfaceNormal(randP);
-					glm::vec3 lightRad = lt->getRadiance(-Wi, lightN, dist);
-
-					SurfaceInteraction si = { Wo, Wi, N };
-					result += surfaceInfo.material->bsdf(si, 0) * lightRad * beta * Math::satDot(N, Wi) / (float)sampleDirectLight;
+					auto [Wi, weight, pdf] = sampleDirectLight(P, lt);
+					if (pdf == 0) continue;
+					result += mat->bsdf({ Wo, Wi, N }, 0) * weight * beta * Math::satDot(N, Wi) / pdf;
 				}
 			}
 
 			if (envImportanceSample)
 			{
-				auto eSp = scene->environment->importanceSample();
-				glm::vec3 eWi(eSp);
-				auto rad = scene->environment->getRadiance(eWi);
-				Ray eRay(P + eWi * 1e-4f, eWi);
-				float tmp = 1e6;
-				if(scene->shapeBVH->closestHit(eRay, tmp, true) == nullptr)
-				{
-					SurfaceInteraction si = { Wo, eWi, N };
-					result += surfaceInfo.material->bsdf(si, 0) * rad * beta * Math::satDot(N, eWi) / eSp.w;
-				}
+				auto [Wi, weight, pdf] = sampleEnvironment(P);
+				result += mat->bsdf({ Wo, Wi, N }, 0) * weight * beta * Math::satDot(N, Wi) / pdf;
 			}
 
-			RandomGenerator rg;
-			if (roulette && rg.get() > rouletteProb) break;
-
-			auto sample = surfaceInfo.material->sampleWithBsdf(N, Wo);
-			auto Wi = sample.first.dir;
-			auto pdf = sample.first.pdf;
-			auto type = sample.first.type;
-			auto bsdf = sample.second;
+			auto [sample, bsdf] = surfaceInfo.material->sampleWithBsdf(N, Wo);
+			auto [Wi, bsdfPdf, type] = sample;
 
 			float NoWi = type.isDelta() ? 1.0f : Math::absDot(N, Wi);
-
-			if (roulette) pdf *= rouletteProb;
-			if (pdf < 1e-8f || Math::isNan(pdf) || Math::isInf(pdf)) break;
-
-			beta *= bsdf * NoWi / pdf;
+			if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf)) break;
 
 			Ray newRay(P + Wi * 1e-4f, Wi);
 			auto scHitInfo = scene->closestHit(newRay);
 
 			if (scHitInfo.type == SceneHitInfo::LIGHT)
 			{
-				//glm::vec3 lightN = scHitInfo.light->surfaceNormal(newRay.get(scHitInfo.dist));
-				result += scHitInfo.light->getRadiance() * beta;
+				float lightPdf = lightWiPdf(P, newRay.get(scHitInfo.dist), scHitInfo.light);
+				float weight = Math::heuristic(1, bsdfPdf, 1, lightPdf, 2);
+				result += scHitInfo.light->getRadiance() * beta * bsdf * NoWi * weight;
 				break;
 			}
 			else if (scHitInfo.type == SceneHitInfo::NONE)
 			{
-				result += scene->environment->getRadiance(Wi) * envStrength * beta;
+				float envPdf = scene->environment->Environment::pdfLi(Wi);
+				envPdf = 1.0f;
+				float weight = Math::heuristic(1, bsdfPdf, 1, envPdf, 2);
+				//result += scene->environment->getRadiance(Wi) * envStrength * beta * bsdf * NoWi * weight;
 				break;
 			}
+
+			RandomGenerator rg;
+			if (roulette && rg.get() > rouletteProb) break;
+			beta *= bsdf * NoWi / bsdfPdf;
+			if (roulette) beta /= rouletteProb;
 			
 			glm::vec3 nextP = newRay.get(scHitInfo.dist);
 			surfaceInfo = scHitInfo.shape->surfaceInfo(nextP);
@@ -119,12 +100,51 @@ private:
 		return result;
 	}
 
+	float lightWiPdf(const glm::vec3 &x, const glm::vec3 &y, std::shared_ptr<Light> lt)
+	{
+		auto N = lt->surfaceNormal(y);
+		auto Wi = glm::normalize(y - x);
+		float cosTheta = Math::satDot(N, -Wi);
+		if (cosTheta < 1e-10f) return 0.0f;
+
+		float dist = glm::distance(x, y);
+		return 1.0f / (lt->surfaceArea() * cosTheta * dist * dist);
+	}
+
+	std::tuple<glm::vec3, glm::vec3, float> sampleDirectLight(const glm::vec3 &x, std::shared_ptr<Light> lt)
+	{
+		glm::vec3 y = lt->getRandomPoint();
+		glm::vec3 Wi = glm::normalize(y - x);
+		float dist = glm::length(y - x);
+
+		glm::vec3 N = lt->surfaceNormal(y);
+		glm::vec3 weight = lt->getRadiance() * Math::satDot(N, -Wi) / (dist * dist);
+
+		Ray lightRay(x + Wi * 1e-4f, Wi);
+		float pdf = (scene->shapeBVH->closestHit(lightRay, dist, true) != nullptr) ? 0.0f : 1.0f / lt->surfaceArea();
+		return { Wi, weight, pdf };
+	}
+
+	std::tuple<glm::vec3, glm::vec3, float> sampleEnvironment(glm::vec3 &x)
+	{
+		auto [Wi, pdf] = scene->environment->importanceSample();
+		auto rad = scene->environment->getRadiance(Wi);
+		Ray ray(x + Wi * 1e-4f, Wi);
+		float tmp = 1e6;
+		if (scene->shapeBVH->closestHit(ray, tmp, true) != nullptr)
+		{
+			rad = glm::vec3(0.0f);
+			pdf = 1.0f;
+		}
+		return { Wi, rad, pdf };
+	}
+
 public:
 	bool roulette = true;
 	float rouletteProb = 0.6f;
 	int tracingDepth = 5;
 	int roletteMaxDepth = 40;
-	int sampleDirectLight = 1;
+	int directLightSample = 1;
 	bool returnEnvColorAtEnd = false;
 	float indirectClamp = 20.0f;
 	float envStrength = 1.0f;

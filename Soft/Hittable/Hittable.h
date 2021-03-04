@@ -29,6 +29,8 @@ public:
 
 	virtual AABB bound() = 0;
 
+	virtual float surfaceArea() = 0;
+
 	void setTransform(std::shared_ptr<Transform> trans) { transform = trans; }
 
 	std::shared_ptr<Transform> getTransform() const { return transform; }

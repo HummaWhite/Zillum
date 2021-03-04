@@ -74,7 +74,7 @@ public:
 		return sphereMap.getSpherical(dir);
 	}
 
-	glm::vec4 importanceSample()
+	std::pair<glm::vec3, float> importanceSample()
 	{
 		RandomGenerator rg;
 
@@ -101,9 +101,15 @@ public:
 		col = l;
 
 		float sinTheta = glm::sin(Math::Pi * (row + 0.5f) / h);
-		float pdf = glm::dot(sphereMap(col, row), BRIGHTNESS) / sumRow[h - 1] * float(w * h) * 0.5f * Math::PiInv * Math::PiInv / sinTheta;
+		auto Wi = Transform::planeToSphere(glm::vec2((col + 0.5f) / w, (row + 0.5f) / h));
+		float pdf = glm::dot(glm::vec3(sphereMap.getSpherical(Wi)), BRIGHTNESS) / sumRow[h - 1] * float(w * h) * 0.25f * Math::PiInv;
 
-		return glm::vec4(Transform::planeToSphere(glm::vec2((col + 0.5f) / w, (row + 0.5f) / h)), pdf);
+		return { Wi, pdf };
+	}
+
+	float pdfLi(const glm::vec3 &Wi) override
+	{
+		return glm::dot(glm::vec3(sphereMap.getSpherical(Wi)), BRIGHTNESS) / sumRow[h - 1];
 	}
 
 private:

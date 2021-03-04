@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <tuple>
 #include <cmath>
 
 #include "../glm/glm.hpp"
@@ -128,6 +129,24 @@ namespace Math
 	inline float minComponent(const glm::vec3 &v)
 	{
 		return glm::min(glm::min(v.x, v.y), v.z);
+	}
+
+	inline float qpow(float x, int n)
+	{
+		float ret = 1.0f;
+		while (n)
+		{
+			if (n & 1) ret *= x;
+			x *= x, n >>= 1;
+		}
+		return ret;
+	}
+
+	inline float heuristic(int nf, float pf, int ng, float pg, int pow)
+	{
+		float f = qpow(nf * pf, pow);
+		float g = qpow(ng * pg, pow);
+		return f / (f + g);
 	}
 }
 

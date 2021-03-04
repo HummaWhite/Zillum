@@ -15,10 +15,15 @@ class Environment
 public:
 	virtual glm::vec3 getRadiance(const glm::vec3 &dir) = 0;
 
-	virtual glm::vec4 importanceSample()
+	virtual std::pair<glm::vec3, float> importanceSample()
 	{
 		RandomGenerator rg;
-		return glm::vec4(Transform::planeToSphere(glm::vec2(rg.get(), rg.get())), Math::PiInv * 0.25f);
+		return { Transform::planeToSphere(glm::vec2(rg.get(), rg.get())), Math::PiInv * 0.25f };
+	}
+
+	virtual float pdfLi(const glm::vec3 &Wi)
+	{
+		return Math::PiInv * 0.25f;
 	}
 };
 

@@ -12,7 +12,7 @@ public:
 	HittableSphere(const glm::vec3 &center, float radius, bool intersectFromInside):
 		center(center), radius(radius), intersectFromInside(intersectFromInside) {}
 
-	HitInfo closestHit(const Ray &ray)
+	inline HitInfo closestHit(const Ray &ray)
 	{
 		glm::vec3 o = transform->getInversed(ray.ori);
 		glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
@@ -36,7 +36,7 @@ public:
 		return { res >= 0, res };
 	}
 
-	glm::vec3 getRandomPoint()
+	inline glm::vec3 getRandomPoint()
 	{
 		RandomGenerator rg;
 
@@ -46,16 +46,21 @@ public:
 		return glm::vec3(cos(t) * sin(p), sin(t) * sin(p), cos(p)) * radius + center;
 	}
 
-	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	inline glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
 		return transform->getInversedNormal(glm::normalize(p - center));
 	}
 
-	glm::vec3 getCenter() const { return center; }
+	float surfaceArea()
+	{
+		return 4.0f * Math::Pi * radius * radius;
+	}
 
-	float getRadius() const { return radius; }
+	inline glm::vec3 getCenter() const { return center; }
 
-	AABB bound()
+	inline float getRadius() const { return radius; }
+
+	inline AABB bound()
 	{
 		return AABB(center, radius);
 	}
@@ -73,7 +78,7 @@ public:
 	HittableTriangle(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c):
 		va(a), vb(b), vc(c) {}
 
-	HitInfo closestHit(const Ray &ray)
+	inline HitInfo closestHit(const Ray &ray)
 	{
 		const float eps = 1e-6;
 
@@ -108,7 +113,7 @@ public:
 		return { t > 0.0f, t };
 	}
 
-	glm::vec3 getRandomPoint()
+	inline glm::vec3 getRandomPoint()
 	{
 		RandomGenerator rg;
 
@@ -122,23 +127,28 @@ public:
 		return transform->get(p);
 	}
 
-	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	inline glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
 		glm::vec3 N = glm::normalize(glm::cross(vb - va, vc - va));
 		return glm::normalize(transform->getInversedNormal(N));
 	}
 
-	bool onPlane(const glm::vec3 &p)
+	float surfaceArea()
+	{
+		return 0.5f * glm::length(glm::cross(vc - va, vb - va));
+	}
+
+	inline bool onPlane(const glm::vec3 &p)
 	{
 		glm::vec3 invP = transform->getInversed(p);
 		return glm::length(glm::cross(va - invP, glm::cross(vb - invP, vc - invP))) < 1e-6;
 	}
 
-	glm::vec3 getVa() const { return va; }
-	glm::vec3 getVb() const { return vb; }
-	glm::vec3 getVc() const { return vc; }
+	inline glm::vec3 getVa() const { return va; }
+	inline glm::vec3 getVb() const { return vb; }
+	inline glm::vec3 getVc() const { return vc; }
 
-	AABB bound()
+	inline AABB bound()
 	{
 		return AABB(transform->get(va), transform->get(vb), transform->get(vc));
 	}
@@ -191,7 +201,7 @@ public:
 	HittableQuad(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c):
 		va(a), vb(b), vc(c) {}
 
-	HitInfo closestHit(const Ray &ray)
+	inline HitInfo closestHit(const Ray &ray)
 	{
 		glm::vec3 o = transform->getInversed(ray.ori);
 		glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
@@ -208,7 +218,7 @@ public:
 		return { false, 0.0f };
 	}
 
-	glm::vec3 getRandomPoint()
+	inline glm::vec3 getRandomPoint()
 	{
 		RandomGenerator rg;
 
@@ -218,17 +228,22 @@ public:
 		return transform->get((vb - va) * la + (vc - va) * lb + va);
 	}
 
-	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	inline glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
 		glm::vec3 N = glm::normalize(glm::cross(vb - va, vc - va));
 		return glm::normalize(transform->getInversedNormal(N));
 	}
 
-	glm::vec3 getVa() const { return va; }
-	glm::vec3 getVb() const { return vb; }
-	glm::vec3 getVc() const { return vc; }
+	float surfaceArea()
+	{
+		return glm::length(glm::cross(vc - va, vb - va));
+	}
 
-	AABB bound()
+	inline glm::vec3 getVa() const { return va; }
+	inline glm::vec3 getVb() const { return vb; }
+	inline glm::vec3 getVc() const { return vc; }
+
+	inline AABB bound()
 	{
 		glm::vec3 pa = transform->get(va);
 		glm::vec3 pb = transform->get(vb);

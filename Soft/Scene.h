@@ -37,6 +37,8 @@ public:
 		std::cout << "BVHShapes::  TreeSize: " << shapeBVH->size() << "  MaxDepth: " << shapeBVHInfo.maxDepth << "  AvgDepth: " << shapeBVHInfo.avgDepth << "\n";
 		auto lightBVHInfo = lightBVH->dfsDetailed();
 		std::cout << "BVHLights::  TreeSize: " << lightBVH->size() << "  MaxDepth: " << lightBVHInfo.maxDepth << "  AvgDepth: " << lightBVHInfo.avgDepth << "\n";
+		lightBVH->makeCompact();
+		shapeBVH->makeCompact();
 	}
 
 	SceneHitInfo closestHit(const Ray &ray)
