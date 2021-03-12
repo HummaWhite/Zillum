@@ -17,8 +17,7 @@ public:
 
 	virtual std::pair<glm::vec3, float> importanceSample()
 	{
-		RandomGenerator rg;
-		return { Transform::planeToSphere(glm::vec2(rg.get(), rg.get())), Math::PiInv * 0.25f };
+		return { Transform::planeToSphere(glm::vec2(uniformFloat(), uniformFloat())), Math::PiInv * 0.25f };
 	}
 
 	virtual float pdfLi(const glm::vec3 &Wi)

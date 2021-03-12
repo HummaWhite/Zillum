@@ -3,6 +3,7 @@
 
 #include "Environment.h"
 #include "../Texture.h"
+#include "../Math/PiecewiseIndependent2D.h"
 
 class EnvSingleColor:
 	public Environment
@@ -32,41 +33,18 @@ public:
 		sphereMap.loadFloat(filePath);
 		w = sphereMap.texWidth();
 		h = sphereMap.texHeight();
-		cdfTable = new float[w * h];
-		sumRow = new float[h];
 
-		for (int i = 0; i < w; i++)
+		float *pdf = new float[w * h];
+		for (int j = 0; j < h; j++)
 		{
-			for (int j = 0; j < h; j++)
+			for (int i = 0; i < w; i++)
 			{
-				(*this)(i, j) = glm::dot(sphereMap(i, j), BRIGHTNESS) * glm::sin((float)(j + 0.5f) / h * Math::Pi);
+				pdf[j * w + i] = glm::dot(sphereMap(i, j), BRIGHTNESS) * glm::sin((float)(j + 0.5f) / h * Math::Pi);
 			}
 		}
 
-		for (int i = 0; i < h; i++)
-		{
-			for (int j = 1; j < w; j++)
-			{
-				(*this)(j, i) += (*this)(j - 1, i);
-			}
-		}
-
-		sumRow[0] = (*this)(w - 1, 0);
-		for (int i = 1; i < h; i++)
-		{
-			sumRow[i] = sumRow[i - 1] + (*this)(w - 1, i);
-		}
-	}
-
-	~EnvSphereMapHDR()
-	{
-		if (cdfTable != nullptr) delete[] cdfTable;
-		if (sumRow != nullptr) delete[] sumRow;
-	}
-
-	float& operator () (int i, int j)
-	{
-		return cdfTable[j * w + i];
+		distrib = PiecewiseIndependent2D(pdf, w, h);
+		delete[] pdf;
 	}
 
 	glm::vec3 getRadiance(const glm::vec3 &dir)
@@ -76,47 +54,34 @@ public:
 
 	std::pair<glm::vec3, float> importanceSample()
 	{
-		RandomGenerator rg;
-
-		int col, row;
-		float rowVal = rg.get(0.0f, sumRow[h - 1]);
-
-		int l = 0, r = h - 1;
-		while (l != r)
-		{
-			int m = (l + r) >> 1;
-			if (rowVal >= sumRow[m]) l = m + 1;
-			else r = m;
-		}
-		row = l;
-
-		float colVal = rg.get(0.0f, (*this)(w - 1, row));
-		l = 0, r = w - 1;
-		while (l != r)
-		{
-			int m = (l + r) >> 1;
-			if (colVal >= (*this)(m, row)) l = m + 1;
-			else r = m;
-		}
-		col = l;
+		auto [col, row] = distrib.sample();
 
 		float sinTheta = glm::sin(Math::Pi * (row + 0.5f) / h);
 		auto Wi = Transform::planeToSphere(glm::vec2((col + 0.5f) / w, (row + 0.5f) / h));
-		float pdf = glm::dot(glm::vec3(sphereMap.getSpherical(Wi)), BRIGHTNESS) / sumRow[h - 1] * float(w * h) * 0.25f * Math::PiInv;
+		//float pdf = getPortion(Wi) * float(w * h) * 0.5f * Math::square(Math::PiInv) / sinTheta;
+		float pdf = pdfLi(Wi);
 
 		return { Wi, pdf };
 	}
 
 	float pdfLi(const glm::vec3 &Wi) override
 	{
-		return glm::dot(glm::vec3(sphereMap.getSpherical(Wi)), BRIGHTNESS) / sumRow[h - 1];
+		float sinTheta = glm::asin(glm::abs(Wi.z));
+		if (sinTheta < 1e-6f) return 0.0f;
+		return getPortion(Wi) * float(w * h) * 0.5f * Math::square(Math::PiInv) /* sinTheta*/;
+		//return 0.25 * Math::PiInv;
+	}
+
+private:
+	float getPortion(const glm::vec3 &Wi)
+	{
+		return glm::dot(glm::vec3(sphereMap.getSpherical(Wi)), BRIGHTNESS) / distrib.sum();
 	}
 
 private:
 	Texture sphereMap;
 	int w, h;
-	float *cdfTable = nullptr;
-	float *sumRow = nullptr;
+	PiecewiseIndependent2D distrib;
 };
 
 class EnvTest:
