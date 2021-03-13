@@ -18,15 +18,15 @@ public:
 		return albedo * glm::pi<float>();
 	}
 
+	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
+	{
+		return glm::dot(Wi, N) * Math::PiInv;
+	}
+
 	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
 	{
 		auto v = Math::randHemisphere();
 		return Sample(Transform::normalToWorld(N, v), v.z * Math::PiInv, BXDF::Diffuse);
-	}
-
-	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
-	{
-		return glm::dot(Wo, N) * Math::PiInv;
 	}
 
 private:
@@ -61,7 +61,7 @@ public:
 
 		glm::vec3 F0 = glm::mix(glm::vec3(0.04f), albedo, metallic);
 
-		glm::vec3 F = schlickF(Math::satDot(H, Wo), F0, roughness);
+		glm::vec3 F = Microfacet::schlickF(Math::satDot(H, Wo), F0, roughness);
 		float	  D = ggxDistrib.d(N, H);
 		float	  G = ggxDistrib.g(N, Wo, Wi);
 
@@ -75,14 +75,23 @@ public:
 
 		glm::vec3 glossy = FDG / denom;
 
-		return (kd * albedo * Math::PiInv + glossy);
+		return kd * albedo * Math::PiInv + glossy;
+	}
+
+	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
+	{
+		float NoWi = glm::dot(N, Wi);
+		glm::vec3 H = glm::normalize(Wo + Wi);
+
+		float pdfDiff = NoWi * Math::PiInv;
+		float pdfSpec = ggxDistrib.pdf(N, H, Wo) / (4.0f * glm::dot(H, Wo));
+		return Math::lerp(pdfDiff, pdfSpec, 1.0f / (2.0f - metallic));
 	}
 
 	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
 	{
-		RandomGenerator rg;
 		float spec = 1.0f / (2.0f - metallic);
-		bool sampleDiff = rg.get() > spec;
+		bool sampleDiff = uniformFloat() > spec;
 
 		glm::vec3 Wi;
 		if (sampleDiff) Wi = Transform::normalToWorld(N, Math::randHemisphere());
@@ -98,21 +107,57 @@ public:
 		return Sample(Wi, pdf(Wo, Wi, N), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl);
 	}
 
-	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
-	{
-		float NoWi = glm::dot(N, Wi);
-		glm::vec3 H = glm::normalize(Wo + Wi);
-
-		float pdfDiff = NoWi * Math::PiInv;
-		float pdfSpec = ggxDistrib.pdf(N, H, Wo) / (4.0f * glm::dot(H, Wo));
-		return Math::lerp(pdfDiff, pdfSpec, 1.0f / (2.0f - metallic));
-	}
-
 private:
 	glm::vec3 albedo;
 	float metallic;
 	float roughness;
 	GGXDistrib ggxDistrib;
+};
+
+class Clearcoat:
+	public Material
+{
+public:
+	Clearcoat(float roughness, float weight):
+		distrib(roughness), weight(weight), Material(BXDF::GlosRefl) {}
+
+	glm::vec3 bsdf(const SurfaceInteraction &si, int type)
+	{
+		auto [Wo, Wi, N, uv] = si;
+		auto H = glm::normalize(Wo + Wi);
+
+		float NoWo = Math::satDot(N, Wo);
+		float NoWi = Math::satDot(N, Wi);
+
+		float D = distrib.d(N, H);
+		auto F = Microfacet::schlickF(Math::absDot(H, Wo), glm::vec3(0.04f));
+		float G = Microfacet::smithG(N, Wo, Wi, 0.25f);
+
+		float denom = 4.0f * NoWo * NoWi;
+		if (denom < 1e-7f) return glm::vec3(0.0f);
+
+		return F * D * G * weight / denom;
+	}
+
+	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
+	{
+		auto H = glm::normalize(Wo + Wi);
+		return distrib.pdf(N, H, Wo) / (4.0f * glm::dot(H, Wo));
+	}
+
+	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
+	{
+		auto H = distrib.sampleWm(N, Wo);
+		auto Wi = glm::reflect(-Wo, H);
+
+		if (glm::dot(N, Wi) < 0.0f) return Sample();
+
+		return Sample(Wi, pdf(Wo, Wi, N), BXDF::GlosRefl);
+	}
+
+private:
+	GTR1Distrib distrib;
+	float weight;
 };
 
 class Dielectric:
@@ -125,56 +170,65 @@ public:
 		approximateDelta = roughness < 0.014f;
 	}
 
-	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
-	{
-		return Sample();
-	}
-
-	glm::vec4 getSampleForward(const glm::vec3 &N, const glm::vec3 &Wi)
-	{
-		float eta = (glm::dot(N, Wi)) ? ior : 1.0f / ior;
-
-		glm::vec3 dirReflect = -glm::reflect(Wi, N), dirRefract;
-		float portionReflect = fresnelDielectric(glm::abs(glm::dot(N, Wi)), eta);
-		refract(dirRefract, Wi, N, eta);
-
-		RandomGenerator rg;
-		return glm::vec4(rg.get(0.0f, 1.0f) < portionReflect ? dirReflect : dirRefract, 0.5f);
-	}
-
 	glm::vec3 bsdf(const SurfaceInteraction &si, int type)
 	{
-		float cosTi = glm::dot(si.N, si.Wi);
-		float eta = (cosTi > 0.0f) ? ior : 1.0f / ior;
+		if (approximateDelta) return glm::vec3(0.0f);
+		auto [Wo, Wi, N, uv] = si;
+		auto H = glm::normalize(Wo + Wi);
 
-		glm::vec3 dirReflect = -glm::reflect(si.Wi, si.N), dirRefract;
-		float reflectRatio = fresnelDielectric(glm::abs(cosTi), eta);
+		float HoWo = Math::absDot(H, Wo);
+		float HoWi = Math::absDot(H, Wi);
 
-		bool reflect = cosTi * glm::dot(si.N, si.Wo) >= 0.0f;
-		if (reflect)
+		if (Math::sameHemisphere(N, Wo, Wi))
 		{
-			if (glm::length(dirReflect - si.Wo) > 1e-6f) return glm::vec3(0.0f);
-			return glm::vec3(reflectRatio);
+			float refl = fresnelDielectric(Math::absDot(H, Wi), ior);
+			return (HoWo * HoWi < 1e-7f) ? glm::vec3(0.0f) : tint * ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) / (4.0f * HoWo * HoWi) * refl;
 		}
-		
-		refract(dirRefract, si.Wi, si.N, eta);
-		if (glm::length(dirRefract - si.Wo) > 1e-6f) return glm::vec3(0.0f);
-		return glm::vec3(1.0f - reflectRatio);
+		else
+		{
+			float eta = glm::dot(N, Wi) > 0 ? ior : 1.0f / ior;
+			float sqrtDenom = glm::dot(H, Wo) + eta * glm::dot(H, Wi);
+			float denom = sqrtDenom * sqrtDenom;
+			float dHdWi = HoWi / denom;
+
+			denom *= Math::absDot(N, Wi) * Math::absDot(N, Wo);
+			float refl = fresnelDielectric(glm::dot(H, Wi), eta);
+
+			return (denom < 1e-7f) ? glm::vec3(0.0f) : tint * glm::abs(ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * (1.0f - refl);
+		}
 	}
 
 	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
 	{
-		return 0.0f;
+		if (approximateDelta) return 0;
+		
+		if (Math::sameHemisphere(N, Wo, Wi))
+		{
+			auto H = glm::normalize(Wo + Wi);
+			if (glm::dot(Wo, H) < 0) return 0;
+
+			float refl = fresnelDielectric(Math::absDot(H, Wi), ior);
+			return ggxDistrib.pdf(N, H, Wo) / (4.0f * Math::absDot(H, Wo)) * refl;
+		}
+		else
+		{
+			float eta = glm::dot(N, Wo) > 0 ? ior : 1.0f / ior;
+			auto H = glm::normalize(Wo + Wi * eta);
+			if (Math::sameHemisphere(H, Wo, Wi)) return 0;
+
+			float trans = 1.0f - fresnelDielectric(Math::absDot(H, Wo), eta);
+			float dHdWi = Math::absDot(H, Wi) / Math::square(glm::dot(H, Wo) + eta * glm::dot(H, Wi));
+			return ggxDistrib.pdf(N, H, Wo) * dHdWi * trans;
+		}
 	}
 
 	SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo) override
 	{
-		RandomGenerator rg;
 		if (approximateDelta)
 		{
 			float refl = fresnelDielectric(glm::dot(N, Wo), ior), trans = 1 - refl;
 
-			if (rg.get() < refl)
+			if (uniformFloat() < refl)
 			{
 				glm::vec3 Wi = -glm::reflect(Wo, N);
 				return SampleWithBsdf(Sample(Wi, 1.0f, BXDF::SpecRefl), tint);
@@ -197,7 +251,7 @@ public:
 			float refl = fresnelDielectric(glm::dot(H, Wo), ior);
 			float trans = 1.0f - refl;
 
-			if (rg.get() < refl)
+			if (uniformFloat() < refl)
 			{
 				auto Wi = -glm::reflect(Wo, H);
 				//if (glm::dot(H, Wo) <= 0.0f) return INVALID_BSDF_SAMPLE;
@@ -245,39 +299,20 @@ public:
 		}
 	}
 
-private:
-	inline static bool refract(glm::vec3& Wt, const glm::vec3& Wi, const glm::vec3 &N, float eta)
+	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
 	{
-		float cosTi = glm::dot(N, Wi);
-		float sin2Ti = glm::max(0.0f, 1.0f - cosTi * cosTi);
-		float sin2Tt = sin2Ti / (eta * eta);
-
-		if (sin2Tt >= 1.0f) return false;
-
-		float dirN = cosTi > 0.0f ? 1.0f : -1.0f;
-		float cosTt = glm::sqrt(1.0f - sin2Tt) * dirN;
-		Wt = glm::normalize(-Wi / eta + N * dirN * (cosTi / eta - cosTt));
-		return true;
+		return Sample();
 	}
 
-	inline static float fresnelDielectric(float cosTi, float eta)
+	glm::vec4 getSampleForward(const glm::vec3 &N, const glm::vec3 &Wi)
 	{
-		cosTi = glm::clamp(cosTi, -1.0f, 1.0f);
-		if (cosTi < 0.0f)
-		{
-			eta = 1.0f / eta;
-			cosTi = -cosTi;
-		}
+		float eta = (glm::dot(N, Wi)) ? ior : 1.0f / ior;
 
-		float sinTi = glm::sqrt(1.0f - cosTi * cosTi);
-		float sinTt = sinTi / eta;
-		if (sinTt >= 1.0f) return 1.0f;
+		glm::vec3 dirReflect = -glm::reflect(Wi, N), dirRefract;
+		float portionReflect = fresnelDielectric(Math::absDot(N, Wi), eta);
+		refract(dirRefract, Wi, N, eta);
 
-		float cosTt = glm::sqrt(1.0f - sinTt * sinTt);
-
-		float rPa = (cosTi - eta * cosTt) / (cosTi + eta * cosTt);
-		float rPe = (eta * cosTi - cosTt) / (eta * cosTi + cosTt);
-		return (rPa * rPa + rPe * rPe) * 0.5f;
+		return glm::vec4(uniformFloat() < portionReflect ? dirReflect : dirRefract, 0.5f);
 	}
 
 private:
@@ -285,7 +320,55 @@ private:
 	glm::vec3 tint;
 	GGXDistrib ggxDistrib;
 	bool approximateDelta;
-	// etaA外面, etaB内面
+};
+
+class ThinDielectric:
+	public Material
+{
+public:
+	ThinDielectric(const glm::vec3 &tint, float ior):
+		tint(tint), ior(ior), Material(BXDF::SpecRefl | BXDF::SpecTrans) {}
+
+	glm::vec3 bsdf(const SurfaceInteraction &si, int type)
+	{
+		return glm::vec3(0.0f);
+	}
+
+	SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo) override
+	{
+		float refl = fresnelDielectric(glm::dot(N, Wo), ior);
+		float trans = 1.0f - refl;
+		if (refl < 1.0f)
+		{
+			refl += trans * trans * refl / (1.0f - refl * refl);
+			trans = 1.0f - refl;
+		}
+
+		float r = uniformFloat();
+		if (r < refl)
+		{
+			auto Wi = glm::reflect(-Wo, N);
+			return SampleWithBsdf(Sample(Wi, 1.0f, BXDF::SpecRefl), tint);
+		}
+		else
+		{
+			return SampleWithBsdf(Sample(-Wo, 1.0f, BXDF::SpecTrans), tint);
+		}
+	}
+
+	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
+	{
+		return Sample();
+	}
+
+	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
+	{
+		return 0.0f;
+	}
+
+private:
+	glm::vec3 tint;
+	float ior;
 };
 
 class MixedMaterial:
@@ -298,17 +381,6 @@ public:
 	MixedMaterial(std::shared_ptr<Material> ma, std::shared_ptr<Material> mb, float mix):
 		ma(ma), mb(mb), mix(mix), Material(ma->bxdf().type() | mb->bxdf().type()) {}
 
-	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
-	{
-		RandomGenerator rg;
-
-		auto sampleMaterial = (rg.get(0.0f, 1.0f) < mix) ? ma : mb;
-		auto sample = sampleMaterial->getSample(N, Wo);
-		glm::vec3 Wi = sample.dir;
-
-		return Sample(glm::vec4(Wi, this->pdf(Wo, Wi, N)), 0);
-	}
-
 	glm::vec3 bsdf(const SurfaceInteraction &si, int type)
 	{
 		glm::vec3 radianceA = ma->bsdf(si, type);
@@ -319,6 +391,15 @@ public:
 	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
 	{
 		return Math::lerp(ma->pdf(Wo, Wi, N), mb->pdf(Wo, Wi, N), mix);
+	}
+
+	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
+	{
+		auto sampleMaterial = (uniformFloat() < mix) ? ma : mb;
+		auto sample = sampleMaterial->getSample(N, Wo);
+		glm::vec3 Wi = sample.dir;
+
+		return Sample(glm::vec4(Wi, this->pdf(Wo, Wi, N)), 0);
 	}
 
 private:

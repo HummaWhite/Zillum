@@ -40,13 +40,6 @@ public:
 
 	virtual glm::vec3 bsdf(const SurfaceInteraction &si, int type) = 0;
 	virtual Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo) = 0;
-
-	virtual glm::vec4 getSampleForward(const glm::vec3 &N, const glm::vec3 &Wi)
-	{
-		Sample sample = getSample(N, Wi);
-		return glm::vec4(sample.dir, sample.pdf);
-	}
-
 	virtual float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N) = 0;
 
 	virtual SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo)
@@ -57,17 +50,47 @@ public:
 		return SampleWithBsdf(sample, bsdf);
 	}
 
+	virtual glm::vec4 getSampleForward(const glm::vec3 &N, const glm::vec3 &Wi)
+	{
+		Sample sample = getSample(N, Wi);
+		return glm::vec4(sample.dir, sample.pdf);
+	}
+
 	const BXDF& bxdf() const { return matBxdf; }
 
 protected:
-	inline static glm::vec3 schlickF(float cosTheta, const glm::vec3 &F0)
+	inline static bool refract(glm::vec3 &Wt, const glm::vec3 &Wi, const glm::vec3 &N, float eta)
 	{
-		return F0 + (glm::vec3(1.0f) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
+		float cosTi = glm::dot(N, Wi);
+		float sin2Ti = glm::max(0.0f, 1.0f - cosTi * cosTi);
+		float sin2Tt = sin2Ti / (eta * eta);
+
+		if (sin2Tt >= 1.0f) return false;
+
+		float dirN = cosTi > 0.0f ? 1.0f : -1.0f;
+		float cosTt = glm::sqrt(1.0f - sin2Tt) * dirN;
+		Wt = glm::normalize(-Wi / eta + N * dirN * (cosTi / eta - cosTt));
+		return true;
 	}
 
-	inline static glm::vec3 schlickF(float cosTheta, const glm::vec3 &F0, float roughness)
+	inline static float fresnelDielectric(float cosTi, float eta)
 	{
-		return F0 + (glm::max(glm::vec3(1.0f - roughness), F0) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
+		cosTi = glm::clamp(cosTi, -1.0f, 1.0f);
+		if (cosTi < 0.0f)
+		{
+			eta = 1.0f / eta;
+			cosTi = -cosTi;
+		}
+
+		float sinTi = glm::sqrt(1.0f - cosTi * cosTi);
+		float sinTt = sinTi / eta;
+		if (sinTt >= 1.0f) return 1.0f;
+
+		float cosTt = glm::sqrt(1.0f - sinTt * sinTt);
+
+		float rPa = (cosTi - eta * cosTt) / (cosTi + eta * cosTt);
+		float rPe = (eta * cosTi - cosTt) / (eta * cosTi + cosTt);
+		return (rPa * rPa + rPe * rPe) * 0.5f;
 	}
 
 protected:

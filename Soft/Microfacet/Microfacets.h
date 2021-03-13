@@ -18,19 +18,13 @@ public:
 
 	float d(const glm::vec3 &N, const glm::vec3 &M)
 	{
-		return ggx(glm::dot(N, M));
+		return Microfacet::ggx(glm::dot(N, M), alpha);
 	}
 
 	float pdf(const glm::vec3 &N, const glm::vec3 &M, const glm::vec3 &Wo)
 	{
-		float cosTheta = glm::dot(N, M);
-		if (!visible) return ggx(cosTheta);
-		return ggx(cosTheta) * schlickG(glm::dot(N, Wo)) * Math::absDot(M, Wo) / Math::absDot(N, Wo);
-	}
-
-	float pdf(float cosTheta, float NoWo, float MoWo)
-	{
-		return schlickG(NoWo) * ggx(cosTheta) * MoWo / NoWo;
+		if (!visible) return d(N, M);
+		return d(N, M) * Microfacet::schlickG(glm::dot(N, Wo), alpha) * Math::absDot(M, Wo) / Math::absDot(N, Wo);
 	}
 
 	glm::vec3 sampleWm(const glm::vec3 &N, const glm::vec3 &Wo)
@@ -56,8 +50,7 @@ public:
 		}
 		else
 		{
-			RandomGenerator rg;
-			glm::vec2 xi = Transform::toConcentricDisk(glm::vec2(rg.get(), rg.get()));
+			glm::vec2 xi = Transform::toConcentricDisk(Math::randBox());
 
 			glm::vec3 H = glm::vec3(xi.x, xi.y, glm::sqrt(glm::max(0.0f, 1.0f - xi.x * xi.x - xi.y * xi.y)));
 			H = glm::normalize(H * glm::vec3(alpha, alpha, 1.0f));
@@ -65,50 +58,46 @@ public:
 		}
 	}
 
-	float schlickG(float cosTheta)
-	{
-		float k = alpha * 0.5f;
-		return cosTheta / (cosTheta * (1.0f - k) + k);
-	}
-
 	float g(const glm::vec3 &N, const glm::vec3 &Wo, const glm::vec3 &Wi)
 	{
-		float NoWi = Math::absDot(N, Wo);
-		float NoWo = Math::absDot(N, Wi);
-
-		float g1 = schlickG(NoWo);
-		float g2 = schlickG(NoWi);
-
-		return g1 * g2;
-	}
-
-	float ggx(float cosTheta)
-	{
-		if (cosTheta < 1e-6f) return 0.0f;
-
-		float a2 = alpha * alpha;
-		float nom = a2;
-		float denom = cosTheta * cosTheta * (a2 - 1.0f) + 1.0f;
-		denom = denom * denom * Math::Pi;
-
-		return nom / denom;
-	}
-
-	float ggx(float cosTheta, float sinPhi, const glm::vec2 &alph)
-	{
-		if (cosTheta < 1e-6f) return 0.0f;
-
-		float sinPhi2 = sinPhi * sinPhi;
-
-		float p = (1.0f - sinPhi2) / (alph.x * alph.x) + sinPhi2 / (alph.y * alph.y);
-		float k = 1.0f + (p - 1.0f) * (1.0f - cosTheta * cosTheta);
-		k = k * k * Math::Pi * alph.x * alph.y;
-
-		return 1.0f / k;
+		return Microfacet::smithG(N, Wo, Wi, alpha);
 	}
 
 private:
 	bool visible;
+	float alpha;
+};
+
+class GTR1Distrib:
+	public MicrofacetDistrib
+{
+public:
+	GTR1Distrib(float roughness): alpha(roughness * roughness) {}
+
+	float d(const glm::vec3 &N, const glm::vec3 &M)
+	{
+		return Microfacet::gtr1(Math::absDot(N, M), alpha);
+	}
+
+	float pdf(const glm::vec3 &N, const glm::vec3 &M, const glm::vec3 &Wo)
+	{
+		return d(N, M) * Math::absDot(N, M);
+	}
+
+	glm::vec3 sampleWm(const glm::vec3 &N, const glm::vec3 &Wo)
+	{
+		auto u = Math::randBox();
+		float cosTheta = glm::sqrt(glm::max(0.0f, (1.0f - glm::pow(alpha, 1.0f - u.x)) / (1.0f - alpha)));
+		float sinTheta = glm::sqrt(glm::max(0.0f, 1.0f - cosTheta * cosTheta));
+		float phi = 2.0f * u.y * Math::Pi;
+
+		glm::vec3 M = glm::normalize(glm::vec3(glm::cos(phi) * sinTheta, glm::sin(phi) * sinTheta, cosTheta));
+		if (!Math::sameHemisphere(N, Wo, M)) M = -M;
+
+		return glm::normalize(Transform::normalToWorld(N, M));
+	}
+
+private:
 	float alpha;
 };
 
