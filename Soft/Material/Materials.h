@@ -235,10 +235,8 @@ public:
 			}
 			else
 			{
-				float eta = (glm::dot(N, Wo) > 0.0f) ? ior : 1.0f / ior;
-
 				glm::vec3 Wi;
-				bool refr = refract(Wi, Wo, N, eta);
+				bool refr = refract(Wi, Wo, N, ior);
 				if (!refr) return INVALID_BSDF_SAMPLE;
 
 				return SampleWithBsdf(Sample(Wi, 1.0f, BXDF::SpecTrans), tint);
@@ -254,7 +252,6 @@ public:
 			if (uniformFloat() < refl)
 			{
 				auto Wi = -glm::reflect(Wo, H);
-				//if (glm::dot(H, Wo) <= 0.0f) return INVALID_BSDF_SAMPLE;
 				if (!Math::sameHemisphere(N, Wo, Wi)) return INVALID_BSDF_SAMPLE;
 
 				float p = ggxDistrib.pdf(N, H, Wo) / (4.0f * Math::absDot(H, Wo));
@@ -273,7 +270,7 @@ public:
 				float eta = (glm::dot(H, Wo) > 0.0f) ? ior : 1.0f / ior;
 
 				glm::vec3 Wi;
-				bool refr = refract(Wi, Wo, H, eta);
+				bool refr = refract(Wi, Wo, H, ior);
 				if (!refr) return INVALID_BSDF_SAMPLE;
 				if (Math::sameHemisphere(N, Wo, Wi)) return INVALID_BSDF_SAMPLE;
 				if (Math::absDot(N, Wi) < 1e-10f) return INVALID_BSDF_SAMPLE;
@@ -399,7 +396,7 @@ public:
 		auto sample = sampleMaterial->getSample(N, Wo);
 		glm::vec3 Wi = sample.dir;
 
-		return Sample(glm::vec4(Wi, this->pdf(Wo, Wi, N)), 0);
+		return Sample(glm::vec4(Wi, this->pdf(Wo, Wi, N)), sample.type.type());
 	}
 
 private:

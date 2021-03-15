@@ -62,14 +62,15 @@ protected:
 	inline static bool refract(glm::vec3 &Wt, const glm::vec3 &Wi, const glm::vec3 &N, float eta)
 	{
 		float cosTi = glm::dot(N, Wi);
+		if (cosTi < 0) eta = 1.0f / eta;
 		float sin2Ti = glm::max(0.0f, 1.0f - cosTi * cosTi);
 		float sin2Tt = sin2Ti / (eta * eta);
 
 		if (sin2Tt >= 1.0f) return false;
 
-		float dirN = cosTi > 0.0f ? 1.0f : -1.0f;
-		float cosTt = glm::sqrt(1.0f - sin2Tt) * dirN;
-		Wt = glm::normalize(-Wi / eta + N * dirN * (cosTi / eta - cosTt));
+		float cosTt = glm::sqrt(1.0f - sin2Tt);
+		if (cosTi < 0) cosTt = -cosTt;
+		Wt = glm::normalize(-Wi / eta + N * (cosTi / eta - cosTt));
 		return true;
 	}
 
