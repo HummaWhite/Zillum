@@ -3,10 +3,8 @@
 
 #include <memory>
 
-#include "../Bound/AABB.h"
-#include "../Hittable/HittableShapes.h"
-#include "../Light/Lights.h"
-#include "../Shape/Shapes.h"
+#include "AABB.h"
+#include "../Hittable/Shapes.h"
 
 class BVHnode
 {

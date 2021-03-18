@@ -41,16 +41,14 @@ struct AABB
 		glm::vec3 o = ray.ori;
 		glm::vec3 d = ray.dir;
 
-		float dxInv = 1.0f / d.x;
-		float dyInv = 1.0f / d.y;
-		float dzInv = 1.0f / d.z;
+		glm::vec3 dInv = glm::vec3(1.0f) / d;
 
 		if (glm::abs(d.x) > 1.0f - eps)
 		{
 			if (o.y > pMin.y && o.y < pMax.y && o.z > pMin.z && o.z < pMax.z)
 			{
-				tMin = (pMin.x - o.x) * dxInv;
-				tMax = (pMax.x - o.x) * dxInv;
+				tMin = (pMin.x - o.x) * dInv.x;
+				tMax = (pMax.x - o.x) * dInv.x;
 				if (tMin > tMax) std::swap(tMin, tMax);
 				return tMax >= 0.0f && tMax >= tMin;
 			}
@@ -61,8 +59,8 @@ struct AABB
 		{
 			if (o.x > pMin.x && o.x < pMax.x && o.z > pMin.z && o.z < pMax.z)
 			{
-				tMin = (pMin.y - o.y) * dyInv;
-				tMax = (pMax.y - o.y) * dyInv;
+				tMin = (pMin.y - o.y) * dInv.y;
+				tMax = (pMax.y - o.y) * dInv.y;
 				if (tMin > tMax) std::swap(tMin, tMax);
 				return tMax >= 0.0f && tMax >= tMin;
 			}
@@ -73,64 +71,61 @@ struct AABB
 		{
 			if (o.x > pMin.x && o.x < pMax.x && o.y > pMin.y && o.y < pMax.y)
 			{
-				tMin = (pMin.z - o.z) * dzInv;
-				tMax = (pMax.z - o.z) * dzInv;
+				tMin = (pMin.z - o.z) * dInv.z;
+				tMax = (pMax.z - o.z) * dInv.z;
 				if (tMin > tMax) std::swap(tMin, tMax);
 				return tMax >= 0.0f && tMax >= tMin;
 			}
 			else return false;
 		}
 
-		float txMin = (pMin.x - o.x) * dxInv, txMax = (pMax.x - o.x) * dxInv;
-		float tyMin = (pMin.y - o.y) * dyInv, tyMax = (pMax.y - o.y) * dyInv;
-		float tzMin = (pMin.z - o.z) * dzInv, tzMax = (pMax.z - o.z) * dzInv;
+		glm::vec3 vtMin = (pMin - o) * dInv;
+		glm::vec3 vtMax = (pMax - o) * dInv;
 
-		if (txMin > txMax) std::swap(txMin, txMax);
-		if (tyMin > tyMax) std::swap(tyMin, tyMax);
-		if (tzMin > tzMax) std::swap(tzMin, tzMax);
+		if (vtMin.x > vtMax.x) std::swap(vtMin.x, vtMax.x);
+		if (vtMin.y > vtMax.y) std::swap(vtMin.y, vtMax.y);
+		if (vtMin.z > vtMax.z) std::swap(vtMin.z, vtMax.z);
 
-		float dtx = txMax - txMin;
-		float dty = tyMax - tyMin;
-		float dtz = tzMax - tzMin;
+		glm::vec3 dt = vtMax - vtMin;
 
-		float tyz = tzMax - tyMin;
-		float tzx = txMax - tzMin;
-		float txy = tyMax - txMin;
+		float tyz = vtMax.z - vtMin.y;
+		float tzx = vtMax.x - vtMin.z;
+		float txy = vtMax.y - vtMin.x;
 
 		if (glm::abs(d.x) < eps)
 		{
-			if (dty + dtz > tyz)
+			if (dt.y + dt.z > tyz)
 			{
-				tMin = std::max(tyMin, tzMin);
-				tMax = std::min(tyMax, tzMax);
+				tMin = std::max(vtMin.y, vtMin.z);
+				tMax = std::min(vtMax.y, vtMax.z);
 				return tMax >= 0.0f && tMax >= tMin;
 			}
 		}
 
 		if (glm::abs(d.y) < eps)
 		{
-			if (dtz + dtx > tzx)
+			if (dt.z + dt.x > tzx)
 			{
-				tMin = std::max(tzMin, txMin);
-				tMax = std::min(tzMax, txMax);
+				tMin = std::max(vtMin.z, vtMin.x);
+				tMax = std::min(vtMax.z, vtMax.x);
 				return tMax >= 0.0f && tMax >= tMin;
 			}
 		}
 
 		if (glm::abs(d.z) < eps)
 		{
-			if (dtx + dty > txy)
+			if (dt.x + dt.y > txy)
 			{
-				tMin = std::max(txMin, tyMin);
-				tMax = std::min(txMax, tyMax);
+				tMin = std::max(vtMin.x, vtMin.y);
+				tMax = std::min(vtMax.x, vtMax.y);
 				return tMax >= 0.0f && tMax >= tMin;
 			}
 		}
 
-		if (dty + dtz > tyz && dtz + dtx > tzx && dtx + dty > txy)
+		if (dt.y + dt.z > tyz && dt.z + dt.x > tzx && dt.x + dt.y > txy)
 		{
-			tMin = std::max(std::max(txMin, tyMin), tzMin);
-			tMax = std::min(std::min(txMax, tyMax), tzMax);
+			tMin = std::max(std::max(vtMin.x, vtMin.y), vtMin.z);
+			tMax = std::min(std::min(vtMax.x, vtMax.y), vtMax.z);
 			return tMax >= 0.0f && tMax >= tMin;
 		}
 

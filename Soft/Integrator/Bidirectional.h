@@ -6,50 +6,27 @@
 #include "Integrator.h"
 
 class BidirectionalIntegrator:
-	public Integrator
+	public PixelIndependentIntegrator
 {
 public:
 	BidirectionalIntegrator(int width, int height, int maxSpp):
-		Integrator(width, height, maxSpp) {}
+		PixelIndependentIntegrator(width, height, maxSpp) {}
 
-	inline void render()
+	glm::vec3 tracePixel(Ray ray)
 	{
-		if (modified)
+		glm::vec3 radiance(0.0f);
+		auto scHitInfo = scene->closestHit(ray);
+
+		if(scHitInfo.type == SceneHitInfo::LIGHT) return scHitInfo.light->getRadiance();
+		else if (scHitInfo.type == SceneHitInfo::SHAPE)
 		{
-			resultBuffer.fill(glm::vec3(0.0f));
-			curSpp = 0;
-			modified = false;
+			glm::vec3 hitPoint = ray.get(scHitInfo.dist);
+			SurfaceInfo sInfo = scHitInfo.shape->surfaceInfo(hitPoint);
+			ray.ori = hitPoint;
+			auto lightNodes = genLightNodes();
+			return trace(ray, sInfo, eyeDepth, lightNodes);
 		}
-		if (lowDiscrepSeries && curSpp >= maxSpp) return;
-
-		/*
-		auto lightNodes = genLightNodes();
-		for (auto &i : lightNodes)
-		{
-			Math::printVec3(i.ray.ori, "Ro");
-			Math::printVec3(i.ray.dir, "Rd");
-			Math::printVec3(i.sInfo.norm, "N");
-			Math::printVec3(i.Li, "Li");
-			std::cout << "\n";
-		}
-		*/
-
-		std::thread threads[maxThreads];
-		for (int i = 0; i < maxThreads; i++)
-		{
-			int start = (width / maxThreads) * i;
-			int end = std::min(width, (width / maxThreads) * (i + 1));
-			if (i == maxThreads - 1) end = width;
-
-			threads[i] = std::thread(doTracing, this, start, end);
-		}
-		for (auto &t : threads) t.join();
-
-		curSpp++;
-		std::cout << "\r" << std::setw(4) << curSpp << "/" << maxSpp << " spp  ";
-
-		float perc = (float)curSpp / (float)maxSpp * 100.0f;
-		std::cout << "  " << std::fixed << std::setprecision(2) << perc << "%";
+		else return scene->environment->getRadiance(ray.dir);
 	}
 
 private:
@@ -79,7 +56,7 @@ private:
 
 		glm::vec3 nextP = newRay.get(scHitInfo.dist);
 		SurfaceInteraction si = { Wo, Wi, N };
-		glm::vec3 Lo = sInfo.material->outRadiance(si, Li);
+		glm::vec3 Lo = sInfo.material->bsdf(si) * Li;
 		newRay.ori = nextP;
 		auto nextSInfo = scHitInfo.shape->surfaceInfo(nextP);
 
@@ -109,51 +86,6 @@ private:
 		return ret;
 	}
 
-	void doTracing(int start, int end)
-	{
-		for (int x = start; x < end; x++)
-		{
-			for (int y = 0; y < height; y++)
-			{
-				float sx = 2.0f * (float)x / width - 1.0f;
-				float sy = 1.0f - 2.0f * (float)y / height;
-
-				float sx1 = 2.0f * (float)(x + 1) / width - 1.0f;
-				float sy1 = 1.0f - 2.0f * (float)(y + 1) / height;
-
-				RandomGenerator rg;
-				glm::vec2 sample = lowDiscrepSeries ? Math::hammersley(curSpp, maxSpp) : glm::vec2(rg.get(0.0f, 1.0f), rg.get(0.0f, 1.0f));
-				float sampleX = Math::lerp(sx, sx1, sample.x);
-				float sampleY = Math::lerp(sy, sy1, sample.y);
-				Ray ray = getRay(sampleX, sampleY);
-
-				glm::vec3 radiance(0.0f);
-				auto scHitInfo = scene->closestHit(ray);
-
-				if(scHitInfo.type == SceneHitInfo::LIGHT) radiance = scHitInfo.light->getRadiance();
-				else if (scHitInfo.type == SceneHitInfo::SHAPE)
-				{
-					glm::vec3 hitPoint = ray.get(scHitInfo.dist);
-					SurfaceInfo sInfo = scHitInfo.shape->surfaceInfo(hitPoint);
-					ray.ori = hitPoint;
-
-					auto lightNodes = genLightNodes();
-					radiance = trace(ray, sInfo, eyeDepth, lightNodes);
-				}
-				else radiance = scene->environment->getRadiance(ray.dir);
-
-				if (Math::isNan(radiance.x) || Math::isNan(radiance.y) || Math::isNan(radiance.z))
-				{
-					std::cout << "Ooops! nan occurred!\n";
-					radiance = glm::vec3(0.0f);
-				}
-
-				radiance = glm::clamp(radiance, glm::vec3(0.0f), glm::vec3(1e8f));
-				resultBuffer(x, y) = resultBuffer(x, y) * ((float)(curSpp) / (float)(curSpp + 1)) + radiance / (float)(curSpp + 1);
-			}
-		}
-	}
-
 	glm::vec3 trace(Ray ray, SurfaceInfo surfaceInfo, int depth, const std::list<LightNode> &lightNodes)
 	{
 		if (depth == 0) return returnEnvColorAtEnd ? scene->environment->getRadiance(ray.dir) : glm::vec3(0.0f);
@@ -181,7 +113,7 @@ private:
 				glm::vec3 lightN = lt->surfaceNormal(randomPoint);
 				glm::vec3 lightRad = lt->getRadiance(-Wi, lightN, lightDist);
 				SurfaceInteraction si = { Wo, Wi, N };
-				glm::vec3 outRad = surfaceInfo.material->outRadiance(si, lightRad);
+				glm::vec3 outRad = surfaceInfo.material->bsdf(si) * lightRad;
 
 				directRadiance += outRad;
 			}
@@ -198,7 +130,7 @@ private:
 			if (pdf < 1e-8f) continue;
 
 			SurfaceInteraction siLight = { -Wi, -node.ray.dir, node.sInfo.norm };
-			glm::vec3 Lo = node.sInfo.material->outRadiance(siLight, node.Li);
+			glm::vec3 Lo = node.sInfo.material->bsdf(siLight) * node.Li;
 
 			Ray linkRay(hitPoint + Wi * 1e-4f, Wi);
 			float linkLength = glm::length(linkRay.ori - node.ray.ori);
@@ -207,7 +139,7 @@ private:
 			if (scHit.type != SceneHitInfo::NONE && scHit.dist < linkLength) continue;
 
 			SurfaceInteraction siEye = { Wo, Wi, N };
-			glm::vec3 outRad = surfaceInfo.material->outRadiance(siEye, Lo);
+			glm::vec3 outRad = surfaceInfo.material->bsdf(siEye) * Lo;
 			directRadiance += outRad * pdfEye;
 		}
 
@@ -236,7 +168,7 @@ private:
 		else nextRadiance = scene->environment->getRadiance(Wi);
 
 		SurfaceInteraction si = { Wo, Wi, N };
-		glm::vec3 indirectRadiance = surfaceInfo.material->outRadiance(si, nextRadiance) / pdf;
+		glm::vec3 indirectRadiance = surfaceInfo.material->bsdf(si) * nextRadiance / pdf;
 		/*
 		if (indirectRadiance.x > pdf * 1000.0f)
 		{
@@ -256,7 +188,6 @@ private:
 	}
 
 public:
-	bool lowDiscrepSeries = false;
 	int eyeDepth = 5;
 	int samplesPerLight = 2;
 	int lightDepth = 10;

@@ -8,9 +8,8 @@
 #include "../Color.h"
 #include "../Camera.h"
 #include "../Texture.h"
-#include "../Hittable/HittableShapes.h"
-#include "../Shape/Shapes.h"
-#include "../Light/Lights.h"
+#include "../Hittable/Object.h"
+#include "../Hittable/Light.h"
 #include "../Material/Materials.h"
 #include "../Math/Math.h"
 #include "../Environment/Environments.h"
@@ -82,8 +81,7 @@ private:
 				float sx = 2.0f * (x + 0.5f) * invW - 1.0f;
 				float sy = 1.0f - 2.0f * (y + 0.5f) * invH;
 
-				RandomGenerator rg;
-				glm::vec2 uniSample = lowDiscrepSeries ? Math::hammersley(curSpp, maxSpp) : glm::vec2(rg.get(), rg.get());
+				glm::vec2 uniSample = lowDiscrepSeries ? Math::hammersley(curSpp, maxSpp) : glm::vec2(uniformFloat(), uniformFloat());
 				glm::vec2 sp = uniSample - 0.5f;
 
 				Ray ray = scene->camera->getRay(sx + sp.x * invW, sy + sp.y * invH);
@@ -91,7 +89,7 @@ private:
 
 				if (Math::isNan(result.x) || Math::isNan(result.y) || Math::isNan(result.z))
 				{
-					std::cout << "Ooops! nan occurred!\n";
+					std::cout << "[Computational Error] NAN value occurred\n";
 					result = glm::vec3(0.0f);
 				}
 

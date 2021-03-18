@@ -1,0 +1,74 @@
+#ifndef LIGHT_H
+#define LIGHT_H
+
+#include <iostream>
+#include <memory>
+
+#include "Shapes.h"
+
+class Light:
+	public Hittable
+{
+public:
+	Light(std::shared_ptr<Hittable> shape, const glm::vec3 &power, bool delta):
+		shape(shape), power(power) {}
+
+	HittableType type() { return HittableType::Light; }
+
+	HitInfo closestHit(const Ray &ray)
+	{
+		return shape->closestHit(ray);
+	}
+
+	glm::vec3 getRandomPoint()
+	{
+		return shape->getRandomPoint();
+	}
+
+	inline glm::vec3 surfaceNormal(const glm::vec3 &p)
+	{
+		return shape->surfaceNormal(p);
+	}
+
+	inline float surfaceArea() const
+	{
+		return shape->surfaceArea();
+	}
+
+	inline glm::vec3 getPower() const { return power; }
+
+	inline glm::vec3 getRadiance() const
+	{
+		return power;
+	}
+
+	inline float pdfLi(const glm::vec3 &x, const glm::vec3 &y)
+	{
+		auto N = surfaceNormal(y);
+		auto Wi = glm::normalize(y - x);
+		float cosTheta = Math::satDot(N, -Wi);
+		if (cosTheta < 1e-10f)
+			return 0.0f;
+
+		return Math::distSquare(x, y) / (surfaceArea() * cosTheta);
+	}
+
+	inline Ray getRandomRay()
+	{
+		glm::vec3 ori = getRandomPoint();
+		glm::vec3 N = surfaceNormal(ori);
+		glm::vec3 dir = Transform::normalToWorld(N, Math::randHemisphere());
+		return { ori + dir * 1e-4f, dir };
+	}
+
+	inline AABB bound() const
+	{
+		return shape->bound();
+	}
+
+protected:
+	std::shared_ptr<Hittable> shape;
+	glm::vec3 power;
+};
+
+#endif

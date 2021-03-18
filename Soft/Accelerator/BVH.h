@@ -9,20 +9,12 @@
 
 enum class BVHSplitMethod { SAH, Middle, EqualCounts };
 
-template<typename H>
 class BVH
 {
 public:
-	struct DepthInfo
-	{
-		int maxDepth = 0;
-		float avgDepth = 0.0f;
-	};
-
-public:
 	BVH() {}
 
-	BVH(const std::vector<std::shared_ptr<H>> &_hittables, BVHSplitMethod method = BVHSplitMethod::SAH):
+	BVH(const std::vector<std::shared_ptr<Hittable>> &_hittables, BVHSplitMethod method = BVHSplitMethod::SAH):
 		hittables(_hittables), splitMethod(method)
 	{
 		if (hittables.size() == 0) return;
@@ -38,7 +30,7 @@ public:
 
 		buildRecursive(root, hittableInfo, bound, 0, hittableInfo.size() - 1);
 
-		std::vector<std::shared_ptr<H>> orderedPrims(hittableInfo.size());
+		std::vector<std::shared_ptr<Hittable>> orderedPrims(hittableInfo.size());
 		for (int i = 0; i < hittableInfo.size(); i++)
 		{
 			orderedPrims[i] = hittables[hittableInfo[i].index];
@@ -78,11 +70,11 @@ public:
 		std::cout << "[BVH] made compact\n";
 	}
 
-	inline std::shared_ptr<H> closestHit(const Ray &ray, float &dist, bool quickCheck)
+	inline std::shared_ptr<Hittable> closestHit(const Ray &ray, float &dist, bool quickCheck)
 	{
 		if (hittables.size() == 0) return nullptr;
 		if (!quickCheck) dist = 1e8f;
-		std::shared_ptr<H> hit;
+		std::shared_ptr<Hittable> hit;
 		std::stack<int> st;
 
 		st.push(0);
@@ -124,7 +116,7 @@ public:
 
 	inline int size() const { return treeSize; }
 
-	inline DepthInfo dfsDetailed()
+	std::pair<int, float> dfsDetailed()
 	{
 		int sumDepth = 0;
 		int maxDepth = dfsDetailed(root, 1, sumDepth);
@@ -258,7 +250,7 @@ private:
 	
 private:
 	const int maxHittablesInNode = 1;
-	std::vector<std::shared_ptr<H>> hittables;
+	std::vector<std::shared_ptr<Hittable>> hittables;
 
 	BVHnode *root = nullptr;
 	int treeSize = 0;

@@ -9,7 +9,7 @@
 #include "../glm/gtc/matrix_transform.hpp"
 #include "../glm/gtc/type_ptr.hpp"
 
-#include "../Hit/SurfaceInteraction.h"
+#include "../Surface/SurfaceInteraction.h"
 #include "../Ray.h"
 #include "../BXDF/BXDF.h"
 #include "../Math/Transform.h"
