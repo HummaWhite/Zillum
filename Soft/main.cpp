@@ -33,10 +33,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 		return 0;
 	}
 
-	int width, height;
-	std::cout << "Input Window Size\n";
-	std::cin >> width >> height;
-	app.init(std::string(name), hInstance, width, height);
+	int width, height, spp;
+	std::cout << "Input [w] [h] [spp]\n";
+	std::cin >> width >> height >> spp;
+	app.init(std::string(name), hInstance, width, height, spp);
 
 	while (true)
 	{

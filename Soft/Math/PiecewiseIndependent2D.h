@@ -1,5 +1,4 @@
-#ifndef PIECEWISE_INDEPENDENT_2D_H
-#define PIECEWISE_INDEPENDENT_2D_H
+#pragma once
 
 #include "Piecewise1D.h"
 
@@ -10,20 +9,15 @@ public:
 
     PiecewiseIndependent2D(float *pdf, int width, int height)
     {
-        float sum = 0.0f;
         std::vector<float> colDistrib(height);
         for (int i = 0; i < height; i++)
         {
-            float sumRow = 0.0f;
-            for (int j = 0; j < width; j++) sumRow += pdf[i * width + j];
-
             std::vector<float> table(pdf + i * width, pdf + (i + 1) * width);
-            Piecewise1D rowDistrib(table, sumRow);
+            Piecewise1D rowDistrib(table);
             rowTables.push_back(rowDistrib);
-            colDistrib[i] = sumRow;
-            sum += sumRow;
+            colDistrib[i] = rowDistrib.sum();
         }
-        colTable = Piecewise1D(colDistrib, sum);
+        colTable = Piecewise1D(colDistrib);
     }
 
     std::pair<int, int> sample()
@@ -41,5 +35,3 @@ private:
     std::vector<Piecewise1D> rowTables;
     Piecewise1D colTable;
 };
-
-#endif

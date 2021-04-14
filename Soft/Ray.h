@@ -1,5 +1,4 @@
-#ifndef RAY_H
-#define RAY_H
+#pragma once
 
 #include <iostream>
 #include <cmath>
@@ -21,5 +20,3 @@ struct Ray
 	glm::vec3 ori;
 	glm::vec3 dir;
 };
-
-#endif

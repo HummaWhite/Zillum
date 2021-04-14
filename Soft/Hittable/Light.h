@@ -1,10 +1,16 @@
-#ifndef LIGHT_H
-#define LIGHT_H
+#pragma once
 
 #include <iostream>
 #include <memory>
 
 #include "Shapes.h"
+
+struct LightSample
+{
+	glm::vec3 Wi;
+	glm::vec3 weight;
+	float pdf;
+};
 
 class Light:
 	public Hittable
@@ -25,24 +31,40 @@ public:
 		return shape->getRandomPoint();
 	}
 
-	inline glm::vec3 surfaceNormal(const glm::vec3 &p)
+	glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
 		return shape->surfaceNormal(p);
 	}
 
-	inline float surfaceArea() const
+	float surfaceArea()
 	{
 		return shape->surfaceArea();
 	}
 
-	inline glm::vec3 getPower() const { return power; }
-
-	inline glm::vec3 getRadiance() const
+	glm::vec2 surfaceUV(const glm::vec3 &p)
 	{
-		return power;
+		return shape->surfaceUV(p);
 	}
 
-	inline float pdfLi(const glm::vec3 &x, const glm::vec3 &y)
+	void setTransform(std::shared_ptr<Transform> trans) override
+	{
+		transform = trans;
+		shape->setTransform(trans);
+	}
+
+	AABB bound()
+	{
+		return shape->bound();
+	}
+
+	glm::vec3 getPower(){ return power; }
+
+	glm::vec3 getRadiance(const glm::vec3 &y, const glm::vec3 &Wi)
+	{
+		return power / (2.0f * Math::Pi * surfaceArea());
+	}
+
+	float pdfLi(const glm::vec3 &x, const glm::vec3 &y)
 	{
 		auto N = surfaceNormal(y);
 		auto Wi = glm::normalize(y - x);
@@ -53,7 +75,7 @@ public:
 		return Math::distSquare(x, y) / (surfaceArea() * cosTheta);
 	}
 
-	inline Ray getRandomRay()
+	Ray getRandomRay()
 	{
 		glm::vec3 ori = getRandomPoint();
 		glm::vec3 N = surfaceNormal(ori);
@@ -61,7 +83,7 @@ public:
 		return { ori + dir * 1e-4f, dir };
 	}
 
-	inline AABB bound() const
+	AABB bound() const
 	{
 		return shape->bound();
 	}
@@ -70,5 +92,3 @@ protected:
 	std::shared_ptr<Hittable> shape;
 	glm::vec3 power;
 };
-
-#endif

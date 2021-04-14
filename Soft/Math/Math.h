@@ -1,5 +1,4 @@
-#ifndef MATH_H
-#define MATH_H
+#pragma once
 
 #include <iostream>
 #include <iomanip>
@@ -20,6 +19,8 @@ namespace Math
 
 	const float Pi = glm::pi<float>();
 	const float PiInv = 1.0f / glm::pi<float>();
+
+	const glm::vec3 BRIGHTNESS = glm::vec3(0.299f, 0.587f, 0.114f);
 
 	template<typename T>
 	T lerp(T x, T y, float a)
@@ -101,17 +102,20 @@ namespace Math
 		return glm::abs(glm::dot(a, b));
 	}
 
+	inline bool coin()
+	{
+		return uniformFloat() < 0.5f;
+	}
+
 	inline glm::vec2 randBox()
 	{
-		RandomGenerator rg;
-		return glm::vec2(rg.get(), rg.get());
+		return glm::vec2(uniformFloat(), uniformFloat());
 	}
 
 	inline glm::vec3 randHemisphere()
 	{
-		RandomGenerator rg;
-		float phi = rg.get() * Pi * 2.0f;
-		float theta = rg.get() * Pi * 0.5f;
+		float phi = uniformFloat(0.0f, 2.0f * Pi);
+		float theta = uniformFloat(0.0f, 0.5f * Pi);
 
 		return glm::vec3(glm::cos(phi) * glm::sin(theta), glm::sin(phi) * glm::sin(theta), glm::cos(theta));
 	}
@@ -148,6 +152,32 @@ namespace Math
 		float g = qpow(ng * pg, pow);
 		return f / (f + g);
 	}
-}
 
-#endif
+	inline float biHeuristic(float pf, float pg)
+	{
+		return heuristic(1, pf, 1, pg, 2);
+	}
+
+	template<typename T>
+	T square(T v)
+	{
+		return v * v;
+	}
+
+	template <typename T>
+	float lengthSquare(const T &v)
+	{
+		return square(glm::dot(v, v));
+	}
+
+	template<typename T>
+	float distSquare(const T &x, const T &y)
+	{
+		return lengthSquare(x - y);
+	}
+
+	float rgbBrightness(const glm::vec3 &c)
+	{
+		return glm::dot(BRIGHTNESS, c);
+	}
+}

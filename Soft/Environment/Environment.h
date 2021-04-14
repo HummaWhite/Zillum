@@ -1,5 +1,4 @@
-#ifndef ENVIRONMENT_H
-#define ENVIRONMENT_H
+#pragma once
 
 #include <iostream>
 
@@ -25,5 +24,3 @@ public:
 		return Math::PiInv * 0.25f;
 	}
 };
-
-#endif

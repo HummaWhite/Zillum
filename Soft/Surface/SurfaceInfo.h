@@ -1,5 +1,4 @@
-#ifndef SURFACE_INFO_H
-#define SURFACE_INFO_H
+#pragma once
 
 #include <iostream>
 #include <memory>
@@ -19,5 +18,3 @@ struct SurfaceInfo
 	glm::vec3 norm;
 	std::shared_ptr<Material> material;
 };
-
-#endif

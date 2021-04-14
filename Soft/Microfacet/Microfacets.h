@@ -1,5 +1,4 @@
-#ifndef MICROFACETS_H
-#define MICROFACETS_H
+#pragma once
 
 #include "Microfacet.h"
 
@@ -100,5 +99,3 @@ public:
 private:
 	float alpha;
 };
-
-#endif

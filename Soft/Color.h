@@ -1,5 +1,4 @@
-#ifndef COLOR_H
-#define COLOR_H
+#pragma once
 
 #include <Windows.h>
 #include <iostream>
@@ -27,11 +26,6 @@ struct RGB24
 		*this = RGB24(c.x, c.y, c.z);
 	}
 
-	RGB24 toBGR24()
-	{
-		return RGB24(b, g, r);
-	}
-
 	glm::vec3 toVec3()
 	{
 		return glm::vec3(r, g, b) / 255.0f;
@@ -41,6 +35,12 @@ struct RGB24
 	{
 		return glm::vec4(glm::vec3(r, g, b) / 255.0f, 1.0f);
 	}
+
+	static RGB24 swapRB(RGB24 c)
+	{
+		std::swap(c.r, c.b);
+		return c;
+	}
 	
 	BYTE r, g, b;
 };
@@ -49,5 +49,3 @@ struct RGBA32
 {
 	BYTE r, g, b, a;
 };
-
-#endif

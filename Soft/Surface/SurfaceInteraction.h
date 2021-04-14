@@ -1,5 +1,4 @@
-#ifndef SURFACE_INTERACTION_H
-#define SURFACE_INTERACTION_H
+#pragma once
 
 #include "../glm/glm.hpp"
 #include "../glm/gtc/matrix_transform.hpp"
@@ -15,5 +14,3 @@ struct SurfaceInteraction
 	glm::vec3 N;
 	glm::vec2 uv;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef BXDF_H
-#define BXDF_H
+#pragma once
 
 #include "../glm/glm.hpp"
 #include "../glm/gtc/matrix_transform.hpp"
@@ -33,10 +32,13 @@ public:
 		return (mType & SpecRefl) || (mType & SpecTrans);
 	}
 
+	static bool isDelta(int type)
+	{
+		return (type & SpecRefl) || (type & SpecTrans);
+	}
+
 	int type() const { return mType; }
 
 protected:
 	int mType;
 };
-
-#endif

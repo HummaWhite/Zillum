@@ -1,44 +1,30 @@
-#ifndef RANDOM_GENERATOR_H
-#define RANDOM_GENERATOR_H
+#pragma once
 
 #include <iostream>
-#include <ctime>  
+#include <random>
+#include <ctime>
 
-class RandomGenerator
+typedef std::uniform_real_distribution<double> UniformDouble;
+typedef std::uniform_real_distribution<float> UniformFloat;
+typedef std::uniform_int_distribution<uint32_t> UniformUint;
+typedef std::uniform_int_distribution<int> UniformInt;
+typedef std::uniform_int_distribution<uint16_t> UniformUint16;
+typedef std::uniform_int_distribution<int16_t> UniformInt16;
+
+static std::default_random_engine randomEngine(time(0));
+
+float uniformFloat()
 {
-public:
-	inline float get()  
-	{  
-		seed = (a * seed + c) & 0xFFFFFFFFFFFFLL;  
-		unsigned int x = seed >> 16;  
-		return  ((float)x / (float)m);  
-	}
+	return UniformFloat(0.0f, 1.0f)(randomEngine);
+}
 
-	inline float get(float _min, float _max)
-	{
-		return _min + get() * (_max - _min);
-	}
+float uniformFloat(float tMin, float tMax)
+{
+	return UniformFloat(tMin, tMax)(randomEngine);
+}
 
-	inline int get(int _min, int _max)
-	{
-		return _min + (int)(get() * (_max - _min));
-	}
-
-	void srand(unsigned int i)  
-	{  
-		seed  = (((long long int)i) << 16) | rand();  
-	}
-
-private:
-	const static unsigned long long m;
-	const static unsigned long long c;
-	const static unsigned long long a;
-	static unsigned long long seed;
-};
-
-unsigned long long RandomGenerator::seed = 1;
-const unsigned long long RandomGenerator::m = 0x100000000LL;
-const unsigned long long RandomGenerator::c = 0xB16;
-const unsigned long long RandomGenerator::a = 0x5DEECE66DLL;
-
-#endif
+template<typename T>
+T uniformInt(T tMin, T tMax)
+{
+	return std::uniform_int_distribution<T>(tMin, tMax)(randomEngine);
+}

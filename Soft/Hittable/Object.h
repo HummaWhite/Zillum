@@ -1,10 +1,9 @@
-#ifndef OBJECT_H
-#define OBJECT_H
+#pragma once
 
 #include <iostream>
 #include <memory>
 
-#include "../Hit/SurfaceInfo.h"
+#include "../Surface/SurfaceInfo.h"
 #include "Shapes.h"
 #include "../Material/Material.h"
 
@@ -45,6 +44,12 @@ public:
 		return shape->surfaceUV(p);
 	}
 
+	void setTransform(std::shared_ptr<Transform> trans) override
+	{
+		transform = trans;
+		shape->setTransform(trans);
+	}
+
 	AABB bound()
 	{
 		return shape->bound();
@@ -54,5 +59,3 @@ protected:
 	std::shared_ptr<Hittable> shape;
 	std::shared_ptr<Material> material;
 };
-
-#endif

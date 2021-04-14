@@ -1,5 +1,4 @@
-#ifndef TONEMAPPING_H
-#define TONEMAPPING_H
+#pragma once
 
 #include <iostream>
 #include <cmath>
@@ -10,17 +9,17 @@
 
 namespace ToneMapping
 {
-	static inline glm::vec3 reinhard(const glm::vec3 &color)
+	inline glm::vec3 reinhard(const glm::vec3 &color)
 	{
 		return color / (color + glm::vec3(1.0f));
 	}
 
-	static inline glm::vec3 CE(const glm::vec3 &color)
+	inline glm::vec3 CE(const glm::vec3 &color)
 	{
 		return glm::vec3(1.0f) - glm::exp(-color);
 	}
 
-	static inline glm::vec3 filmic(const glm::vec3 &color)
+	inline glm::vec3 filmic(const glm::vec3 &color)
 	{
 		auto calc = [](const glm::vec3 &x)
 		{
@@ -32,10 +31,8 @@ namespace ToneMapping
 		return calc(color * 1.6f) / calc(glm::vec3(WHITE));
 	}
 
-	static inline glm::vec3 ACES(const glm::vec3 &color)
+	inline glm::vec3 ACES(const glm::vec3 &color)
 	{
 		return (color * (color * 2.51f + glm::vec3(0.03f))) / (color * (color * 2.43f + glm::vec3(0.59f)) + glm::vec3(0.14f));
 	}
 }
-
-#endif

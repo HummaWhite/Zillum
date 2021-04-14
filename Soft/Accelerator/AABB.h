@@ -1,5 +1,4 @@
-#ifndef AABB_H
-#define AABB_H
+#pragma once
 
 #include <iostream>
 
@@ -170,5 +169,3 @@ struct AABB
 	glm::vec3 pMin = glm::vec3(0.0f);
 	glm::vec3 pMax = glm::vec3(0.0f);
 };
-
-#endif

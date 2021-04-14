@@ -1,5 +1,4 @@
-#ifndef MICROFACET_H
-#define MICROFACET_H
+#pragma once
 
 #include "../Math/Math.h"
 
@@ -70,5 +69,3 @@ namespace Microfacet
 		return F0 + (glm::max(glm::vec3(1.0f - roughness), F0) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
 	}
 }
-
-#endif

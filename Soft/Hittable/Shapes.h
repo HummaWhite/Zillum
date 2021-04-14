@@ -65,7 +65,7 @@ public:
 
 	AABB bound()
 	{
-		return AABB(center, radius);
+		return transform->getTransformedBox(AABB(center, radius));
 	}
 
 private:
@@ -185,14 +185,14 @@ public:
 	glm::vec3 surfaceNormal(const glm::vec3 &p)
 	{
 		auto [va, vb, vc] = triangle.vertices();
-		glm::vec3 oriP = transform->getInversed(p);
+		glm::vec3 oriP = triangle.getTransform()->getInversed(p);
 
 		float areaInv = 1.0f / glm::length(glm::cross(vb - va, vc - va));
 		float la = glm::length(glm::cross(vb - oriP, vc - oriP)) * areaInv;
 		float lb = glm::length(glm::cross(vc - oriP, va - oriP)) * areaInv;
 		float lc = glm::length(glm::cross(va - oriP, vb - oriP)) * areaInv;
 
-		return glm::normalize(transform->getInversedNormal(na * la + nb * lb + nc * lc));
+		return glm::normalize(triangle.getTransform()->getInversedNormal(na * la + nb * lb + nc * lc));
 	}
 
 	float surfaceArea()
@@ -203,13 +203,19 @@ public:
 	glm::vec2 surfaceUV(const glm::vec3 &p)
 	{
 		auto [va, vb, vc] = triangle.vertices();
-		glm::vec3 oriP = transform->getInversed(p);
+		glm::vec3 oriP = triangle.getTransform()->getInversed(p);
 
 		float areaInv = 1.0f / glm::length(glm::cross(vb - va, vc - va));
 		float u = glm::length(glm::cross(vb - oriP, vc - oriP)) * areaInv;
 		float v = glm::length(glm::cross(vc - oriP, va - oriP)) * areaInv;
 
 		return glm::vec2(u, v);
+	}
+
+	void setTransform(std::shared_ptr<Transform> trans) override
+	{
+		transform = trans;
+		triangle.setTransform(trans);
 	}
 
 	AABB bound()
@@ -278,8 +284,8 @@ public:
 		HitInfo ha = Triangle(va, vb, vc).closestHit(inversedRay);
 		HitInfo hb = Triangle(vc, vb, vd).closestHit(inversedRay);
 
-		if (ha.hit) return ha;
-		if (hb.hit) return hb;
+		if (ha.first) return ha;
+		if (hb.first) return hb;
 
 		return { false, 0.0f };
 	}

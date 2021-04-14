@@ -1,9 +1,9 @@
-#ifndef BUFFER_H
-#define BUFFER_H
+#pragma once
 
 #include <Windows.h>
 #include <cstdlib>
 #include <algorithm>
+#include <memory>
 
 template<typename T>
 struct Buffer
@@ -80,5 +80,3 @@ struct Buffer
 	T *data = nullptr;
 	int count = 0;
 };
-
-#endif

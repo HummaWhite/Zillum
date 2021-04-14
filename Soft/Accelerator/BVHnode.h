@@ -1,5 +1,4 @@
-#ifndef BVH_NODE_H
-#define BVH_NODE_H
+#pragma once
 
 #include <memory>
 
@@ -34,5 +33,3 @@ struct BVHnodeCompact
 	AABB box;
 	int sizeIndex;
 };
-
-#endif

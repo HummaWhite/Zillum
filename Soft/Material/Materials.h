@@ -1,5 +1,4 @@
-#ifndef MATERIALS_H
-#define MATERIALS_H
+#pragma once
 
 #include <random>
 #include <ctime>
@@ -372,9 +371,6 @@ class MixedMaterial:
 	public Material
 {
 public:
-	enum { A = 0b01, B = 0b10 };
-
-public:
 	MixedMaterial(std::shared_ptr<Material> ma, std::shared_ptr<Material> mb, float mix):
 		ma(ma), mb(mb), mix(mix), Material(ma->bxdf().type() | mb->bxdf().type()) {}
 
@@ -403,5 +399,3 @@ private:
 	std::shared_ptr<Material> ma, mb;
 	float mix;
 };
-
-#endif

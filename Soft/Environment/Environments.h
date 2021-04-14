@@ -1,5 +1,4 @@
-#ifndef ENVIRONMENTS_H
-#define ENVIRONMENTS_H
+#pragma once
 
 #include "Environment.h"
 #include "../Texture.h"
@@ -25,9 +24,6 @@ class EnvSphereMapHDR:
 	public Environment
 {
 public:
-	const glm::vec3 BRIGHTNESS = glm::vec3(0.299f, 0.587f, 0.114f);
-
-public:
 	EnvSphereMapHDR(const char *filePath)
 	{
 		sphereMap.loadFloat(filePath);
@@ -39,7 +35,7 @@ public:
 		{
 			for (int i = 0; i < w; i++)
 			{
-				pdf[j * w + i] = glm::dot(sphereMap(i, j), BRIGHTNESS) * glm::sin((float)(j + 0.5f) / h * Math::Pi);
+				pdf[j * w + i] = Math::rgbBrightness(sphereMap(i, j)) * glm::sin((float)(j + 0.5f) / h * Math::Pi);
 			}
 		}
 
@@ -75,7 +71,7 @@ public:
 private:
 	float getPortion(const glm::vec3 &Wi)
 	{
-		return glm::dot(glm::vec3(sphereMap.getSpherical(Wi)), BRIGHTNESS) / distrib.sum();
+		return Math::rgbBrightness(glm::vec3(sphereMap.getSpherical(Wi))) / distrib.sum();
 	}
 
 private:
@@ -105,5 +101,3 @@ private:
 	glm::vec3 radiance;
 	int row, col;
 };
-
-#endif

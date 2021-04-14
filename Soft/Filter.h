@@ -1,5 +1,4 @@
-#ifndef FILTER_H
-#define FILTER_H
+#pragma once
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -20,5 +19,3 @@ namespace Filter
 		return glm::vec3(s, (1.0f - glm::abs(s.x)) * (1.0f - glm::abs(s.y)));
 	}
 }
-
-#endif

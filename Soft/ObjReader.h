@@ -1,5 +1,4 @@
-#ifndef OBJREADER_H
-#define OBJREADER_H
+#pragma once
 
 #include <iostream>
 #include <fstream>
@@ -65,8 +64,6 @@ namespace ObjReader
 					}
 				}
 
-				//std::cout << "##\n";
-
 				if (withTexCoord)
 				{
 					sscanf
@@ -120,5 +117,3 @@ namespace ObjReader
 		return data;
 	}
 };
-
-#endif

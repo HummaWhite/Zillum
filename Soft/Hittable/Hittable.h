@@ -8,9 +8,10 @@
 #include "../glm/gtc/type_ptr.hpp"
 
 #include "../Ray.h"
-#include "../Hit/HitInfo.h"
-#include "../Bound/AABB.h"
+#include "../Accelerator/AABB.h"
 #include "../Math/Transform.h"
+
+typedef std::pair<bool, float> HitInfo;
 
 enum class HittableType
 {
@@ -34,9 +35,9 @@ public:
 
 	virtual HittableType type() { return HittableType::Object; }
 
-	void setTransform(std::shared_ptr<Transform> trans) { transform = trans; }
+	virtual void setTransform(std::shared_ptr<Transform> trans) { transform = trans; }
 
-	void setTransform(const glm::mat4 &trans)
+	virtual void setTransform(const glm::mat4 &trans)
 	{
 		transform->set(trans);
 	}

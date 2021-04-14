@@ -1,5 +1,4 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+#pragma once
 
 #include <iostream>
 
@@ -184,5 +183,3 @@ private:
 	float zFar = 100.0f;
 	float aspect;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef FRAMEBUFFER_H
-#define FRAMEBUFFER_H
+#pragma once
 
 #include "Buffer.h"
 
@@ -42,5 +41,3 @@ struct FrameBuffer:
 	int width = 0;
 	int height = 0;
 };
-
-#endif

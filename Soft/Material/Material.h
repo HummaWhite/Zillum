@@ -1,5 +1,4 @@
-#ifndef MATERIAL_H
-#define MATERIAL_H
+#pragma once
 
 #include <iostream>
 #include <random>
@@ -97,5 +96,3 @@ protected:
 protected:
 	BXDF matBxdf;
 };
-
-#endif

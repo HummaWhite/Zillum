@@ -1,5 +1,4 @@
-#ifndef PIECEWISE_1D_H
-#define PIECEWISE_1D_H
+#pragma once
 
 #include "Math.h"
 
@@ -10,15 +9,17 @@ class Piecewise1D
 public:
     Piecewise1D() {}
 
-    Piecewise1D(const std::vector<float> &distrib, float sum = 1.0f):
-        sumDistrib(sum)
+    Piecewise1D(const std::vector<float> &distrib)
     {
         std::queue<Element> greater, lesser;
+
+        sumDistrib = 0.0f;
+        for (auto i : distrib) sumDistrib += i;
 
         for (int i = 0; i < distrib.size(); i++)
         {
             float scaledPdf = distrib[i] * distrib.size();
-            (scaledPdf >= sum ? greater : lesser).push(Element(i, scaledPdf));
+            (scaledPdf >= sumDistrib ? greater : lesser).push(Element(i, scaledPdf));
         }
 
         table.resize(distrib.size(), Element(-1, 0.0f));
@@ -32,8 +33,8 @@ public:
 
             table[l] = Element(g, pl);
 
-            pg += pl - sum;
-            (pg < sum ? lesser : greater).push(Element(g, pg));
+            pg += pl - sumDistrib;
+            (pg < sumDistrib ? lesser : greater).push(Element(g, pg));
         }
 
         while (!greater.empty())
@@ -70,5 +71,3 @@ private:
     std::vector<Element> table;
     float sumDistrib;
 };
-
-#endif

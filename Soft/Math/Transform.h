@@ -1,7 +1,7 @@
-#ifndef TRANSFORM_H
-#define TRANSFORM_H
+#pragma once
 
 #include "Math.h"
+#include "../Accelerator/AABB.h"
 
 class Transform
 {
@@ -77,10 +77,27 @@ public:
 		return glm::normalize(matInvT * N);
 	}
 
+	inline AABB getTransformedBox(const AABB &box)
+	{
+		auto pMin = glm::vec3(matrix * glm::vec4(box.pMin, 1.0f));
+		auto pMax = glm::vec3(matrix * glm::vec4(box.pMax, 1.0f));
+
+		for (int i = 1; i < 7; i++)
+		{
+			float x = i & 0b001 ? box.pMax.x : box.pMin.x;
+			float y = i & 0b010 ? box.pMax.y : box.pMin.y;
+			float z = i & 0b100 ? box.pMax.z : box.pMin.z;
+
+			auto p = glm::vec3(matrix * glm::vec4(x, y, z, 1.0f));
+			pMin = glm::min(pMin, p);
+			pMax = glm::max(pMax, p);
+		}
+
+		return AABB(pMin, pMax);
+	}
+
 public:
 	glm::mat4 matrix;
 	glm::mat4 matInv;
 	glm::mat3 matInvT;
 };
-
-#endif

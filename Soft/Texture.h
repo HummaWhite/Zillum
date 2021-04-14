@@ -1,5 +1,4 @@
-#ifndef TEXTURE_H
-#define TEXTURE_H
+#pragma once
 
 #include <iostream>
 #include <cstdlib>
@@ -39,7 +38,7 @@ public:
 		{
 			for (int j = 0; j < height; j++)
 			{
-				(*this)(i, j) = glm::vec3((*(RGB24*)data[(j * width + i) * 3]).toVec4());
+				(*this)(i, j) = glm::vec3((*(RGB24*)&data[(j * width + i) * 3]).toVec4());
 			}
 		}
 
@@ -138,5 +137,3 @@ public:
 public:
 	int filterType = LINEAR;
 };
-
-#endif

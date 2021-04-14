@@ -1,5 +1,4 @@
-#ifndef FRAMEBUFFERDOUBLE_H
-#define FRAMEBUFFERDOUBLE_H
+#pragma once
 
 #include "FrameBuffer.h"
 
@@ -46,6 +45,11 @@ public:
 		return buf[index](i, j);
 	}
 
+	T& operator [] (int i)
+	{
+		return buf[index][i];
+	}
+
 	FrameBuffer<T>& getCurrentBuffer()
 	{
 		return buf[index];
@@ -60,6 +64,3 @@ private:
 	FrameBuffer<T> buf[2];
 	int index = 0;
 };
-
-#endif
-

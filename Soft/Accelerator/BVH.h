@@ -1,5 +1,4 @@
-#ifndef BVH_H
-#define BVH_H
+#pragma once
 
 #include <algorithm>
 #include <stack>
@@ -91,12 +90,12 @@ public:
 
 			if (node.sizeIndex <= 0)
 			{
-				auto hitInfo = hittables[-node.sizeIndex]->closestHit(ray);
-				if (hitInfo.hit && hitInfo.dist < dist)
+				auto [isHit, hitDist] = hittables[-node.sizeIndex]->closestHit(ray);
+				if (isHit && hitDist < dist)
 				{
 					if (quickCheck) return hittables[0];
 					hit = hittables[-node.sizeIndex];
-					dist = hitInfo.dist;
+					dist = hitDist;
 				}
 				continue;
 			}
@@ -258,5 +257,3 @@ private:
 
 	BVHnodeCompact *compactNodes = nullptr;
 };
-
-#endif
