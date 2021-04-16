@@ -59,6 +59,8 @@ public:
 
 	glm::vec3 getPower(){ return power; }
 
+	float getRgbPower() { return Math::rgbBrightness(power); }
+
 	glm::vec3 getRadiance(const glm::vec3 &y, const glm::vec3 &Wi)
 	{
 		return power / (2.0f * Math::Pi * surfaceArea());

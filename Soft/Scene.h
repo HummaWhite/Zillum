@@ -32,7 +32,7 @@ public:
 		std::vector<float> lightPdf;
 		for (const auto &lt : lights)
 		{
-			float pdf = Math::rgbBrightness(lt->getPower());
+			float pdf = lt->getRgbPower();
 			lightPdf.push_back(pdf);
 		}
 		lightDistrib = Piecewise1D(lightPdf);
@@ -91,11 +91,11 @@ public:
 		{
 			weight = lt->getRadiance(y, Wi) * Math::satDot(N, -Wi) * lt->surfaceArea() / (dist * dist);
 		}
-		float pdfSample = Math::rgbBrightness(lt->getPower()) / lightDistrib.sum();
+		float pdfSample = lt->getRgbPower() / lightDistrib.sum();
 		return { Wi, weight / pdfSample, lt->pdfLi(x, y) * pdfSample };
 	}
 
-	LightSample sampleEnvironment(glm::vec3 &x)
+	LightSample sampleEnvironment(const glm::vec3 &x)
 	{
 		auto [Wi, pdf] = env->importanceSample();
 		auto rad = env->getRadiance(Wi);
@@ -107,6 +107,25 @@ public:
 			pdf = 1.0f;
 		}
 		return { Wi, rad / pdf, pdf };
+	}
+
+	LightSample sampleLightSource(const glm::vec3 &x)
+	{
+		float lightPower = lightDistrib.sum();
+		float envPower = env->power();
+		
+		float r = uniformFloat();
+		float pdfSampleLight = lightPower / (lightPower + envPower);
+		bool sampleLight = r < pdfSampleLight;
+		float pdfSelect = sampleLight ? pdfSampleLight : 1.0f - pdfSampleLight;
+
+		auto [Wi, coef, pdf] = sampleLight ? sampleLightByPower(x) : sampleEnvironment(x);
+		return { Wi, coef / pdfSelect, pdf * pdfSelect };
+	}
+
+	float lightSourceTotalPower()
+	{
+		return lightDistrib.sum() + env->power();
 	}
 
 	void buildScene()
