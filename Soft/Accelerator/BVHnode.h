@@ -13,9 +13,9 @@ public:
 	BVHnode(const AABB& _box, int _offset, int _primCount, int _splitAxis):
 		box(_box), offset(_offset), primCount(_primCount), splitAxis(_splitAxis) {}
 
-	inline bool hit(const Ray &ray, float &tMin, float &tMax)
+	inline BoxHit hit(const Ray &ray)
 	{
-		return box.hit(ray, tMin, tMax);
+		return box.hit(ray);
 	}
 
 	inline bool isLeaf() const { return primCount == 1; }

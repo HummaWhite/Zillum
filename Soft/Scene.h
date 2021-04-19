@@ -10,6 +10,11 @@
 #include "Camera.h"
 #include "ObjReader.h"
 
+enum class LightSelectStrategy
+{
+	ByPower, Uniform
+};
+
 class Scene
 {
 public:
@@ -55,9 +60,12 @@ public:
 		return {Wi, weight, lt->pdfLi(x, y)};
 	}
 
-	LightSample sampleLightUniform(const glm::vec3 &x)
+	LightSample sampleOneLight(const glm::vec3 &x)
 	{
-		auto lt = lights[uniformInt<int32_t>(0, lights.size() - 1)];
+		bool sampleByPower = lightSelectStrategy == LightSelectStrategy::ByPower;
+		int index = sampleByPower ? lightDistrib.sample() : uniformInt<int>(0, lights.size() - 1);
+
+		auto lt = lights[index];
 		glm::vec3 y = lt->getRandomPoint();
 		glm::vec3 Wi = glm::normalize(y - x);
 		float dist = glm::distance(x, y);
@@ -67,31 +75,11 @@ public:
 
 		Ray lightRay(x + Wi * 1e-4f, Wi);
 		float testDist = dist - 1e-4f - 1e-6f;
-		if (!quickIntersect(lightRay, testDist))
+		if (!bvh->testIntersec(lightRay, testDist))
 		{
 			weight = lt->getRadiance(y, Wi) * Math::satDot(N, -Wi) * lt->surfaceArea() / (dist * dist);
 		}
-		float pdfSample = 1.0f / lights.size();
-		return { Wi, weight / pdfSample, lt->pdfLi(x, y) * pdfSample };
-	}
-
-	LightSample sampleLightByPower(const glm::vec3 &x)
-	{
-		auto lt = lights[lightDistrib.sample()];
-		glm::vec3 y = lt->getRandomPoint();
-		glm::vec3 Wi = glm::normalize(y - x);
-		float dist = glm::length(y - x);
-
-		glm::vec3 N = lt->surfaceNormal(y);
-		glm::vec3 weight(0.0f);
-
-		Ray lightRay(x + Wi * 1e-4f, Wi);
-		float testDist = dist - 1e-4f - 1e-6f;
-		if (!quickIntersect(lightRay, testDist))
-		{
-			weight = lt->getRadiance(y, Wi) * Math::satDot(N, -Wi) * lt->surfaceArea() / (dist * dist);
-		}
-		float pdfSample = lt->getRgbPower() / lightDistrib.sum();
+		float pdfSample = sampleByPower ? lt->getRgbPower() / lightDistrib.sum() : 1.0f / lights.size();
 		return { Wi, weight / pdfSample, lt->pdfLi(x, y) * pdfSample };
 	}
 
@@ -109,21 +97,41 @@ public:
 		return { Wi, rad / pdf, pdf };
 	}
 
-	LightSample sampleLightSource(const glm::vec3 &x)
-	{
-		float lightPower = lightDistrib.sum();
-		float envPower = env->power();
-		
+	LightSample sampleLightAndEnv(const glm::vec3 &x)
+	{	
 		float r = uniformFloat();
-		float pdfSampleLight = lightPower / (lightPower + envPower);
+		float pdfSampleLight = lightAndEnvStrategy == LightSelectStrategy::ByPower ?
+			lightDistrib.sum() / powerlightAndEnv() :
+			0.5f;
+
 		bool sampleLight = r < pdfSampleLight;
 		float pdfSelect = sampleLight ? pdfSampleLight : 1.0f - pdfSampleLight;
 
-		auto [Wi, coef, pdf] = sampleLight ? sampleLightByPower(x) : sampleEnvironment(x);
+		auto [Wi, coef, pdf] = sampleLight ? sampleOneLight(x) : sampleEnvironment(x);
 		return { Wi, coef / pdfSelect, pdf * pdfSelect };
 	}
 
-	float lightSourceTotalPower()
+	float pdfSelectLight(Light *lt)
+	{
+		float fstPdf = lightSelectStrategy == LightSelectStrategy::ByPower ?
+			lt->getRgbPower() / lightDistrib.sum() :
+			1.0f / lights.size();
+
+		float sndPdf = lightAndEnvStrategy == LightSelectStrategy::ByPower ?
+			lightDistrib.sum() / powerlightAndEnv():
+			0.5f;
+
+		return fstPdf * sndPdf;
+	}
+
+	float pdfSelectEnv()
+	{
+		return lightAndEnvStrategy == LightSelectStrategy::ByPower ?
+			env->power() / (lightDistrib.sum() + env->power()) :
+			0.5f;
+	}
+
+	float powerlightAndEnv()
 	{
 		return lightDistrib.sum() + env->power();
 	}
@@ -139,15 +147,12 @@ public:
 
 	std::pair<float, std::shared_ptr<Hittable>> closestHit(const Ray &ray)
 	{
-		float dist = 1e6f;
-		auto obj = bvh->closestHit(ray, dist, false);
-		return { dist, obj };
+		return bvh->closestHit(ray);
 	}
 
-	bool quickIntersect(const Ray &ray, float &dist)
+	bool quickIntersect(const Ray &ray, float dist)
 	{
-		auto obj = bvh->closestHit(ray, dist, true);
-		return obj != nullptr;
+		return bvh->testIntersec(ray, dist);
 	}
 
 	void addHittable(std::shared_ptr<Hittable> hittable)
@@ -203,4 +208,6 @@ public:
 
 	std::shared_ptr<BVH> bvh;
 	Piecewise1D lightDistrib;
+	LightSelectStrategy lightSelectStrategy = LightSelectStrategy::ByPower;
+	LightSelectStrategy lightAndEnvStrategy = LightSelectStrategy::Uniform;
 };

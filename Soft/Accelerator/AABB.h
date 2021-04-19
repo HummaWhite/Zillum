@@ -9,6 +9,12 @@
 #include "../Math/Math.h"
 #include "../Ray.h"
 
+struct BoxHit
+{
+	bool hit;
+	float tMin, tMax;
+};
+
 struct AABB
 {
 	AABB() {}
@@ -34,9 +40,10 @@ struct AABB
 		pMax = glm::max(boundA.pMax, boundB.pMax);
 	}
 
-	inline bool hit(const Ray &ray, float &tMin, float &tMax)
+	inline BoxHit hit(const Ray &ray)
 	{
-		const float eps = 0.000001f;
+		const float eps = 1e-6f;
+		float tMin, tMax;
 		glm::vec3 o = ray.ori;
 		glm::vec3 d = ray.dir;
 
@@ -49,9 +56,9 @@ struct AABB
 				tMin = (pMin.x - o.x) * dInv.x;
 				tMax = (pMax.x - o.x) * dInv.x;
 				if (tMin > tMax) std::swap(tMin, tMax);
-				return tMax >= 0.0f && tMax >= tMin;
+				return { tMax >= 0.0f && tMax >= tMin, tMin, tMax };
 			}
-			else return false;
+			else return { false };
 		}
 
 		if (glm::abs(d.y) > 1.0f - eps)
@@ -61,9 +68,9 @@ struct AABB
 				tMin = (pMin.y - o.y) * dInv.y;
 				tMax = (pMax.y - o.y) * dInv.y;
 				if (tMin > tMax) std::swap(tMin, tMax);
-				return tMax >= 0.0f && tMax >= tMin;
+				return { tMax >= 0.0f && tMax >= tMin, tMin, tMax };
 			}
-			else return false;
+			else return { false };
 		}
 
 		if (glm::abs(d.z) > 1.0f - eps)
@@ -73,9 +80,9 @@ struct AABB
 				tMin = (pMin.z - o.z) * dInv.z;
 				tMax = (pMax.z - o.z) * dInv.z;
 				if (tMin > tMax) std::swap(tMin, tMax);
-				return tMax >= 0.0f && tMax >= tMin;
+				return { tMax >= 0.0f && tMax >= tMin, tMin, tMax };
 			}
-			else return false;
+			else return { false };
 		}
 
 		glm::vec3 vtMin = (pMin - o) * dInv;
@@ -97,7 +104,7 @@ struct AABB
 			{
 				tMin = std::max(vtMin.y, vtMin.z);
 				tMax = std::min(vtMax.y, vtMax.z);
-				return tMax >= 0.0f && tMax >= tMin;
+				return { tMax >= 0.0f && tMax >= tMin, tMin, tMax };
 			}
 		}
 
@@ -107,7 +114,7 @@ struct AABB
 			{
 				tMin = std::max(vtMin.z, vtMin.x);
 				tMax = std::min(vtMax.z, vtMax.x);
-				return tMax >= 0.0f && tMax >= tMin;
+				return { tMax >= 0.0f && tMax >= tMin, tMin, tMax };
 			}
 		}
 
@@ -117,7 +124,7 @@ struct AABB
 			{
 				tMin = std::max(vtMin.x, vtMin.y);
 				tMax = std::min(vtMax.x, vtMax.y);
-				return tMax >= 0.0f && tMax >= tMin;
+				return { tMax >= 0.0f && tMax >= tMin, tMin, tMax };
 			}
 		}
 
@@ -125,10 +132,9 @@ struct AABB
 		{
 			tMin = std::max(std::max(vtMin.x, vtMin.y), vtMin.z);
 			tMax = std::min(std::min(vtMax.x, vtMax.y), vtMax.z);
-			return tMax >= 0.0f && tMax >= tMin;
+			return { tMax >= 0.0f && tMax >= tMin, tMin, tMax };
 		}
-
-		return false;
+		return { false };
 	}
 
 	inline glm::vec3 volume() const

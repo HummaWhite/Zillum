@@ -48,7 +48,7 @@ private:
 
 			if (!deltaBsdf && sampleDirectLight)
 			{
-				auto [Wi, coef, samplePdf] = scene->sampleLightSource(P);
+				auto [Wi, coef, samplePdf] = scene->sampleLightAndEnv(P);
 				float bsdfPdf = mat->pdf(Wo, Wi, N);
 				float weight = Math::biHeuristic(samplePdf, bsdfPdf);
 				result += mat->bsdf({ Wo, Wi, N }, 0) * beta * Math::satDot(N, Wi) * coef * weight;
@@ -69,7 +69,7 @@ private:
 				float weight = 1.0f;
 				if (!deltaBsdf)
 				{
-					float envPdf = scene->env->pdfLi(Wi) * scene->env->power() / scene->lightSourceTotalPower();
+					float envPdf = scene->env->pdfLi(Wi) * scene->pdfSelectEnv();
 					weight = Math::biHeuristic(bsdfPdf, envPdf);
 				}
 				result += scene->env->getRadiance(Wi) * envStrength * beta * weight;
@@ -83,7 +83,7 @@ private:
 				auto hitPoint = newRay.get(dist);
 				if (!deltaBsdf)
 				{
-					float lightPdf = lt->pdfLi(P, hitPoint) * lt->getRgbPower() / scene->lightSourceTotalPower();
+					float lightPdf = lt->pdfLi(P, hitPoint) * scene->pdfSelectLight(lt);
 					weight = Math::biHeuristic(bsdfPdf, lightPdf);
 				}
 				result += lt->getRadiance(hitPoint, -Wi) * beta * weight;

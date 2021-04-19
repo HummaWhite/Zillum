@@ -6,7 +6,7 @@
 
 #include "BVHnode.h"
 
-enum class BVHSplitMethod { SAH, Middle, EqualCounts };
+enum class BVHSplitMethod { SAH, Middle, EqualCounts, HLBVH };
 
 class BVH
 {
@@ -40,7 +40,6 @@ public:
 
 	~BVH()
 	{
-		//if (compactNodes != nullptr) delete[] compactNodes;
 	}
 
 	void makeCompact()
@@ -69,13 +68,43 @@ public:
 		std::cout << "[BVH] made compact\n";
 	}
 
-	inline std::shared_ptr<Hittable> closestHit(const Ray &ray, float &dist, bool quickCheck)
+	inline bool testIntersec(const Ray &ray, float dist)
 	{
-		if (hittables.size() == 0) return nullptr;
-		if (!quickCheck) dist = 1e8f;
+		if (hittables.size() == 0) return false;
+		std::stack<int> st;
+		st.push(0);
+
+		while (!st.empty())
+		{
+			int k = st.top();
+			st.pop();
+			auto node = compactNodes[k];
+			auto [boxHit, tMin, tMax] = node.box.hit(ray);
+			if (!boxHit) continue;
+			if (tMin > dist) continue;
+
+			if (node.sizeIndex <= 0)
+			{
+				auto [isHit, hitDist] = hittables[-node.sizeIndex]->closestHit(ray);
+				if (isHit && hitDist < dist) return true;
+				continue;
+			}
+			int lSize = compactNodes[k + 1].sizeIndex;
+			if (lSize <= 0) lSize = 1;
+			st.push(k + 1 + lSize);
+			st.push(k + 1);
+		}
+		return false;
+	}
+
+	inline std::pair<float, std::shared_ptr<Hittable>> closestHit(const Ray &ray)
+	{
+		if (hittables.size() == 0) return { 0.0f, nullptr };
+		float dist = 1e8f;
 		std::shared_ptr<Hittable> hit;
 		std::stack<int> st;
 
+		if (!compactNodes[0].box.hit(ray).hit) return { 0.0f, nullptr };
 		st.push(0);
 
 		while (!st.empty())
@@ -84,28 +113,40 @@ public:
 			st.pop();
 			auto node = compactNodes[k];
 
-			float tpMin, tpMax;
-			if (!node.box.hit(ray, tpMin, tpMax)) continue;
-			if (tpMin > dist) continue;
-
 			if (node.sizeIndex <= 0)
 			{
 				auto [isHit, hitDist] = hittables[-node.sizeIndex]->closestHit(ray);
 				if (isHit && hitDist < dist)
 				{
-					if (quickCheck) return hittables[0];
 					hit = hittables[-node.sizeIndex];
 					dist = hitDist;
 				}
 				continue;
 			}
-
 			int lSize = compactNodes[k + 1].sizeIndex;
 			if (lSize <= 0) lSize = 1;
-			st.push(k + 1 + lSize);
-			st.push(k + 1);
+
+			int lch = k + 1, rch = lch + lSize;
+
+			auto lnode = compactNodes[lch];
+			auto rnode = compactNodes[rch];
+			auto [lHit, lMin, lMax] = lnode.box.hit(ray);
+			auto [rHit, rMin, rMax] = rnode.box.hit(ray);
+
+			if (lHit && rHit)
+			{
+				if (lMin > rMin)
+				{
+					std::swap(lch, rch);
+					std::swap(lMin, rMin);
+				}
+				if (lMin < dist) st.push(lch);
+				if (rMin < dist) st.push(rch);
+			}
+			else if (lHit && lMin < dist) st.push(lch);
+			else if (rHit && rMin < dist) st.push(rch);
 		}
-		return hit;
+		return { dist, hit };
 	}
 
 	inline void dfs()
@@ -133,12 +174,10 @@ private:
 private:
 	void buildRecursive(BVHnode *&k, std::vector<HittableInfo> &hittableInfo, const AABB &nodeBound, int l, int r)
 	{
-		// [l, r]
 		int dim = (l == r) ? -1 : nodeBound.maxExtent();
 		k = new BVHnode(nodeBound, l, (r - l) * 2 + 1, dim);
 		treeSize++;
 
-		//std::cout << l << "  " << r << "  SplitAxis: " << dim << "\n";
 		if (l == r) return;
 
 		auto cmp = [dim, this](const HittableInfo &a, const HittableInfo &b)
