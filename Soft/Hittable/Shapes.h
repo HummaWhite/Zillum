@@ -11,7 +11,7 @@ public:
 	Sphere(const glm::vec3 &center, float radius, bool intersectFromInside):
 		center(center), radius(radius), intersectFromInside(intersectFromInside) {}
 
-	HitInfo closestHit(const Ray &ray)
+	std::optional<float> closestHit(const Ray &ray)
 	{
 		glm::vec3 o = transform->getInversed(ray.ori);
 		glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
@@ -21,18 +21,18 @@ public:
 		float r = radius;
 		
 		float e = glm::length(o + d * t - c);
-		if (e > r) return { false, 0.0f };
+		if (e > r) return std::nullopt;
 
 		float q = sqrt(glm::max(r * r - e * e, 0.0f));
 		// 想不到吧，r * r - e * e还是可能小于0
 		if (glm::length(o - c) < r)
 		{
-			if (!intersectFromInside) return { false, 0.0f };
+			if (!intersectFromInside) return std::nullopt;
 			float res = t + q;
-			return { res >= 0, res };
+			return res >= 0 ? res : std::optional<float>();
 		}
 		float res = t - q;
-		return { res >= 0, res };
+		return res >= 0 ? res : std::optional<float>();
 	}
 
 	glm::vec3 getRandomPoint()
@@ -81,7 +81,7 @@ public:
 	Triangle(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c):
 		va(a), vb(b), vc(c) {}
 
-	HitInfo closestHit(const Ray &ray)
+	std::optional<float> closestHit(const Ray &ray)
 	{
 		const float eps = 1e-6;
 
@@ -95,7 +95,7 @@ public:
 
 		float det = glm::dot(ab, p);
 
-		if (glm::abs(det) < eps) return { false, 0.0f };
+		if (glm::abs(det) < eps) return std::nullopt;
 
 		glm::vec3 ao = o - va;
 		if (det < 0.0f)
@@ -105,15 +105,15 @@ public:
 		}
 
 		float u = glm::dot(ao, p);
-		if (u < 0.0f || u > det) return { false, 0.0f };
+		if (u < 0.0f || u > det) return std::nullopt;
 
 		glm::vec3 q = glm::cross(ao, ab);
 
 		float v = glm::dot(d, q);
-		if (v < 0.0f || u + v > det) return { false, 0.0f };
+		if (v < 0.0f || u + v > det) return std::nullopt;
 
 		float t = glm::dot(ac, q) / det;
-		return { t > 0.0f, t };
+		return t > 0.0f ? t : std::optional<float>();
 	}
 
 	glm::vec3 getRandomPoint()
@@ -172,9 +172,9 @@ public:
 		ta(uvs[0]), tb(uvs[1]), tc(uvs[2]),
 		na(normals[0]), nb(normals[1]), nc(normals[2]) {}
 
-	HitInfo closestHit(const Ray &r)
+	std::optional<float> closestHit(const Ray &ray)
 	{
-		return triangle.closestHit(r);
+		return triangle.closestHit(ray);
 	}
 
 	glm::vec3 getRandomPoint()
@@ -273,7 +273,7 @@ public:
 	Quad(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c):
 		va(a), vb(b), vc(c) {}
 
-	inline HitInfo closestHit(const Ray &ray)
+	std::optional<float> closestHit(const Ray &ray)
 	{
 		glm::vec3 o = transform->getInversed(ray.ori);
 		glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
@@ -281,13 +281,13 @@ public:
 		Ray inversedRay = { o, d };
 		glm::vec3 vd = vb + vc - va;
 
-		HitInfo ha = Triangle(va, vb, vc).closestHit(inversedRay);
-		HitInfo hb = Triangle(vc, vb, vd).closestHit(inversedRay);
+		auto ha = Triangle(va, vb, vc).closestHit(inversedRay);
+		auto hb = Triangle(vc, vb, vd).closestHit(inversedRay);
 
-		if (ha.first) return ha;
-		if (hb.first) return hb;
+		if (ha.has_value()) return ha;
+		if (hb.has_value()) return hb;
 
-		return { false, 0.0f };
+		return std::nullopt;
 	}
 
 	inline glm::vec3 getRandomPoint()

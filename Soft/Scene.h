@@ -62,6 +62,7 @@ public:
 
 	LightSample sampleOneLight(const glm::vec3 &x)
 	{
+		if (lights.size() == 0) return INVALID_LIGHT_SAMPLE;
 		bool sampleByPower = lightSelectStrategy == LightSelectStrategy::ByPower;
 		int index = sampleByPower ? lightDistrib.sample() : uniformInt<int>(0, lights.size() - 1);
 
@@ -100,9 +101,13 @@ public:
 	LightSample sampleLightAndEnv(const glm::vec3 &x)
 	{	
 		float r = uniformFloat();
-		float pdfSampleLight = lightAndEnvStrategy == LightSelectStrategy::ByPower ?
-			lightDistrib.sum() / powerlightAndEnv() :
-			0.5f;
+		float pdfSampleLight = 0.0f;
+		
+		if (lights.size() > 0)
+		{
+			pdfSampleLight = lightAndEnvStrategy == LightSelectStrategy::ByPower ?
+				lightDistrib.sum() / powerlightAndEnv() : 0.5f;
+		}
 
 		bool sampleLight = r < pdfSampleLight;
 		float pdfSelect = sampleLight ? pdfSampleLight : 1.0f - pdfSampleLight;
@@ -141,7 +146,6 @@ public:
 		bvh = std::make_shared<BVH>(hittables);
 		auto [maxDepth, avgDepth] = bvh->dfsDetailed();
 		std::cout << "[BVH] TreeSize: " << bvh->size() << "  MaxDepth: " << maxDepth << "  AvgDepth: " << avgDepth << "\n";
-		bvh->makeCompact();
 		setupLightSampleTable();
 	}
 

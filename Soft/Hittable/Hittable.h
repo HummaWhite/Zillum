@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <cmath>
 
 #include "../glm/glm.hpp"
@@ -11,8 +12,6 @@
 #include "../Accelerator/AABB.h"
 #include "../Math/Transform.h"
 
-typedef std::pair<bool, float> HitInfo;
-
 enum class HittableType
 {
 	Object, Light
@@ -21,7 +20,7 @@ enum class HittableType
 class Hittable
 {
 public:
-	virtual HitInfo closestHit(const Ray &r) = 0;
+	virtual std::optional<float> closestHit(const Ray &ray) = 0;
 	
 	virtual glm::vec3 getRandomPoint() = 0;
 

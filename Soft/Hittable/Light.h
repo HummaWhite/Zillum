@@ -12,6 +12,8 @@ struct LightSample
 	float pdf;
 };
 
+const LightSample INVALID_LIGHT_SAMPLE = { glm::vec3(0.0f), glm::vec3(0.0f), 0.0f };
+
 class Light:
 	public Hittable
 {
@@ -21,7 +23,7 @@ public:
 
 	HittableType type() { return HittableType::Light; }
 
-	HitInfo closestHit(const Ray &ray)
+	std::optional<float> closestHit(const Ray &ray)
 	{
 		return shape->closestHit(ray);
 	}

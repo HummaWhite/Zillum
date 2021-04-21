@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <tuple>
 #include <cmath>
@@ -45,6 +46,19 @@ namespace Math
 	void printVec3(const glm::vec3 &v, std::string info = "")
 	{
 		std::cout << std::setprecision(6) << info << ":  " << v.x << "  " << v.y << "  " << v.z << std::endl;
+	}
+
+	std::string vec3ToString(const glm::vec3 &v)
+	{
+		std::stringstream ss;
+		ss << "vec3{ x:" << v.x << ", y:" << v.y << ", z:" << v.z << " }";
+		return ss.str();
+	}
+
+	template<typename T>
+	inline float vecElement(const T &v, int dim)
+	{
+		return *((float*)(glm::value_ptr(v)) + dim);
 	}
 
 	inline bool isNan(float v)
@@ -135,6 +149,18 @@ namespace Math
 		return glm::min(glm::min(v.x, v.y), v.z);
 	}
 
+	inline int maxExtent(const glm::vec3 &v)
+	{
+		if (v.x > v.y) return v.x > v.z ? 0 : 2;
+		return v.y > v.z ? 1 : 2;
+	}
+
+	inline int cubeMapFace(const glm::vec3 &dir)
+	{
+		int maxDim = maxExtent(glm::abs(dir));
+		return maxDim * 2 + (vecElement(dir, maxDim) < 0);
+	}
+
 	inline float qpow(float x, int n)
 	{
 		float ret = 1.0f;
@@ -176,7 +202,7 @@ namespace Math
 		return lengthSquare(x - y);
 	}
 
-	float rgbBrightness(const glm::vec3 &c)
+	inline float rgbBrightness(const glm::vec3 &c)
 	{
 		return glm::dot(BRIGHTNESS, c);
 	}

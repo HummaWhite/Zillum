@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <sstream>
 
 #include "../glm/glm.hpp"
 #include "../glm/gtc/matrix_transform.hpp"
@@ -137,9 +138,10 @@ struct AABB
 		return { false };
 	}
 
-	inline glm::vec3 volume() const
+	inline float volume() const
 	{
-		return pMax - pMin;
+		glm::vec3 vol = pMax - pMin;
+		return vol.x * vol.y * vol.z;
 	}
 
 	inline glm::vec3 centroid() const
@@ -150,26 +152,19 @@ struct AABB
 	inline float surfaceArea() const
 	{
 		glm::vec3 vol = pMax - pMin;
-		return vol.x * vol.y * vol.z;
+		return 2.0f * (vol.x * vol.y + vol.y * vol.z + vol.z * vol.x);
 	}
 
 	inline int maxExtent() const
 	{
-		glm::vec3 vol = pMax - pMin;
+		return Math::maxExtent(pMax - pMin);
+	}
 
-		float maxVal = vol.x;
-		int maxComponent = 0;
-		for (int i = 1; i < 3; i++)
-		{
-			float component = *((float*)&vol + i);
-			if (component > maxVal)
-			{
-				maxVal = component;
-				maxComponent = i;
-			}
-		}
-
-		return maxComponent;
+	std::string toString()
+	{
+		std::stringstream ss;
+		ss << "AABB{ pMin:" << Math::vec3ToString(pMin) << ", pMax:" << Math::vec3ToString(pMax) << " }";
+		return ss.str();
 	}
 
 	glm::vec3 pMin = glm::vec3(0.0f);

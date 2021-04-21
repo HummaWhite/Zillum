@@ -19,7 +19,7 @@ public:
 		return { shape->surfaceUV(x), shape->surfaceNormal(x), material };
 	}
 
-	HitInfo closestHit(const Ray &r)
+	std::optional<float> closestHit(const Ray &r)
 	{
 		return shape->closestHit(r);
 	}

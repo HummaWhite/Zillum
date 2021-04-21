@@ -5,12 +5,12 @@
 #include "AABB.h"
 #include "../Hittable/Shapes.h"
 
-class BVHnode
+class BVHNode
 {
 public:
-	BVHnode(): offset(0), primCount(0) {};
+	BVHNode(): offset(0), primCount(0) {};
 
-	BVHnode(const AABB& _box, int _offset, int _primCount, int _splitAxis):
+	BVHNode(const AABB& _box, int _offset, int _primCount, int _splitAxis):
 		box(_box), offset(_offset), primCount(_primCount), splitAxis(_splitAxis) {}
 
 	inline BoxHit hit(const Ray &ray)
@@ -24,12 +24,12 @@ public:
 	int offset;
 	int primCount;
 	AABB box;
-	BVHnode *lch = nullptr, *rch = nullptr;
+	BVHNode *lch = nullptr, *rch = nullptr;
 	int splitAxis;
 };
 
-struct BVHnodeCompact
+struct BVHNodeCompact
 {
 	AABB box;
-	int sizeIndex;
+	std::shared_ptr<Hittable> hittable;
 };
