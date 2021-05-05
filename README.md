@@ -2,6 +2,8 @@
 
 CPU渲染器 | **Z**lek's CPU-based Global **Illum**ination Renderer
 
+同步更新的GLSL版本 | Here is a GLSL-accelerated version of this renderer: https://github.com/HummaWhite/GLRT
+
 ### 已完成 | Finished （部分）
 
 - 带有多重重要性采样的路径追踪积分器 | Path integrator with MIS
@@ -12,10 +14,11 @@ CPU渲染器 | **Z**lek's CPU-based Global **Illum**ination Renderer
 ### 待完成 | Currently working on
 
 - 双向路径追踪 | Bidirectional integrator
-- 光子映射系列 | Photon mapper family (PM, PPM, SPPM)
+- 光子映射系列 | Photon mapping family (PM, PPM, SPPM)
 - Metropolis integrator
 - Low discrepancy samplers
 - Filtering
 - BSSRDF
-- Volume rendering
+- Volumic rendering
+- ...
 
