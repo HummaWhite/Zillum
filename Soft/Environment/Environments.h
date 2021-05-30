@@ -16,6 +16,11 @@ public:
 		return radiance;
 	}
 
+	float power()
+	{
+		return Math::rgbBrightness(radiance) * 2.0f * Math::square(Math::Pi);
+	}
+
 private:
 	glm::vec3 radiance;
 };
@@ -64,8 +69,14 @@ public:
 	{
 		float sinTheta = glm::asin(glm::abs(Wi.z));
 		if (sinTheta < 1e-6f) return 0.0f;
-		return getPortion(Wi) * float(w * h) * 0.5f * Math::square(Math::PiInv) /* sinTheta*/;
-		//return 0.25 * Math::PiInv;
+		float pdf = getPortion(Wi) * float(w * h) * 0.5f * Math::square(Math::PiInv) /* sinTheta*/;
+		
+		return (pdf == 0.0f) ? 0.0f : pdf;
+	}
+
+	float power()
+	{
+		return distrib.sum();
 	}
 
 private:
@@ -95,6 +106,11 @@ public:
 		int c = (int)(uv.y * col);
 
 		return (r & 1) ^ (c & 1) ? radiance : glm::vec3(0.0f);
+	}
+
+	float power()
+	{
+		return 1.0f;
 	}
 
 private:

@@ -143,19 +143,17 @@ private:
 	};
 
 private:
-	void radixSort16(HittableInfo *a, int count, int dim)
-	{
-		auto getDim = [=](const HittableInfo &p) {
-			return *(int *)(&p.centroid.x + dim);
-		};
+	typedef std::pair<int, int> RadixSortElement;
 
-		HittableInfo *b = new HittableInfo[count];
+	void radixSortLH(RadixSortElement *a, int count)
+	{
+		RadixSortElement *b = new RadixSortElement[count];
 		int mIndex[4][256];
 		memset(mIndex, 0, sizeof(mIndex));
 
 		for (int i = 0; i < count; i++)
 		{
-			int u = getDim(a[i]);
+			int u = a[i].first;
 			mIndex[0][uint8_t(u)]++;
 			u >>= 8;
 			mIndex[1][uint8_t(u)]++;
@@ -184,12 +182,43 @@ private:
 		{ // radix sort
 			for (int i = 0; i < count; i++)
 			{ //  sort by current lsb
-				int u = getDim(a[i]);
+				int u = a[i].first;
 				b[mIndex[j][uint8_t(u >> (j << 3))]++] = a[i];
 			}
 			std::swap(a, b); //  swap ptrs
 		}
 		delete[] b;
+	}
+
+	void radixSort16(HittableInfo *a, int count, int dim)
+	{
+		auto getDim = [&](const HittableInfo &p) -> int {
+			return *(int *)(&p.centroid.x + dim);
+		};
+
+		RadixSortElement *b = new RadixSortElement[count];
+
+		int l = 0, r = count;
+		for (int i = 0; i < count; i++)
+		{
+			int u = getDim(a[i]);
+			if (u & 0x80000000)
+				b[l++] = RadixSortElement(~u, i);
+			else
+				b[--r] = RadixSortElement(u, i);
+		}
+		radixSortLH(b, l);
+		radixSortLH(b + l, count - l);
+
+		HittableInfo *c = new HittableInfo[count];
+		std::memcpy(c, a, count * sizeof(HittableInfo));
+
+		for (int i = 0; i < count; i++)
+		{
+			a[i] = c[b[i].second];
+		}
+		delete[] b;
+		delete[] c;
 	}
 
 	void buildRecursive(BVHNode *&k, std::vector<HittableInfo> &hittableInfo, const AABB &nodeBound, int l, int r)

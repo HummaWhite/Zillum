@@ -23,4 +23,6 @@ public:
 	{
 		return Math::PiInv * 0.25f;
 	}
+
+	virtual float power() = 0;
 };

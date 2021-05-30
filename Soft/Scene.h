@@ -55,7 +55,7 @@ public:
 		Ray lightRay(x + Wi * 1e-4f, Wi);
 		if (!quickIntersect(lightRay, dist))
 		{
-			weight = lt->getRadiance(y, Wi) * Math::satDot(N, -Wi) * lt->surfaceArea() / (dist * dist);
+			weight = lt->getRadiance(y, -Wi) * Math::satDot(N, -Wi) * lt->surfaceArea() / (dist * dist);
 		}
 		return {Wi, weight, lt->pdfLi(x, y)};
 	}
@@ -69,32 +69,34 @@ public:
 		auto lt = lights[index];
 		glm::vec3 y = lt->getRandomPoint();
 		glm::vec3 Wi = glm::normalize(y - x);
-		float dist = glm::distance(x, y);
-
 		glm::vec3 N = lt->surfaceNormal(y);
-		glm::vec3 weight(0.0f);
+		float cosTheta = glm::dot(N, -Wi);
+
+		if (cosTheta <= 1e-6f) return INVALID_LIGHT_SAMPLE;
+
+		float dist = glm::distance(x, y);
+		float pdf = dist * dist / (lt->surfaceArea() * cosTheta);
 
 		Ray lightRay(x + Wi * 1e-4f, Wi);
 		float testDist = dist - 1e-4f - 1e-6f;
-		if (!bvh->testIntersec(lightRay, testDist))
-		{
-			weight = lt->getRadiance(y, Wi) * Math::satDot(N, -Wi) * lt->surfaceArea() / (dist * dist);
-		}
+
+		if (bvh->testIntersec(lightRay, testDist) || pdf < 1e-8f) return INVALID_LIGHT_SAMPLE;
+
+		glm::vec3 weight = lt->getRadiance(y, -Wi);
 		float pdfSample = sampleByPower ? lt->getRgbPower() / lightDistrib.sum() : 1.0f / lights.size();
-		return { Wi, weight / pdfSample, lt->pdfLi(x, y) * pdfSample };
+		pdf *= pdfSample;
+		return { Wi, weight / pdf, pdf };
 	}
 
 	LightSample sampleEnvironment(const glm::vec3 &x)
 	{
 		auto [Wi, pdf] = env->importanceSample();
-		auto rad = env->getRadiance(Wi);
+
 		Ray ray(x + Wi * 1e-4f, Wi);
 		float tmp = 1e6;
-		if (quickIntersect(ray, tmp))
-		{
-			rad = glm::vec3(0.0f);
-			pdf = 1.0f;
-		}
+		if (quickIntersect(ray, tmp)) return INVALID_LIGHT_SAMPLE;
+
+		auto rad = env->getRadiance(Wi);
 		return { Wi, rad / pdf, pdf };
 	}
 

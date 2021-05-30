@@ -14,7 +14,7 @@ public:
 
 	glm::vec3 bsdf(const SurfaceInteraction &si, int type)
 	{
-		return albedo * glm::pi<float>();
+		return albedo * Math::PiInv;
 	}
 
 	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
@@ -35,9 +35,6 @@ private:
 class MetalWorkflow:
 	public Material
 {
-public:
-	enum { DIFFUSE = 0b01, SPECULAR = 0b10 };
-
 public:
 	MetalWorkflow(const glm::vec3 &albedo, float metallic, float roughness):
 		albedo(albedo), metallic(metallic), roughness(roughness),

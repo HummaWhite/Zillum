@@ -19,7 +19,7 @@ public:
 		if (obj->type() == HittableType::Light)
 		{
 			auto lt = dynamic_cast<Light*>(obj.get());
-			return lt->getRadiance(ray.get(dist), ray.dir);
+			return lt->getRadiance(ray.get(dist), -ray.dir);
 		}
 		else
 		{
@@ -49,9 +49,12 @@ private:
 			if (!deltaBsdf && sampleDirectLight)
 			{
 				auto [Wi, coef, samplePdf] = scene->sampleLightAndEnv(P);
-				float bsdfPdf = mat->pdf(Wo, Wi, N);
-				float weight = Math::biHeuristic(samplePdf, bsdfPdf);
-				result += mat->bsdf({ Wo, Wi, N }, 0) * beta * Math::satDot(N, Wi) * coef * weight;
+				if (samplePdf != 0.0f)
+				{
+					float bsdfPdf = mat->pdf(Wo, Wi, N);
+					float weight = Math::biHeuristic(samplePdf, bsdfPdf);
+					result += mat->bsdf({ Wo, Wi, N }, 0) * beta * Math::satDot(N, Wi) * coef * weight;
+				}
 			}
 
 			auto [sample, bsdf] = sInfo.material->sampleWithBsdf(N, Wo);
@@ -70,7 +73,7 @@ private:
 				if (!deltaBsdf)
 				{
 					float envPdf = scene->env->pdfLi(Wi) * scene->pdfSelectEnv();
-					weight = Math::biHeuristic(bsdfPdf, envPdf);
+					weight = (envPdf <= 0.0f) ? 0.0f : Math::biHeuristic(bsdfPdf, envPdf);
 				}
 				result += scene->env->getRadiance(Wi) * envStrength * beta * weight;
 				break;
@@ -84,7 +87,7 @@ private:
 				if (!deltaBsdf)
 				{
 					float lightPdf = lt->pdfLi(P, hitPoint) * scene->pdfSelectLight(lt);
-					weight = Math::biHeuristic(bsdfPdf, lightPdf);
+					weight = (lightPdf <= 0.0f) ? 0.0f : Math::biHeuristic(bsdfPdf, lightPdf);
 				}
 				result += lt->getRadiance(hitPoint, -Wi) * beta * weight;
 				break;

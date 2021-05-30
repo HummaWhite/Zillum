@@ -65,6 +65,7 @@ public:
 
 	glm::vec3 getRadiance(const glm::vec3 &y, const glm::vec3 &Wi)
 	{
+		if (glm::dot(surfaceNormal(y), Wi) <= 0.0f) return glm::vec3(0.0f);
 		return power / (2.0f * Math::Pi * surfaceArea());
 	}
 
@@ -73,8 +74,7 @@ public:
 		auto N = surfaceNormal(y);
 		auto Wi = glm::normalize(y - x);
 		float cosTheta = Math::satDot(N, -Wi);
-		if (cosTheta < 1e-10f)
-			return 0.0f;
+		if (cosTheta < 1e-8f) return 0.0f;
 
 		return Math::distSquare(x, y) / (surfaceArea() * cosTheta);
 	}
