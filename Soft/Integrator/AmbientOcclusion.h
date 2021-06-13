@@ -1,5 +1,4 @@
-#ifndef AMBIENT_OCCLUSION_H
-#define AMBIENT_OCCLUSION_H
+#pragma once
 
 #include "Integrator.h"
 
@@ -27,7 +26,7 @@ private:
 
 		for (int i = 0; i < samples; i++)
 		{
-			auto Wi = Transform::normalToWorld(N, Math::randHemisphere());
+			auto Wi = Math::sampleHemisphereCosine(N).first;
 
 			Ray newRay(ray.ori + Wi * 1e-4f, Wi);
 			//auto [dist, obj] = scene->closestHit(newRay);
@@ -46,7 +45,5 @@ private:
 
 public:
 	glm::vec3 occlusionRadius = glm::vec3(1.0f);
-	int samples = 40;
+	int samples = 1;
 };
-
-#endif

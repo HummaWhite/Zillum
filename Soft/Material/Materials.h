@@ -24,8 +24,8 @@ public:
 
 	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo)
 	{
-		auto v = Math::randHemisphere();
-		return Sample(Transform::normalToWorld(N, v), v.z * Math::PiInv, BXDF::Diffuse);
+		auto [Wi, pdf] = Math::sampleHemisphereCosine(N);
+		return Sample(Wi, pdf, BXDF::Diffuse);
 	}
 
 private:
@@ -90,7 +90,7 @@ public:
 		bool sampleDiff = uniformFloat() > spec;
 
 		glm::vec3 Wi;
-		if (sampleDiff) Wi = Transform::normalToWorld(N, Math::randHemisphere());
+		if (sampleDiff) Wi = Math::sampleHemisphereCosine(N).first;
 		else
 		{
 			auto H = ggxDistrib.sampleWm(N, Wo);
