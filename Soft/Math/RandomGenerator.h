@@ -11,20 +11,20 @@ typedef std::uniform_int_distribution<int> UniformInt;
 typedef std::uniform_int_distribution<uint16_t> UniformUint16;
 typedef std::uniform_int_distribution<int16_t> UniformInt16;
 
-static std::default_random_engine randomEngine(time(0));
+static std::default_random_engine globalRandomEngine(time(0));
 
 float uniformFloat()
 {
-	return UniformFloat(0.0f, 1.0f)(randomEngine);
+	return UniformFloat(0.0f, 1.0f)(globalRandomEngine);
 }
 
 float uniformFloat(float tMin, float tMax)
 {
-	return UniformFloat(tMin, tMax)(randomEngine);
+	return UniformFloat(tMin, tMax)(globalRandomEngine);
 }
 
 template<typename T>
 T uniformInt(T tMin, T tMax)
 {
-	return std::uniform_int_distribution<T>(tMin, tMax)(randomEngine);
+	return std::uniform_int_distribution<T>(tMin, tMax)(globalRandomEngine);
 }

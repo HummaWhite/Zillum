@@ -26,7 +26,7 @@ public:
 		return d(N, M) * Microfacet::schlickG(glm::dot(N, Wo), alpha) * Math::absDot(M, Wo) / Math::absDot(N, Wo);
 	}
 
-	glm::vec3 sampleWm(const glm::vec3 &N, const glm::vec3 &Wo)
+	glm::vec3 sampleWm(const glm::vec3 &N, const glm::vec3 &Wo, const glm::vec2 &u)
 	{
 		if (visible)
 		{
@@ -39,7 +39,7 @@ public:
 			glm::vec3 T1 = lensq > 0.0f ? glm::vec3(-Vh.y, Vh.x, 0.0f) / glm::sqrt(lensq) : glm::vec3(1.0f, 0.0f, 0.0f);
 			glm::vec3 T2 = glm::cross(Vh, T1);
 
-			glm::vec2 xi = Transform::toConcentricDisk(Math::randBox());
+			glm::vec2 xi = Transform::toConcentricDisk(u);
 			float s = 0.5f * (1.0f + Vh.z);
 			xi.y = (1.0f - s) * glm::sqrt(glm::max(0.0f, 1.0f - xi.x * xi.x)) + s * xi.y;
 
@@ -49,7 +49,7 @@ public:
 		}
 		else
 		{
-			glm::vec2 xi = Transform::toConcentricDisk(Math::randBox());
+			glm::vec2 xi = Transform::toConcentricDisk(u);
 
 			glm::vec3 H = glm::vec3(xi.x, xi.y, glm::sqrt(glm::max(0.0f, 1.0f - xi.x * xi.x - xi.y * xi.y)));
 			H = glm::normalize(H * glm::vec3(alpha, alpha, 1.0f));
@@ -83,9 +83,8 @@ public:
 		return d(N, M) * Math::absDot(N, M);
 	}
 
-	glm::vec3 sampleWm(const glm::vec3 &N, const glm::vec3 &Wo)
+	glm::vec3 sampleWm(const glm::vec3 &N, const glm::vec3 &Wo, const glm::vec2 &u)
 	{
-		auto u = Math::randBox();
 		float cosTheta = glm::sqrt(glm::max(0.0f, (1.0f - glm::pow(alpha, 1.0f - u.x)) / (1.0f - alpha)));
 		float sinTheta = glm::sqrt(glm::max(0.0f, 1.0f - cosTheta * cosTheta));
 		float phi = 2.0f * u.y * Math::Pi;

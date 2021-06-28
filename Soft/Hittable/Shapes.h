@@ -35,10 +35,10 @@ public:
 		return res >= 0 ? res : std::optional<float>();
 	}
 
-	glm::vec3 getRandomPoint()
+	glm::vec3 uniformSample(const glm::vec2 &u)
 	{
-		float t = uniformFloat(0.0f, glm::radians(360.0f));
-		float p = uniformFloat(0.0f, glm::radians(180.0f));
+		float t = Math::Pi * 2.0f * u.x;
+		float p = Math::Pi * u.y;
 
 		return glm::vec3(cos(t) * sin(p), sin(t) * sin(p), cos(p)) * radius + center;
 	}
@@ -116,15 +116,13 @@ public:
 		return t > 0.0f ? t : std::optional<float>();
 	}
 
-	glm::vec3 getRandomPoint()
+	glm::vec3 uniformSample(const glm::vec2 &u)
 	{
-		float wa = uniformFloat(1e-6f, 1.0f);
-		float wb = uniformFloat(1e-6f, 1.0f);
-		float wc = uniformFloat(1e-6f, 1.0f);
+		float r = glm::sqrt(u.y);
+		float a = 1.0f - r;
+		float b = u.x * r;
 
-		glm::vec3 weight = glm::vec3(wa, wb, wc) / (wa + wb + wc);
-		glm::vec3 p = va * weight.x + vb * weight.y + vc * weight.z;
-
+		glm::vec3 p = va * (1.0f - a - b) + vb * a + vc * b;
 		return transform->get(p);
 	}
 
@@ -177,9 +175,9 @@ public:
 		return triangle.closestHit(ray);
 	}
 
-	glm::vec3 getRandomPoint()
+	glm::vec3 uniformSample(const glm::vec2 &u)
 	{
-		return triangle.getRandomPoint();
+		return triangle.uniformSample(u);
 	}
 
 	glm::vec3 surfaceNormal(const glm::vec3 &p)
@@ -290,11 +288,9 @@ public:
 		return std::nullopt;
 	}
 
-	inline glm::vec3 getRandomPoint()
+	inline glm::vec3 uniformSample(const glm::vec2 &u)
 	{
-		float u = uniformFloat();
-		float v = uniformFloat();
-		return transform->get((vb - va) * u + (vc - va) * v + va);
+		return transform->get((vb - va) * u.x + (vc - va) * u.y + va);
 	}
 
 	inline glm::vec3 surfaceNormal(const glm::vec3 &p)

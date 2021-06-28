@@ -10,7 +10,7 @@ public:
 	PathIntegrator(int width, int height, int maxSpp):
 		PixelIndependentIntegrator(width, height, maxSpp) {}
 
-	glm::vec3 tracePixel(Ray ray)
+	glm::vec3 tracePixel(Ray ray, std::shared_ptr<Sampler> sampler)
 	{
 		auto [dist, obj] = scene->closestHit(ray);
 
@@ -27,12 +27,12 @@ public:
 			auto ob = dynamic_cast<Object*>(obj.get());
 			SurfaceInfo sInfo = ob->surfaceInfo(p);
 			ray.ori = p;
-			return trace(ray, sInfo);
+			return trace(ray, sInfo, sampler);
 		}
 	}
 
 private:
-	glm::vec3 trace(Ray ray, SurfaceInfo sInfo)
+	glm::vec3 trace(Ray ray, SurfaceInfo sInfo, std::shared_ptr<Sampler> sampler)
 	{
 		glm::vec3 result(0.0f);
 		glm::vec3 beta(1.0f);
@@ -46,9 +46,10 @@ private:
 
 			bool deltaBsdf = sInfo.material->bxdf().isDelta();
 
+			auto directIllumSample = sampler->get<5>();
 			if (!deltaBsdf && sampleDirectLight)
 			{
-				auto [Wi, coef, samplePdf] = scene->sampleLightAndEnv(P);
+				auto [Wi, coef, samplePdf] = scene->sampleLightAndEnv(P, directIllumSample);
 				if (samplePdf != 0.0f)
 				{
 					float bsdfPdf = mat->pdf(Wo, Wi, N);
@@ -57,7 +58,7 @@ private:
 				}
 			}
 
-			auto [sample, bsdf] = sInfo.material->sampleWithBsdf(N, Wo);
+			auto [sample, bsdf] = sInfo.material->sampleWithBsdf(N, Wo, sampler->get1D(), sampler->get2D());
 			auto [Wi, bsdfPdf, type] = sample;
 
 			float NoWi = type.isDelta() ? 1.0f : Math::absDot(N, Wi);
@@ -93,7 +94,7 @@ private:
 				break;
 			}
 
-			if (roulette && uniformFloat() > rouletteProb) break;
+			if (roulette && sampler->get1D() > rouletteProb) break;
 			if (roulette) beta /= rouletteProb;
 			
 			glm::vec3 nextP = newRay.get(dist);

@@ -28,9 +28,9 @@ public:
 		return shape->closestHit(ray);
 	}
 
-	glm::vec3 getRandomPoint()
+	glm::vec3 uniformSample(const glm::vec2 &u)
 	{
-		return shape->getRandomPoint();
+		return shape->uniformSample(u);
 	}
 
 	glm::vec3 surfaceNormal(const glm::vec3 &p)
@@ -81,9 +81,9 @@ public:
 
 	Ray getRandomRay()
 	{
-		glm::vec3 ori = getRandomPoint();
+		glm::vec3 ori = uniformSample({});
 		glm::vec3 N = surfaceNormal(ori);
-		glm::vec3 dir = Transform::normalToWorld(N, Math::randHemisphere());
+		glm::vec3 dir = Transform::normalToWorld(N, {});
 		return { ori + dir * 1e-4f, dir };
 	}
 

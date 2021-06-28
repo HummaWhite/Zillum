@@ -14,12 +14,17 @@
 
 namespace Math
 {
-	const uint32_t FLOAT_SIG_MASK = 0x80000000;
-	const uint32_t FLOAT_EXP_MASK = 0xff << 23;
-	const uint32_t FLOAT_VAL_MASK = 0x7fffff;
+	namespace FloatBitMask
+	{
+		const uint32_t Sign = 0x80000000;
+		const uint32_t Exp = 0xff << 23;
+		const uint32_t Val = 0x7fffff;
+	}
 
 	const float Pi = glm::pi<float>();
 	const float PiInv = 1.0f / glm::pi<float>();
+
+	const float OneMinusEpsilon = 0x1.fffffep-1;
 
 	const glm::vec3 BRIGHTNESS = glm::vec3(0.299f, 0.587f, 0.114f);
 
@@ -64,7 +69,7 @@ namespace Math
 	inline bool isNan(float v)
 	{
 		uint32_t u = *(int*)&v;
-		return ((u & FLOAT_EXP_MASK) == FLOAT_EXP_MASK && (u & FLOAT_VAL_MASK) != 0);
+		return ((u & FloatBitMask::Exp) == FloatBitMask::Exp && (u & FloatBitMask::Val) != 0);
 	}
 
 	inline bool hasNan(const glm::vec3 &v)
@@ -75,7 +80,7 @@ namespace Math
 	inline bool isInf(float v)
 	{
 		uint32_t u = *(uint32_t*)&v;
-		return ((u & FLOAT_EXP_MASK) == FLOAT_EXP_MASK && (u & FLOAT_VAL_MASK) == 0);
+		return ((u & FloatBitMask::Exp) == FloatBitMask::Exp && (u & FloatBitMask::Val) == 0);
 	}
 
 	inline glm::mat3 TBNMatrix(const glm::vec3 &N)
@@ -96,14 +101,9 @@ namespace Math
 		return bits;
 	}
 
-	inline float radicalInverseVDC(uint32_t bits)
+	inline float radicalInverse(uint32_t bits)
 	{
     	return float(inverseBits(bits)) * 2.3283064365386963e-10;
-	}
-
-	inline glm::vec2 hammersley(uint32_t i, uint32_t n)
-	{
-		return glm::vec2((float)i / (float)n, radicalInverseVDC(i));
 	}
 
 	inline float satDot(const glm::vec3 &a, const glm::vec3 &b)
@@ -116,22 +116,9 @@ namespace Math
 		return glm::abs(glm::dot(a, b));
 	}
 
-	inline bool coin()
+	inline bool coin(float u)
 	{
-		return uniformFloat() < 0.5f;
-	}
-
-	inline glm::vec2 randBox()
-	{
-		return glm::vec2(uniformFloat(), uniformFloat());
-	}
-
-	inline glm::vec3 randHemisphere()
-	{
-		float phi = uniformFloat(0.0f, 2.0f * Pi);
-		float theta = uniformFloat(0.0f, 0.5f * Pi);
-
-		return glm::vec3(glm::cos(phi) * glm::sin(theta), glm::sin(phi) * glm::sin(theta), glm::cos(theta));
+		return u < 0.5f;
 	}
 
 	inline bool sameHemisphere(const glm::vec3 &N, const glm::vec3 &A, const glm::vec3 &B)

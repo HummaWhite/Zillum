@@ -38,12 +38,12 @@ public:
 	Material(int bxdfType): matBxdf(bxdfType) {}
 
 	virtual glm::vec3 bsdf(const SurfaceInteraction &si, int type) = 0;
-	virtual Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo) = 0;
+	virtual Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2) = 0;
 	virtual float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N) = 0;
 
-	virtual SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo)
+	virtual SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2)
 	{
-		Sample sample = getSample(N, Wo);
+		Sample sample = getSample(N, Wo, u1, u2);
 		SurfaceInteraction si = { Wo, sample.dir, N };
 		glm::vec3 bsdf = this->bsdf(si, sample.type.type());
 		return SampleWithBsdf(sample, bsdf);
@@ -51,7 +51,7 @@ public:
 
 	virtual glm::vec4 getSampleForward(const glm::vec3 &N, const glm::vec3 &Wi)
 	{
-		Sample sample = getSample(N, Wi);
+		Sample sample = getSample(N, Wi, 0.0f, {});
 		return glm::vec4(sample.dir, sample.pdf);
 	}
 

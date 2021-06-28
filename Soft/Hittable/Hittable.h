@@ -22,7 +22,7 @@ class Hittable
 public:
 	virtual std::optional<float> closestHit(const Ray &ray) = 0;
 	
-	virtual glm::vec3 getRandomPoint() = 0;
+	virtual glm::vec3 uniformSample(const glm::vec2 &u) = 0;
 
 	virtual glm::vec3 surfaceNormal(const glm::vec3 &p) = 0;
 

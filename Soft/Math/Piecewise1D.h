@@ -2,6 +2,7 @@
 
 #include "Math.h"
 
+#include <array>
 #include <queue>
 
 class Piecewise1D
@@ -52,10 +53,10 @@ public:
         }
     }
 
-    int sample()
+    int sample(const glm::vec2 &u)
     {
-        int rx = uniformInt<int>(0, table.size() - 1);
-        float ry = uniformFloat(0.0f, sumDistrib);
+        int rx = static_cast<int>(table.size() * u.x);
+        float ry = u.y;
 
         return (ry <= table[rx].second) ? rx : table[rx].first;
     }

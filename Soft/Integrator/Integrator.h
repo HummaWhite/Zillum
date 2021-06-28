@@ -1,5 +1,4 @@
-#ifndef INTEGRATOR_H
-#define INTEGRATOR_H
+#pragma once
 
 #include <thread>
 #include <mutex>
@@ -16,12 +15,15 @@
 #include "../Accelerator/BVH.h"
 #include "../ObjReader.h"
 #include "../Scene.h"
+#include "../Sampler/Samplers.h"
+
+const int MaxThreads = std::thread::hardware_concurrency();
 
 class PixelIndependentIntegrator
 {
 public:
 	PixelIndependentIntegrator(int width, int height, int maxSpp):
-		width(width), height(height), maxSpp(maxSpp), maxThreads(std::thread::hardware_concurrency())
+		width(width), height(height), maxSpp(maxSpp)
 	{
 		resultBuffer.init(width, height);
 		resultBuffer.fill(glm::vec3(0.0f));
@@ -46,17 +48,19 @@ public:
 			curSpp = 0;
 			modified = false;
 		}
-		if ((lowDiscrepSeries || limitSpp) && curSpp >= maxSpp) return;
+		if (limitSpp && curSpp >= maxSpp) return;
 
-		std::thread threads[maxThreads];
-		for (int i = 0; i < maxThreads; i++)
+		std::thread threads[MaxThreads];
+		for (int i = 0; i < MaxThreads; i++)
 		{
-			int start = (width / maxThreads) * i;
-			int end = std::min(width, (width / maxThreads) * (i + 1));
-			if (i == maxThreads - 1) end = width;
+			int start = (width / MaxThreads) * i;
+			int end = std::min(width, (width / MaxThreads) * (i + 1));
+			if (i == MaxThreads - 1) end = width;
 
-			threads[i] = std::thread(doTracing, this, start, end);
+			auto threadSampler = (i == 0) ? mSampler : mSampler->copy();
+			threads[i] = std::thread(doTracing, this, start, end, threadSampler);
 		}
+		mSampler->nextSample();
 
 		for (auto &t : threads) t.join();
 
@@ -67,10 +71,10 @@ public:
 		std::cout << "  " << std::fixed << std::setprecision(2) << perc << "%";
 	}
 
-	virtual glm::vec3 tracePixel(Ray ray) = 0;
+	virtual glm::vec3 tracePixel(Ray ray, std::shared_ptr<Sampler> sampler) = 0;
 
 private:
-	void doTracing(int start, int end)
+	void doTracing(int start, int end, std::shared_ptr<Sampler> sampler)
 	{
 		float invW = 1.0f / width;
 		float invH = 1.0f / height;
@@ -78,14 +82,14 @@ private:
 		{
 			for (int y = 0; y < height; y++)
 			{
+				sampler->setPixel(x, y);
 				float sx = 2.0f * (x + 0.5f) * invW - 1.0f;
 				float sy = 1.0f - 2.0f * (y + 0.5f) * invH;
 
-				glm::vec2 uniSample = lowDiscrepSeries ? Math::hammersley(curSpp, maxSpp) : glm::vec2(uniformFloat(), uniformFloat());
-				glm::vec2 sp = uniSample - 0.5f;
+				glm::vec2 sp = sampler->get2D() - 0.5f;
 
 				Ray ray = scene->camera->getRay(sx + sp.x * invW, sy + sp.y * invH);
-				glm::vec3 result = tracePixel(ray);
+				glm::vec3 result = tracePixel(ray, sampler);
 
 				if (Math::isNan(result.x) || Math::isNan(result.y) || Math::isNan(result.z))
 				{
@@ -101,11 +105,10 @@ private:
 
 public:
 	bool modified = false;
-	bool lowDiscrepSeries = false;
 	bool limitSpp = false;
+	std::shared_ptr<Sampler> mSampler;
 
 protected:
-	const int maxThreads;
 	const int maxSpp;
 	int curSpp = 0;
 
@@ -116,5 +119,3 @@ protected:
 private:
 	FrameBuffer<glm::vec3> resultBuffer;
 };
-
-#endif

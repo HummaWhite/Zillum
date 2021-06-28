@@ -53,9 +53,9 @@ public:
 		return sphereMap.getSpherical(dir);
 	}
 
-	std::pair<glm::vec3, float> importanceSample()
+	std::pair<glm::vec3, float> importanceSample(const glm::vec2 &u1, const glm::vec2 &u2)
 	{
-		auto [col, row] = distrib.sample();
+		auto [col, row] = distrib.sample(u1, u2);
 
 		float sinTheta = glm::sin(Math::Pi * (row + 0.5f) / h);
 		auto Wi = Transform::planeToSphere(glm::vec2((col + 0.5f) / w, (row + 0.5f) / h));

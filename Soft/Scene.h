@@ -43,31 +43,14 @@ public:
 		lightDistrib = Piecewise1D(lightPdf);
 	}
 
-	LightSample lightWeigt(std::shared_ptr<Light> lt, const glm::vec3 &x)
-	{
-		glm::vec3 y = lt->getRandomPoint();
-		glm::vec3 Wi = glm::normalize(y - x);
-		float dist = glm::distance(x, y);
-
-		glm::vec3 N = lt->surfaceNormal(y);
-		glm::vec3 weight(0.0f);
-
-		Ray lightRay(x + Wi * 1e-4f, Wi);
-		if (!quickIntersect(lightRay, dist))
-		{
-			weight = lt->getRadiance(y, -Wi) * Math::satDot(N, -Wi) * lt->surfaceArea() / (dist * dist);
-		}
-		return {Wi, weight, lt->pdfLi(x, y)};
-	}
-
-	LightSample sampleOneLight(const glm::vec3 &x)
+	LightSample sampleOneLight(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2)
 	{
 		if (lights.size() == 0) return INVALID_LIGHT_SAMPLE;
 		bool sampleByPower = lightSelectStrategy == LightSelectStrategy::ByPower;
-		int index = sampleByPower ? lightDistrib.sample() : uniformInt<int>(0, lights.size() - 1);
+		int index = sampleByPower ? lightDistrib.sample(u1) : static_cast<int>(lights.size() * u1.x);
 
 		auto lt = lights[index];
-		glm::vec3 y = lt->getRandomPoint();
+		glm::vec3 y = lt->uniformSample(u2);
 		glm::vec3 Wi = glm::normalize(y - x);
 		glm::vec3 N = lt->surfaceNormal(y);
 		float cosTheta = glm::dot(N, -Wi);
@@ -88,9 +71,9 @@ public:
 		return { Wi, weight / pdf, pdf };
 	}
 
-	LightSample sampleEnvironment(const glm::vec3 &x)
+	LightSample sampleEnvironment(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2)
 	{
-		auto [Wi, pdf] = env->importanceSample();
+		auto [Wi, pdf] = env->importanceSample(u1, u2);
 
 		Ray ray(x + Wi * 1e-4f, Wi);
 		float tmp = 1e6;
@@ -100,9 +83,8 @@ public:
 		return { Wi, rad / pdf, pdf };
 	}
 
-	LightSample sampleLightAndEnv(const glm::vec3 &x)
+	LightSample sampleLightAndEnv(const glm::vec3 &x, const std::array<float, 5> &sample)
 	{	
-		float r = uniformFloat();
 		float pdfSampleLight = 0.0f;
 		
 		if (lights.size() > 0)
@@ -111,10 +93,13 @@ public:
 				lightDistrib.sum() / powerlightAndEnv() : 0.5f;
 		}
 
-		bool sampleLight = r < pdfSampleLight;
+		bool sampleLight = sample[0] < pdfSampleLight;
 		float pdfSelect = sampleLight ? pdfSampleLight : 1.0f - pdfSampleLight;
 
-		auto [Wi, coef, pdf] = sampleLight ? sampleOneLight(x) : sampleEnvironment(x);
+		glm::vec2 u1(sample[1], sample[2]);
+		glm::vec2 u2(sample[3], sample[4]);
+
+		auto [Wi, coef, pdf] = sampleLight ? sampleOneLight(x, u1, u2) : sampleEnvironment(x, u1, u2);
 		return { Wi, coef / pdfSelect, pdf * pdfSelect };
 	}
 
@@ -146,8 +131,8 @@ public:
 	void buildScene()
 	{
 		bvh = std::make_shared<BVH>(hittables);
-		auto [maxDepth, avgDepth] = bvh->dfsDetailed();
-		std::cout << "[BVH] TreeSize: " << bvh->size() << "  MaxDepth: " << maxDepth << "  AvgDepth: " << avgDepth << "\n";
+		//auto [maxDepth, avgDepth] = bvh->dfsDetailed();
+		//std::cout << "[BVH] TreeSize: " << bvh->size() << "  MaxDepth: " << maxDepth << "  AvgDepth: " << avgDepth << "\n";
 		setupLightSampleTable();
 	}
 

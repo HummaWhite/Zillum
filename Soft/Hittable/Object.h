@@ -24,9 +24,9 @@ public:
 		return shape->closestHit(r);
 	}
 
-	glm::vec3 getRandomPoint()
+	glm::vec3 uniformSample(const glm::vec2 &u)
 	{
-		return shape->getRandomPoint();
+		return shape->uniformSample(u);
 	}
 
 	glm::vec3 surfaceNormal(const glm::vec3 &p)

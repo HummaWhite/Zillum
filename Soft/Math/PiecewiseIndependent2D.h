@@ -20,10 +20,10 @@ public:
         colTable = Piecewise1D(colDistrib);
     }
 
-    std::pair<int, int> sample()
+    std::pair<int, int> sample(const glm::vec2 &u1, const glm::vec2 &u2)
     {
-        int row = colTable.sample();
-        return std::pair<int, int>(rowTables[row].sample(), row);
+        int row = colTable.sample(u1);
+        return std::pair<int, int>(rowTables[row].sample(u2), row);
     }
 
     float sum() const

@@ -104,9 +104,9 @@ public:
 
 namespace Math
 {
-	inline std::pair<glm::vec3, float> sampleHemisphereCosine(const glm::vec3 &N)
+	inline std::pair<glm::vec3, float> sampleHemisphereCosine(const glm::vec3 &N, const glm::vec2 &u)
 	{
-		glm::vec2 uv = Transform::toConcentricDisk(randBox());
+		glm::vec2 uv = Transform::toConcentricDisk(u);
 		float z = glm::sqrt(1.0f - glm::dot(uv, uv));
 		glm::vec3 v = Transform::normalToWorld(N, glm::vec3(uv, z));
 		return {v, PiInv * z};
