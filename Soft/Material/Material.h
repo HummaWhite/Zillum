@@ -14,6 +14,11 @@
 #include "../Math/Transform.h"
 #include "../Microfacet/Microfacets.h"
 
+enum class TransportMode
+{
+	Radiance, Importance
+};
+
 struct Sample
 {
 	Sample(): dir(0.0f), pdf(0.0f), type(0) {}
@@ -37,15 +42,15 @@ class Material
 public:
 	Material(int bxdfType): matBxdf(bxdfType) {}
 
-	virtual glm::vec3 bsdf(const SurfaceInteraction &si, int type) = 0;
-	virtual Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2) = 0;
-	virtual float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N) = 0;
+	virtual glm::vec3 bsdf(const SurfaceInteraction &si, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode = TransportMode::Radiance) = 0;
 
-	virtual SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2)
+	virtual SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode = TransportMode::Radiance)
 	{
 		Sample sample = getSample(N, Wo, u1, u2);
 		SurfaceInteraction si = { Wo, sample.dir, N };
-		glm::vec3 bsdf = this->bsdf(si, sample.type.type());
+		glm::vec3 bsdf = this->bsdf(si, mode);
 		return SampleWithBsdf(sample, bsdf);
 	}
 

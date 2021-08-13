@@ -1,22 +1,22 @@
 #include "Materials.h"
 
-glm::vec3 Lambertian::bsdf(const SurfaceInteraction &si, int type)
+glm::vec3 Lambertian::bsdf(const SurfaceInteraction &si, TransportMode mode)
 {
     return albedo * Math::PiInv;
 }
 
-float Lambertian::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
+float Lambertian::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode)
 {
     return glm::dot(Wi, N) * Math::PiInv;
 }
 
-Sample Lambertian::getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2)
+Sample Lambertian::getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode)
 {
     auto [Wi, pdf] = Math::sampleHemisphereCosine(N, u2);
     return Sample(Wi, pdf, BXDF::Diffuse);
 }
 
-glm::vec3 MetalWorkflow::bsdf(const SurfaceInteraction &si, int type)
+glm::vec3 MetalWorkflow::bsdf(const SurfaceInteraction &si, TransportMode mode)
 {
     glm::vec3 Wi = si.Wi;
     glm::vec3 Wo = si.Wo;
@@ -52,7 +52,7 @@ glm::vec3 MetalWorkflow::bsdf(const SurfaceInteraction &si, int type)
     return kd * albedo * Math::PiInv + glossy;
 }
 
-float MetalWorkflow::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
+float MetalWorkflow::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode)
 {
     float NoWi = glm::dot(N, Wi);
     glm::vec3 H = glm::normalize(Wo + Wi);
@@ -62,7 +62,7 @@ float MetalWorkflow::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::ve
     return Math::lerp(pdfDiff, pdfSpec, 1.0f / (2.0f - metallic));
 }
 
-Sample MetalWorkflow::getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2)
+Sample MetalWorkflow::getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode)
 {
     float spec = 1.0f / (2.0f - metallic);
     bool sampleDiff = u1 > spec;
@@ -80,10 +80,10 @@ Sample MetalWorkflow::getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u
     if (NoWi < 0.0f)
         return Sample();
 
-    return Sample(Wi, pdf(Wo, Wi, N), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl);
+    return Sample(Wi, pdf(Wo, Wi, N, mode), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl);
 }
 
-glm::vec3 Clearcoat::bsdf(const SurfaceInteraction &si, int type)
+glm::vec3 Clearcoat::bsdf(const SurfaceInteraction &si, TransportMode mode)
 {
     auto [Wo, Wi, N, uv] = si;
     auto H = glm::normalize(Wo + Wi);
@@ -102,13 +102,13 @@ glm::vec3 Clearcoat::bsdf(const SurfaceInteraction &si, int type)
     return F * D * G * weight / denom;
 }
 
-float Clearcoat::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
+float Clearcoat::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode)
 {
     auto H = glm::normalize(Wo + Wi);
     return distrib.pdf(N, H, Wo) / (4.0f * glm::dot(H, Wo));
 }
 
-Sample Clearcoat::getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2)
+Sample Clearcoat::getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode)
 {
     auto H = distrib.sampleWm(N, Wo, u2);
     auto Wi = glm::reflect(-Wo, H);
@@ -116,10 +116,10 @@ Sample Clearcoat::getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, c
     if (glm::dot(N, Wi) < 0.0f)
         return Sample();
 
-    return Sample(Wi, pdf(Wo, Wi, N), BXDF::GlosRefl);
+    return Sample(Wi, pdf(Wo, Wi, N, mode), BXDF::GlosRefl);
 }
 
-glm::vec3 Dielectric::bsdf(const SurfaceInteraction &si, int type)
+glm::vec3 Dielectric::bsdf(const SurfaceInteraction &si, TransportMode mode)
 {
     if (approximateDelta)
         return glm::vec3(0.0f);
@@ -148,7 +148,7 @@ glm::vec3 Dielectric::bsdf(const SurfaceInteraction &si, int type)
     }
 }
 
-float Dielectric::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N)
+float Dielectric::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode)
 {
     if (approximateDelta)
         return 0;
@@ -175,7 +175,7 @@ float Dielectric::pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 
     }
 }
 
-SampleWithBsdf Dielectric::sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2)
+SampleWithBsdf Dielectric::sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode)
 {
     if (approximateDelta)
     {
@@ -253,12 +253,12 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &W
     }
 }
 
-glm::vec3 ThinDielectric::bsdf(const SurfaceInteraction &si, int type)
+glm::vec3 ThinDielectric::bsdf(const SurfaceInteraction &si, TransportMode mode)
 {
     return glm::vec3(0.0f);
 }
 
-SampleWithBsdf ThinDielectric::sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2)
+SampleWithBsdf ThinDielectric::sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode)
 {
     float refl = fresnelDielectric(glm::dot(N, Wo), ior);
     float trans = 1.0f - refl;

@@ -13,9 +13,9 @@ public:
 	Lambertian(const glm::vec3 &albedo) :
 		albedo(albedo), Material(BXDF::Diffuse) {}
 
-	glm::vec3 bsdf(const SurfaceInteraction &si, int type);
-	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N);
-	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2);
+	glm::vec3 bsdf(const SurfaceInteraction &si, TransportMode mode);
+	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode);
+	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode);
 
 private:
 	glm::vec3 albedo;
@@ -29,9 +29,9 @@ public:
 		albedo(albedo), metallic(metallic), roughness(roughness),
 		ggxDistrib(roughness, true), Material(BXDF::Diffuse | BXDF::GlosRefl) {}
 
-	glm::vec3 bsdf(const SurfaceInteraction &si, int type);
-	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N);
-	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2);
+	glm::vec3 bsdf(const SurfaceInteraction &si, TransportMode mode);
+	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode);
+	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode);
 
 private:
 	glm::vec3 albedo;
@@ -47,9 +47,9 @@ public:
 	Clearcoat(float roughness, float weight):
 		distrib(roughness), weight(weight), Material(BXDF::GlosRefl) {}
 
-	glm::vec3 bsdf(const SurfaceInteraction &si, int type);
-	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N);
-	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2);
+	glm::vec3 bsdf(const SurfaceInteraction &si, TransportMode mode);
+	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode);
+	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode);
 
 private:
 	GTR1Distrib distrib;
@@ -64,10 +64,10 @@ public:
 		tint(tint), ior(ior), ggxDistrib(roughness, false),
 		approximateDelta(roughness < 0.014f), Material(BXDF::SpecRefl | BXDF::SpecTrans) {}
 
-	glm::vec3 bsdf(const SurfaceInteraction &si, int type);
-	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N);
-	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2) { return Sample(); }
-	SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2) override;
+	glm::vec3 bsdf(const SurfaceInteraction &si, TransportMode mode);
+	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode);
+	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode) { return Sample(); }
+	SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode) override;
 
 private:
 	float ior;
@@ -83,10 +83,10 @@ public:
 	ThinDielectric(const glm::vec3 &tint, float ior):
 		tint(tint), ior(ior), Material(BXDF::SpecRefl | BXDF::SpecTrans) {}
 
-	glm::vec3 bsdf(const SurfaceInteraction &si, int type);
-	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N) { return 0.0f; }
-	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2) { return Sample(); }
-	SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2) override;
+	glm::vec3 bsdf(const SurfaceInteraction &si, TransportMode mode);
+	float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode) { return 0.0f; }
+	Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode) { return Sample(); }
+	SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode) override;
 
 private:
 	glm::vec3 tint;

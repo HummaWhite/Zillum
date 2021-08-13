@@ -44,7 +44,7 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             {
                 float bsdfPdf = mat->pdf(Wo, Wi, N);
                 float weight = Math::biHeuristic(samplePdf, bsdfPdf);
-                result += mat->bsdf({Wo, Wi, N}, 0) * beta * Math::satDot(N, Wi) * coef * weight;
+                result += mat->bsdf({Wo, Wi, N}, TransportMode::Radiance) * beta * Math::satDot(N, Wi) * coef * weight;
             }
         }
 
