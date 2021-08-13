@@ -1,5 +1,4 @@
-#ifndef BIDIRECTIONAL_H
-#define BIDIRECTIONAL_H
+#pragma once
 
 #include <list>
 
@@ -194,5 +193,3 @@ public:
 	bool returnEnvColorAtEnd = false;
 	float indirectClamp = 20.0f;
 };
-
-#endif

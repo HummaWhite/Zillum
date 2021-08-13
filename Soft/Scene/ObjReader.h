@@ -4,11 +4,12 @@
 #include <fstream>
 #include <sstream>
 #include <cstring>
+#include <vector>
 #include <cstdio>
 
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
+#include "../glm/glm.hpp"
+#include "../glm/gtc/matrix_transform.hpp"
+#include "../glm/gtc/type_ptr.hpp"
 
 namespace ObjReader
 {
@@ -19,7 +20,7 @@ namespace ObjReader
 		std::vector<glm::vec3> normals;
 	};
 
-	VertexInfo readFile(const char* filePath)
+	static VertexInfo readFile(const char* filePath)
 	{
 		VertexInfo data;
 		std::fstream file(filePath);

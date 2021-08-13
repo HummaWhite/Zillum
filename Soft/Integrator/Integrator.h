@@ -3,18 +3,18 @@
 #include <thread>
 #include <mutex>
 
-#include "../FrameBuffer.h"
-#include "../Color.h"
-#include "../Camera.h"
-#include "../Texture.h"
-#include "../Hittable/Object.h"
-#include "../Hittable/Light.h"
+#include "../Buffer/FrameBuffer.h"
+#include "../Display/Color.h"
+#include "../Scene/Camera.h"
+#include "../Buffer/Texture.h"
+#include "../Scene/Object.h"
+#include "../Scene/Light.h"
 #include "../Material/Materials.h"
 #include "../Math/Math.h"
 #include "../Environment/Environments.h"
 #include "../Accelerator/BVH.h"
-#include "../ObjReader.h"
-#include "../Scene.h"
+#include "../Scene/ObjReader.h"
+#include "../Scene/Scene.h"
 #include "../Sampler/Samplers.h"
 
 const int MaxThreads = std::thread::hardware_concurrency();
@@ -29,7 +29,7 @@ public:
 		resultBuffer.fill(glm::vec3(0.0f));
 	}
 
-	void setScene(std::shared_ptr<Scene> scene) { this->scene = scene; }
+	void setScene(ScenePtr scene) { this->scene = scene; }
 
 	FrameBuffer<glm::vec3>& result() { return resultBuffer; }
 
@@ -71,10 +71,10 @@ public:
 		std::cout << "  " << std::fixed << std::setprecision(2) << perc << "%";
 	}
 
-	virtual glm::vec3 tracePixel(Ray ray, std::shared_ptr<Sampler> sampler) = 0;
+	virtual glm::vec3 tracePixel(Ray ray, SamplerPtr sampler) = 0;
 
 private:
-	void doTracing(int start, int end, std::shared_ptr<Sampler> sampler)
+	void doTracing(int start, int end, SamplerPtr sampler)
 	{
 		float invW = 1.0f / width;
 		float invH = 1.0f / height;
@@ -114,8 +114,10 @@ protected:
 
 	int width, height;
 
-	std::shared_ptr<Scene> scene;
+	ScenePtr scene;
 
 private:
 	FrameBuffer<glm::vec3> resultBuffer;
 };
+
+typedef std::shared_ptr<PixelIndependentIntegrator> PixIndIntegPtr;

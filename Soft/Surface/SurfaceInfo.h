@@ -11,10 +11,10 @@
 
 struct SurfaceInfo
 {
-	SurfaceInfo(const glm::vec2 &_texCoord, const glm::vec3 &_norm, std::shared_ptr<Material> _material):
+	SurfaceInfo(const glm::vec2 &_texCoord, const glm::vec3 &_norm, MaterialPtr _material):
 		texCoord(_texCoord), norm(_norm), material(_material) {}
 
 	glm::vec2 texCoord;
 	glm::vec3 norm;
-	std::shared_ptr<Material> material;
+	MaterialPtr material;
 };

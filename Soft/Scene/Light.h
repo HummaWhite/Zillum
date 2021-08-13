@@ -18,7 +18,7 @@ class Light:
 	public Hittable
 {
 public:
-	Light(std::shared_ptr<Hittable> shape, const glm::vec3 &power, bool delta):
+	Light(HittablePtr shape, const glm::vec3 &power, bool delta):
 		shape(shape), power(power) {}
 
 	HittableType type() { return HittableType::Light; }
@@ -48,7 +48,7 @@ public:
 		return shape->surfaceUV(p);
 	}
 
-	void setTransform(std::shared_ptr<Transform> trans) override
+	void setTransform(TransformPtr trans) override
 	{
 		transform = trans;
 		shape->setTransform(trans);
@@ -93,6 +93,8 @@ public:
 	}
 
 protected:
-	std::shared_ptr<Hittable> shape;
+	HittablePtr shape;
 	glm::vec3 power;
 };
+
+typedef std::shared_ptr<Light> LightPtr;

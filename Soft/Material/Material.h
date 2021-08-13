@@ -9,7 +9,7 @@
 #include "../glm/gtc/type_ptr.hpp"
 
 #include "../Surface/SurfaceInteraction.h"
-#include "../Ray.h"
+#include "../Scene/Ray.h"
 #include "../BXDF/BXDF.h"
 #include "../Math/Transform.h"
 #include "../Microfacet/Microfacets.h"
@@ -96,3 +96,5 @@ protected:
 protected:
 	BXDF matBxdf;
 };
+
+typedef std::shared_ptr<Material> MaterialPtr;

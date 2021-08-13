@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
 #include <array>
 
 #include "../glm/glm.hpp"
@@ -8,6 +9,9 @@
 #include "../glm/gtc/type_ptr.hpp"
 
 #include "../Math/Math.h"
+
+class Sampler;
+typedef std::shared_ptr<Sampler> SamplerPtr;
 
 class Sampler
 {

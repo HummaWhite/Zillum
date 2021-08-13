@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
 
 #include "../glm/glm.hpp"
 #include "../glm/gtc/matrix_transform.hpp"
@@ -26,3 +27,5 @@ public:
 
 	virtual float power() = 0;
 };
+
+typedef std::shared_ptr<Environment> EnvironmentPtr;

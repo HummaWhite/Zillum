@@ -11,7 +11,7 @@ class Object:
 	public Hittable
 {
 public:
-	Object(std::shared_ptr<Hittable> shape, std::shared_ptr<Material> material):
+	Object(HittablePtr shape, MaterialPtr material):
 		shape(shape), material(material) {}
 
 	SurfaceInfo surfaceInfo(const glm::vec3 &x)
@@ -44,7 +44,7 @@ public:
 		return shape->surfaceUV(p);
 	}
 
-	void setTransform(std::shared_ptr<Transform> trans) override
+	void setTransform(TransformPtr trans) override
 	{
 		transform = trans;
 		shape->setTransform(trans);
@@ -56,6 +56,8 @@ public:
 	}
 
 protected:
-	std::shared_ptr<Hittable> shape;
-	std::shared_ptr<Material> material;
+	HittablePtr shape;
+	MaterialPtr material;
 };
+
+typedef std::shared_ptr<Object> ObjectPtr;

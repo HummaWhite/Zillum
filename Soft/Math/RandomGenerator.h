@@ -13,12 +13,12 @@ typedef std::uniform_int_distribution<int16_t> UniformInt16;
 
 static std::default_random_engine globalRandomEngine(time(0));
 
-float uniformFloat()
+static float uniformFloat()
 {
 	return UniformFloat(0.0f, 1.0f)(globalRandomEngine);
 }
 
-float uniformFloat(float tMin, float tMax)
+static float uniformFloat(float tMin, float tMax)
 {
 	return UniformFloat(tMin, tMax)(globalRandomEngine);
 }
