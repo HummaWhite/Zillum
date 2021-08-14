@@ -10,12 +10,19 @@
 
 #include "../Math/Math.h"
 
+enum class SamplerType
+{
+	Independent, SimpleSobol
+};
+
 class Sampler;
 typedef std::shared_ptr<Sampler> SamplerPtr;
 
 class Sampler
 {
 public:
+	Sampler(SamplerType type) : type(type) {}
+
 	virtual float get1D() = 0;
 	virtual glm::vec2 get2D() = 0;
 
@@ -29,8 +36,11 @@ public:
 
 	virtual void setPixel(int x, int y) = 0;
 	virtual void nextSample() = 0;
-
 	virtual bool isProgressive() const = 0;
-
 	virtual std::shared_ptr<Sampler> copy() = 0;
+
+	SamplerType getType() const { return type; }
+
+private:
+	SamplerType type;
 };

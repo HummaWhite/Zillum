@@ -6,14 +6,14 @@ template<typename T>
 struct FrameBuffer:
 	Buffer<T>
 {
-	FrameBuffer() {}
+	FrameBuffer() = default;
 
 	FrameBuffer(int w, int h)
 	{
 		init(w, h);
 	}
 
-	~FrameBuffer() {}
+	~FrameBuffer() = default;
 
 	void init(int w, int h)
 	{

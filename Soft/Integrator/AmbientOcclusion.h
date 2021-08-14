@@ -6,8 +6,8 @@ class AOIntegrator:
 	public PixelIndependentIntegrator
 {
 public:
-	AOIntegrator(int width, int height, int maxSpp):
-		PixelIndependentIntegrator(width, height, maxSpp) {}
+	AOIntegrator(ScenePtr scene, int maxSpp):
+		PixelIndependentIntegrator(scene, maxSpp) {}
 	glm::vec3 tracePixel(Ray ray, SamplerPtr sampler);
 
 private:

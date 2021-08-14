@@ -106,7 +106,7 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
         float offsetY = ((int)HIWORD(lParam) - lastCursorY) * CAMERA_ROTATE_SENSITIVITY;
 
         glm::vec3 offset(-offsetX, -offsetY, 0.0f);
-        camera->rotate(offset);
+        scene->camera->rotate(offset);
 
         lastCursorX = (int)LOWORD(lParam);
         lastCursorY = (int)HIWORD(lParam);
@@ -308,18 +308,20 @@ void Application::initScene(int spp)
     //camera->lookAt(glm::vec3(0.4f, 0.0f, 1.0f));
 
     //camera->setPos({ 2.4f, -3.6f, /*2.75f*/ 3.75f });
+    auto camera = std::make_shared<ThinLensCamera>(40.0f);
+    camera->initFilm(windowWidth, windowHeight);
     camera->setPos({0.0f, -8.0f, 0.0f});
-    camera->setFOV(40.0f);
     camera->lookAt(glm::vec3(0.0f));
+    camera->setLensRadius(0.05f);
     //camera->lookAt(glm::vec3(0.4f, 0.0f, 0.5f));
-    camera->setAspect((float)windowWidth / windowHeight);
 
     scene->env = std::make_shared<EnvSingleColor>(glm::vec3(0.0f));
     //scene->env = std::make_shared<EnvSphereMapHDR>("res/texture/076.hdr");
     scene->lightAndEnvStrategy = LightSelectStrategy::ByPower;
     scene->camera = camera;
     scene->buildScene();
-    auto integ = std::make_shared<PathIntegrator>(windowWidth, windowHeight, spp);
+    
+    auto integ = std::make_shared<PathIntegrator>(scene, spp);
     integ->limitSpp = (spp != 0);
     integ->tracingDepth = 5;
     integ->sampleDirectLight = true;
@@ -327,7 +329,6 @@ void Application::initScene(int spp)
     integ->mSampler = std::make_shared<SimpleSobolSampler>(windowWidth, windowHeight);
     //integ->roulette = true;
     //integ->rouletteProb = 0.8f;
-    integ->setScene(scene);
     integrator = integ;
 }
 
@@ -394,7 +395,7 @@ void Application::processKey()
     {
         if (keyPressing[keyList[i]])
         {
-            camera->move(keyList[i]);
+            scene->camera->move(keyList[i]);
             integrator->modified = true;
         }
     }

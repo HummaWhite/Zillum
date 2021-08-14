@@ -52,5 +52,5 @@ private:
 
 	FrameBufferDouble<RGB24> colorBuffer;
 	PixIndIntegPtr integrator;
-	CameraPtr camera = std::make_shared<Camera>(glm::vec3(-0.0f, -3.0f, 0.0f));
+	ScenePtr scene;
 };

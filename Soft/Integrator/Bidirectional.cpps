@@ -1,0 +1,5 @@
+#include "Bidirectional.h"
+
+glm::vec3 BidirectionalIntegrator::tracePixel(Ray ray)
+{
+}

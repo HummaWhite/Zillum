@@ -11,7 +11,8 @@ uint32_t sobolSample(uint64_t index, int dim, uint32_t scramble = 0)
     return r;
 }
 
-IndependentSampler::IndependentSampler()
+IndependentSampler::IndependentSampler() :
+    Sampler(SamplerType::Independent)
 {
     rng.seed(globalRandomEngine());
 }

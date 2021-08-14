@@ -30,7 +30,7 @@ class SimpleSobolSampler :
 {
 public:
     SimpleSobolSampler(int xPixels, int yPixels) :
-		xPixels(xPixels), yPixels(yPixels) {}
+		xPixels(xPixels), yPixels(yPixels), Sampler(SamplerType::SimpleSobol) {}
 
     float get1D();
     glm::vec2 get2D();

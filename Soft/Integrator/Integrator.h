@@ -22,29 +22,23 @@ const int MaxThreads = std::thread::hardware_concurrency();
 class PixelIndependentIntegrator
 {
 public:
-	PixelIndependentIntegrator(int width, int height, int maxSpp):
-		width(width), height(height), maxSpp(maxSpp)
+	PixelIndependentIntegrator(ScenePtr scene, int maxSpp) :
+		scene(scene), maxSpp(maxSpp)
 	{
-		resultBuffer.init(width, height);
-		resultBuffer.fill(glm::vec3(0.0f));
+		auto film = scene->camera->getFilm();
+		width = film.width;
+		height = film.height;
 	}
 
 	void setScene(ScenePtr scene) { this->scene = scene; }
 
-	FrameBuffer<glm::vec3>& result() { return resultBuffer; }
-
-	void resizeBuffer(int w, int h)
-	{
-		width = w, height = h;
-		resultBuffer.resize(w, h);
-		modified = true;
-	}
+	Film& result() { return scene->camera->getFilm(); }
 
 	void render()
 	{
 		if (modified)
 		{
-			resultBuffer.fill(glm::vec3(0.0f));
+			scene->camera->getFilm().fill(glm::vec3(0.0f));
 			curSpp = 0;
 			modified = false;
 		}
@@ -86,9 +80,7 @@ private:
 				float sx = 2.0f * (x + 0.5f) * invW - 1.0f;
 				float sy = 1.0f - 2.0f * (y + 0.5f) * invH;
 
-				glm::vec2 sp = sampler->get2D() - 0.5f;
-
-				Ray ray = scene->camera->getRay(sx + sp.x * invW, sy + sp.y * invH);
+				Ray ray = scene->camera->generateRay({ sx, sy }, sampler);
 				glm::vec3 result = tracePixel(ray, sampler);
 
 				if (Math::isNan(result.x) || Math::isNan(result.y) || Math::isNan(result.z))
@@ -98,6 +90,7 @@ private:
 				}
 
 				result = glm::clamp(result, glm::vec3(0.0f), glm::vec3(1e8f));
+				auto resultBuffer = scene->camera->getFilm();
 				resultBuffer(x, y) = resultBuffer(x, y) * ((float)(curSpp) / (float)(curSpp + 1)) + result / (float)(curSpp + 1);
 			}
 		}
@@ -106,7 +99,7 @@ private:
 public:
 	bool modified = false;
 	bool limitSpp = false;
-	std::shared_ptr<Sampler> mSampler;
+	SamplerPtr mSampler;
 
 protected:
 	const int maxSpp;
@@ -115,9 +108,7 @@ protected:
 	int width, height;
 
 	ScenePtr scene;
-
-private:
-	FrameBuffer<glm::vec3> resultBuffer;
+	CameraPtr camera;
 };
 
 typedef std::shared_ptr<PixelIndependentIntegrator> PixIndIntegPtr;

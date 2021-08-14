@@ -1,12 +1,6 @@
 #include "Camera.h"
 #include <Windows.h>
 
-Camera::Camera(glm::vec3 pos, glm::vec3 angle) :
-    pos(pos), angle(angle)
-{
-    update();
-}
-
 void Camera::move(int key)
 {
     switch (key)
@@ -66,24 +60,6 @@ void Camera::rotate(glm::vec3 rotAngle)
     update();
 }
 
-void Camera::changeFOV(float offset)
-{
-    FOV -= glm::radians(offset) * CAMERA_FOV_SENSITIVITY;
-    if (FOV > 90.0)
-        FOV = 90.0;
-    if (FOV < 15.0)
-        FOV = 15.0;
-}
-
-void Camera::setFOV(float fov)
-{
-    FOV = fov;
-    if (FOV > 90.0f)
-        FOV = 90.0f;
-    if (FOV < 15.0f)
-        FOV = 15.0f;
-}
-
 void Camera::setDir(glm::vec3 dir)
 {
     dir = glm::normalize(dir);
@@ -101,28 +77,6 @@ void Camera::setAngle(glm::vec3 ang)
     update();
 }
 
-Ray Camera::getRay(float x, float y)
-{
-    glm::vec3 rayDir = glm::normalize(front + (up * y + right * x * aspect) * (float)tan(glm::radians(FOV * 0.5f)));
-    return {pos, glm::normalize(rayDir)};
-}
-
-glm::mat4 Camera::viewMatrix()
-{
-    float aX = cos(glm::radians(angle.y)) * cos(glm::radians(angle.x));
-    float aY = cos(glm::radians(angle.y)) * sin(glm::radians(angle.x));
-    float aZ = sin(glm::radians(angle.y));
-    glm::vec3 lookingAt = pos + glm::vec3(aX, aY, aZ);
-    glm::mat4 view = glm::lookAt(pos, lookingAt, up);
-    return view;
-}
-
-glm::mat4 Camera::viewMatrix(glm::vec3 focus) const
-{
-    glm::mat4 view = glm::lookAt(pos, focus, up);
-    return view;
-}
-
 void Camera::update()
 {
     float aX = cos(glm::radians(angle.y)) * cos(glm::radians(angle.x));
@@ -132,4 +86,29 @@ void Camera::update()
     glm::vec3 u(0.0f, 0.0f, 1.0f);
     right = glm::normalize(glm::cross(front, u));
     up = glm::normalize(glm::cross(right, front));
+}
+
+Ray ThinLensCamera::generateRay(SamplerPtr sampler)
+{
+    return generateRay(sampler->get2D(), sampler);
+}
+
+Ray ThinLensCamera::generateRay(glm::vec2 uv, SamplerPtr sampler)
+{
+    glm::vec2 filmSize(film.width, film.height);
+    auto texelSize = glm::vec2(1.0f) / filmSize;
+    auto biased = uv + texelSize * sampler->get2D();
+    auto ndc = biased;
+
+    float aspect = filmSize.x / filmSize.y;
+    float tanFOV = glm::tan(glm::radians(FOV * 0.5f));
+
+    glm::vec3 pLens(Transform::toConcentricDisk(sampler->get2D()) * lensRadius, 0.0f);
+    glm::vec3 pFocusPlane(ndc * glm::vec2(aspect, 1.0f) * focalDist * tanFOV, focalDist);
+
+    auto dir = pFocusPlane - pLens;
+    dir = glm::normalize(right * dir.x + up * dir.y + front * dir.z);
+    auto ori = pos + right * pLens.x + up * pLens.y;
+
+    return { ori, dir };
 }
