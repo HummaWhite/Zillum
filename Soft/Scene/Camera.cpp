@@ -112,3 +112,16 @@ Ray ThinLensCamera::generateRay(glm::vec2 uv, SamplerPtr sampler)
 
     return { ori, dir };
 }
+
+Ray PanoramaCamera::generateRay(SamplerPtr sampler)
+{
+    return generateRay(sampler->get2D(), sampler);
+}
+
+Ray PanoramaCamera::generateRay(glm::vec2 uv, SamplerPtr sampler)
+{
+    auto dir = Transform::planeToSphere((uv + glm::vec2(0.5f, 1.0f)) * 0.5f);
+    dir.x = -dir.x;
+    dir.z = -dir.z;
+    return { pos, dir };
+}

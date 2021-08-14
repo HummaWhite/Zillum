@@ -20,7 +20,9 @@ public:
 	};
 
 public:
-	BXDF(int type): mType(type) {}
+	BXDF(int type) : mType(type) {}
+	
+	int type() const { return mType; }
 
 	bool hasType(int type) const
 	{
@@ -32,12 +34,30 @@ public:
 		return (mType & SpecRefl) || (mType & SpecTrans);
 	}
 
+	bool isReflection() const
+	{
+		return isReflection(mType);
+	}
+
+	bool isTransmission() const
+	{
+		return isTransmission(mType);
+	}
+
 	static bool isDelta(int type)
 	{
 		return (type & SpecRefl) || (type & SpecTrans);
 	}
 
-	int type() const { return mType; }
+	static bool isReflection(int type)
+	{
+		return (type & SpecRefl) || (type & GlosRefl);
+	}
+
+	static bool isTransmission(int type)
+	{
+		return (type & SpecTrans) || (type & GlosTrans);
+	}
 
 protected:
 	int mType;

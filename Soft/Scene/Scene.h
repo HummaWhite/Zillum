@@ -44,7 +44,7 @@ public:
 public:
 	std::vector<HittablePtr> hittables;
 	std::vector<LightPtr> lights;
-	EnvironmentPtr env;
+	EnvironmentPtr env = std::make_shared<EnvSingleColor>(glm::vec3(0.0f));
 	CameraPtr camera;
 
 	std::shared_ptr<BVH> bvh;

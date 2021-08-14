@@ -51,6 +51,6 @@ private:
 	int toneMappingMethod = 2;
 
 	FrameBufferDouble<RGB24> colorBuffer;
-	PixIndIntegPtr integrator;
+	IntegratorPtr integrator;
 	ScenePtr scene;
 };

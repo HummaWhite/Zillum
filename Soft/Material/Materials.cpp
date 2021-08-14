@@ -143,8 +143,11 @@ glm::vec3 Dielectric::bsdf(const SurfaceInteraction &si, TransportMode mode)
 
         denom *= Math::absDot(N, Wi) * Math::absDot(N, Wo);
         float refl = fresnelDielectric(glm::dot(H, Wi), eta);
+        float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
 
-        return (denom < 1e-7f) ? glm::vec3(0.0f) : tint * glm::abs(ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * (1.0f - refl);
+        return (denom < 1e-7f) ?
+            glm::vec3(0.0f) :
+            tint * glm::abs(ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * (1.0f - refl) * factor;
     }
 }
 
@@ -188,12 +191,14 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &W
         }
         else
         {
+            float eta = (glm::dot(N, Wo) > 0.0f) ? ior : 1.0f / ior;
             glm::vec3 Wi;
             bool refr = refract(Wi, Wo, N, ior);
             if (!refr)
                 return INVALID_BSDF_SAMPLE;
 
-            return SampleWithBsdf(Sample(Wi, 1.0f, BXDF::SpecTrans), tint);
+            float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
+            return SampleWithBsdf(Sample(Wi, 1.0f, BXDF::SpecTrans, eta), tint * factor);
         }
     }
     else
@@ -214,7 +219,9 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &W
             float HoWo = Math::absDot(H, Wo);
             float HoWi = Math::absDot(H, Wi);
 
-            glm::vec3 r = (HoWo * HoWi < 1e-7f) ? glm::vec3(0.0f) : tint * ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) / (4.0f * HoWo * HoWi);
+            glm::vec3 r = (HoWo * HoWi < 1e-7f) ?
+                glm::vec3(0.0f) :
+                tint * ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) / (4.0f * HoWo * HoWi);
 
             if (Math::isNan(p))
                 p = 0.0f;
@@ -239,16 +246,19 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &W
             float sqrtDenom = glm::dot(H, Wo) + eta * glm::dot(H, Wi);
             float denom = sqrtDenom * sqrtDenom;
             float dHdWi = HoWi / denom;
+            float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
 
             denom *= Math::absDot(N, Wi) * Math::absDot(N, Wo);
 
-            glm::vec3 r = (denom < 1e-7f) ? glm::vec3(0.0f) : tint * glm::abs(ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) * HoWo * HoWi) / denom;
+            glm::vec3 r = (denom < 1e-7f) ?
+                glm::vec3(0.0f) :
+                tint * glm::abs(ggxDistrib.d(N, H) * ggxDistrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * factor;
 
             float p = ggxDistrib.pdf(N, H, Wo) * dHdWi;
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return SampleWithBsdf(Sample(Wi, p, BXDF::GlosTrans), r);
+            return SampleWithBsdf(Sample(Wi, p, BXDF::GlosTrans, eta), r);
         }
     }
 }

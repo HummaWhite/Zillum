@@ -26,6 +26,7 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
 {
     glm::vec3 result(0.0f);
     glm::vec3 beta(1.0f);
+    float etaScale = 1.0f;
 
     for (int bounce = 1; bounce <= tracingDepth; bounce++)
     {
@@ -49,7 +50,7 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
         }
 
         auto [sample, bsdf] = sInfo.material->sampleWithBsdf(N, Wo, sampler->get1D(), sampler->get2D());
-        auto [Wi, bsdfPdf, type] = sample;
+        auto [Wi, bsdfPdf, type, eta] = sample;
 
         float NoWi = type.isDelta() ? 1.0f : Math::absDot(N, Wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
@@ -85,10 +86,16 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             break;
         }
 
-        if (roulette && sampler->get1D() > rouletteProb)
-            break;
-        if (roulette)
-            beta /= rouletteProb;
+        if (sample.type.isTransmission())
+            etaScale *= Math::square(eta);
+
+        float rr = rouletteProb * etaScale;
+        if (roulette && rr < 1.0f)
+        {
+            if (sampler->get1D() > rr)
+                break;
+            beta /= rr;
+        }  
 
         glm::vec3 nextP = newRay.get(dist);
         auto ob = dynamic_cast<Object *>(obj.get());

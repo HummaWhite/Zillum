@@ -7,7 +7,7 @@ class AOIntegrator:
 {
 public:
 	AOIntegrator(ScenePtr scene, int maxSpp):
-		PixelIndependentIntegrator(scene, maxSpp) {}
+		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AO) {}
 	glm::vec3 tracePixel(Ray ray, SamplerPtr sampler);
 
 private:

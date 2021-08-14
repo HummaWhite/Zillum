@@ -89,3 +89,13 @@ private:
 	float lensRadius;
 	float focalDist;
 };
+
+class PanoramaCamera :
+	public Camera
+{
+public:
+	PanoramaCamera() : Camera(CameraType::Panorama) {}
+
+	Ray generateRay(SamplerPtr sampler);
+	Ray generateRay(glm::vec2 uv, SamplerPtr sampler);
+};

@@ -21,17 +21,18 @@ enum class TransportMode
 
 struct Sample
 {
-	Sample(): dir(0.0f), pdf(0.0f), type(0) {}
+	Sample(): dir(0.0f), pdf(0.0f), type(0), eta(0.0f) {}
 
-	Sample(const glm::vec4 &sample, int type):
-		dir(sample), pdf(sample.w), type(type) {}
+	Sample(const glm::vec4 &sample, int type, float eta = 1.0f):
+		dir(sample), pdf(sample.w), type(type), eta(eta) {}
 
-	Sample(const glm::vec3 &dir, float pdf, int type):
-		dir(dir), pdf(pdf), type(type) {}
+	Sample(const glm::vec3 &dir, float pdf, int type, float eta = 1.0f):
+		dir(dir), pdf(pdf), type(type), eta(eta) {}
 
 	glm::vec3 dir;
 	float pdf;
 	BXDF type;
+	float eta;
 };
 
 typedef std::pair<Sample, glm::vec3> SampleWithBsdf;

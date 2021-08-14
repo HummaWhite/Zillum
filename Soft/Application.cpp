@@ -93,7 +93,7 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
     {
         if (cursorDisabled)
             break;
-        integrator->modified = true;
+        integrator->setModified();
 
         if (firstCursorMove)
         {
@@ -136,9 +136,16 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 void Application::render()
 {
     processKey();
-    integrator->render();
-    writeBuffer();
+
+    if (!integrator->isFinished())
+    {
+        integrator->renderOnePass();
+        writeBuffer();
+    }
     flushScreen();
+
+    if (integrator->isFinished())
+        return;
     colorBuffer.swap();
 }
 
@@ -146,7 +153,7 @@ void Application::initScene(int spp)
 {
     srand(time(nullptr));
 
-    auto scene = std::make_shared<Scene>();
+    auto sc = std::make_shared<Scene>();
 
     /*
 		const float level = -2.0f;
@@ -216,7 +223,7 @@ void Application::initScene(int spp)
     // 	)
     // );
 
-    scene->addHittable(
+    sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
                 glm::vec3(-3.0f, 0.0f, -3.0f),
@@ -226,7 +233,7 @@ void Application::initScene(int spp)
             //std::make_shared<Lambertian>(glm::vec3(1.0f))
             ));
 
-    scene->addHittable(
+    sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
                 glm::vec3(-3.0f, 0.0f, -3.0f),
@@ -236,7 +243,7 @@ void Application::initScene(int spp)
             //std::make_shared<Lambertian>(glm::vec3(1.0f, 0.25f, 0.25f))
             ));
 
-    scene->addHittable(
+    sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
                 glm::vec3(3.0f, 6.0f, -3.0f),
@@ -246,7 +253,7 @@ void Application::initScene(int spp)
             //std::make_shared<Lambertian>(glm::vec3(0.25f, 0.25f, 1.0f))
             ));
 
-    scene->addHittable(
+    sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
                 glm::vec3(3.0f, 6.0f, 3.0f),
@@ -256,7 +263,7 @@ void Application::initScene(int spp)
             //std::make_shared<Lambertian>(glm::vec3(1.0f))
             ));
 
-    scene->addHittable(
+    sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
                 glm::vec3(-3.0f, 6.0f, -3.0f),
@@ -266,7 +273,7 @@ void Application::initScene(int spp)
             //std::make_shared<Lambertian>(glm::vec3(1.0f))
             ));
 
-    scene->addHittable(
+    sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Sphere>(glm::vec3(1.0f, 3.0f, 0.0f), 1.0f, true),
             std::make_shared<Dielectric>(glm::vec3(1.0f), 0.0f, 1.5f)
@@ -279,7 +286,7 @@ void Application::initScene(int spp)
     model = glm::scale(model, glm::vec3(1.8f));
     std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
 
-    scene->addObjectMesh("res/model/cube.obj", trBoxSmall,
+    sc->addObjectMesh("res/model/cube.obj", trBoxSmall,
                          std::make_shared<MetalWorkflow>(glm::vec3(1.0f, 0.8f, 0.6f), 0.0f, 1.0f)
                          //std::make_shared<Lambertian>(glm::vec3(1.0f))
     );
@@ -290,12 +297,12 @@ void Application::initScene(int spp)
     model = glm::scale(model, glm::vec3(1.8f, 1.8f, 3.6f));
     std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
 
-    scene->addObjectMesh("res/model/cube.obj", trBoxLarge,
+    sc->addObjectMesh("res/model/cube.obj", trBoxLarge,
                          std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 0.0f, 1.0f)
                          //std::make_shared<Lambertian>(glm::vec3(1.0f))
     );
 
-    scene->addLight(
+    sc->addLight(
         std::make_shared<Light>(
             std::make_shared<Quad>(
                 glm::vec3(-0.75f, 3.75f, 2.999f),
@@ -309,19 +316,19 @@ void Application::initScene(int spp)
 
     //camera->setPos({ 2.4f, -3.6f, /*2.75f*/ 3.75f });
     auto camera = std::make_shared<ThinLensCamera>(40.0f);
+    //auto camera = std::make_shared<PanoramaCamera>();
     camera->initFilm(windowWidth, windowHeight);
     camera->setPos({0.0f, -8.0f, 0.0f});
     camera->lookAt(glm::vec3(0.0f));
-    camera->setLensRadius(0.05f);
     //camera->lookAt(glm::vec3(0.4f, 0.0f, 0.5f));
 
-    scene->env = std::make_shared<EnvSingleColor>(glm::vec3(0.0f));
-    //scene->env = std::make_shared<EnvSphereMapHDR>("res/texture/076.hdr");
-    scene->lightAndEnvStrategy = LightSelectStrategy::ByPower;
-    scene->camera = camera;
-    scene->buildScene();
+    //sc->env = std::make_shared<EnvSphereMapHDR>("res/texture/076.hdr");
+    sc->lightAndEnvStrategy = LightSelectStrategy::ByPower;
+    sc->camera = camera;
+    sc->buildScene();
+    scene = sc;
     
-    auto integ = std::make_shared<PathIntegrator>(scene, spp);
+    auto integ = std::make_shared<PathIntegrator>(sc, spp);
     integ->limitSpp = (spp != 0);
     integ->tracingDepth = 5;
     integ->sampleDirectLight = true;
@@ -389,14 +396,14 @@ void Application::flushScreen()
 
 void Application::processKey()
 {
-    unsigned char keyList[] = {'W', 'S', 'A', 'D', 'Q', 'E', 'R', VK_SHIFT, VK_SPACE};
+    uint8_t keyList[] = {'W', 'S', 'A', 'D', 'Q', 'E', 'R', VK_SHIFT, VK_SPACE};
 
     for (int i = 0; i < 9; i++)
     {
         if (keyPressing[keyList[i]])
         {
             scene->camera->move(keyList[i]);
-            integrator->modified = true;
+            integrator->setModified();
         }
     }
 }

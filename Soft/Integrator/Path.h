@@ -8,7 +8,7 @@ class PathIntegrator:
 {
 public:
 	PathIntegrator(ScenePtr scene, int maxSpp):
-		PixelIndependentIntegrator(scene, maxSpp) {}
+		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::Path) {}
 	glm::vec3 tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
