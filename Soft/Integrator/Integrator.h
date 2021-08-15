@@ -11,7 +11,7 @@
 #include "../Scene/Light.h"
 #include "../Material/Materials.h"
 #include "../Math/Math.h"
-#include "../Environment/Environments.h"
+#include "../Scene/Environments.h"
 #include "../Accelerator/BVH.h"
 #include "../Scene/ObjReader.h"
 #include "../Scene/Scene.h"
@@ -37,6 +37,9 @@ public:
 
 	void setModified();
 
+public:
+	SamplerPtr mSampler = std::make_shared<IndependentSampler>();
+
 protected:
 	IntegratorType type;
 	ScenePtr scene;
@@ -59,7 +62,6 @@ private:
 
 public:
 	bool limitSpp = false;
-	SamplerPtr mSampler;
 
 protected:
 	const int maxSpp;

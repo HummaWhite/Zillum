@@ -26,6 +26,7 @@ public:
 	std::pair<float, HittablePtr> closestHit(const Ray &ray);
 	void dfs() { dfs(root, 1); }
 	std::pair<int, float> dfsDetailed();
+	AABB box() const;
 
 	inline int size() const { return treeSize; }
 

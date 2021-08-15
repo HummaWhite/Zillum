@@ -1,5 +1,26 @@
 #include "Environments.h"
 
+EnvLiSample EnvSingleColor::sampleLi(const glm::vec2 &u1, const glm::vec2 &u2)
+{
+    auto Wi = Transform::planeToSphere(u1);
+    return { Wi, radiance, Math::PiInv * 0.25f };
+}
+
+float EnvSingleColor::pdfLi(const glm::vec3 &Wi)
+{
+    return Math::PiInv * 0.25f;
+}
+
+EnvLeSample EnvSingleColor::sampleLe(float radius, const std::array<float, 6> &u)
+{
+    auto Wi = Transform::planeToSphere({ u[0], u[1] });
+    auto ori = glm::vec3(Transform::toConcentricDisk({ u[2], u[3] }), 1.0f) * radius;
+    ori = Transform::normalToWorld(Wi, ori);
+
+    float pdf = Math::PiInv * 0.25f * Math::PiInv * Math::square(1.0f / radius);
+    return { { ori, -Wi }, radiance, pdf };
+}
+
 EnvSphereMapHDR::EnvSphereMapHDR(const char *filePath)
 {
     sphereMap.loadFloat(filePath);
@@ -19,7 +40,7 @@ EnvSphereMapHDR::EnvSphereMapHDR(const char *filePath)
     delete[] pdf;
 }
 
-std::pair<glm::vec3, float> EnvSphereMapHDR::importanceSample(const glm::vec2 &u1, const glm::vec2 &u2)
+EnvLiSample EnvSphereMapHDR::sampleLi(const glm::vec2 &u1, const glm::vec2 &u2)
 {
     auto [col, row] = distrib.sample(u1, u2);
 
@@ -28,7 +49,7 @@ std::pair<glm::vec3, float> EnvSphereMapHDR::importanceSample(const glm::vec2 &u
     //float pdf = getPortion(Wi) * float(w * h) * 0.5f * Math::square(Math::PiInv) / sinTheta;
     float pdf = pdfLi(Wi);
 
-    return {Wi, pdf};
+    return { Wi, getRadiance(Wi), pdf };
 }
 
 float EnvSphereMapHDR::pdfLi(const glm::vec3 &Wi)
@@ -46,12 +67,12 @@ float EnvSphereMapHDR::getPortion(const glm::vec3 &Wi)
     return Math::rgbBrightness(glm::vec3(sphereMap.getSpherical(Wi))) / distrib.sum();
 }
 
-glm::vec3 EnvTest::getRadiance(const glm::vec3 &dir)
+EnvLeSample EnvSphereMapHDR::sampleLe(float radius, const std::array<float, 6> &u)
 {
-    glm::vec2 uv = Transform::sphereToPlane(dir);
+    auto [Wi, radiance, pdfDir] = sampleLi({ u[0], u[1] }, { u[2], u[3] });
+    auto ori = glm::vec3(Transform::toConcentricDisk({ u[4], u[5] }), 1.0f) * radius;
+    ori = Transform::normalToWorld(Wi, ori);
 
-    int r = (int)(uv.x * row);
-    int c = (int)(uv.y * col);
-
-    return (r & 1) ^ (c & 1) ? radiance : glm::vec3(0.0f);
+    float pdf = pdfDir * Math::PiInv * Math::square(1.0f / radius);
+    return { { ori, -Wi }, radiance, pdf };
 }

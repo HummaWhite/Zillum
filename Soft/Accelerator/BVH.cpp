@@ -154,6 +154,11 @@ std::pair<int, float> BVH::dfsDetailed()
     return {maxDepth, (float)sumDepth / treeSize};
 }
 
+AABB BVH::box() const
+{
+    return compactNodes[0].box;
+}
+
 void BVH::radixSort16(HittableInfo *a, int count, int dim)
 {
     auto getDim = [&](const HittableInfo &p) -> int
@@ -299,7 +304,7 @@ void BVH::makeCompact()
         BVHNode *k = st.top();
         st.pop();
 
-        compactNodes[offset] = {k->box, k->isLeaf() ? hittables[k->offset] : std::shared_ptr<Hittable>()};
+        compactNodes[offset] = {k->box, k->isLeaf() ? hittables[k->offset] : HittablePtr()};
         offset++;
 
         if (k->isLeaf())

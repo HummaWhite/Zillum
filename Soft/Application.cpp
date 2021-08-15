@@ -315,15 +315,16 @@ void Application::initScene(int spp)
     //camera->lookAt(glm::vec3(0.4f, 0.0f, 1.0f));
 
     //camera->setPos({ 2.4f, -3.6f, /*2.75f*/ 3.75f });
-    auto camera = std::make_shared<ThinLensCamera>(40.0f);
-    //auto camera = std::make_shared<PanoramaCamera>();
+    //auto camera = std::make_shared<ThinLensCamera>(40.0f);
+    auto camera = std::make_shared<PanoramaCamera>();
     camera->initFilm(windowWidth, windowHeight);
     camera->setPos({0.0f, -8.0f, 0.0f});
     camera->lookAt(glm::vec3(0.0f));
     //camera->lookAt(glm::vec3(0.4f, 0.0f, 0.5f));
 
-    //sc->env = std::make_shared<EnvSphereMapHDR>("res/texture/076.hdr");
-    sc->lightAndEnvStrategy = LightSelectStrategy::ByPower;
+    sc->env = std::make_shared<EnvSphereMapHDR>("res/texture/076.hdr");
+    sc->lightAndEnvStrategy = LightSampleStrategy::ByPower;
+    sc->lightAndEnvStrategy = LightSampleStrategy::Uniform;
     sc->camera = camera;
     sc->buildScene();
     scene = sc;

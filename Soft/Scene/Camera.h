@@ -25,6 +25,21 @@ enum class CameraType
 	ThinLens, Ortho, Panorama
 };
 
+struct CameraIiSample
+{
+	glm::vec3 Wo;
+	float dist;
+	glm::vec3 importance;
+	glm::vec2 uv;
+	float pdf;
+};
+
+struct CameraIeSample
+{
+};
+
+const CameraIiSample InvalidCamIiSample = { glm::vec3(), 0.0f, glm::vec3(), glm::vec2(), 0.0f };
+
 class Camera
 {
 public:
@@ -49,6 +64,10 @@ public:
 
 	virtual Ray generateRay(SamplerPtr sampler) = 0;
 	virtual Ray generateRay(glm::vec2 uv, SamplerPtr sampler) = 0;
+
+	virtual CameraIiSample sampleIi(glm::vec3 x, glm::vec2 u) = 0;
+	virtual float pdfIi() = 0;
+	virtual CameraIeSample sampleIe() = 0;
 
 protected:
 	void update();
@@ -83,6 +102,9 @@ public:
 
 	Ray generateRay(SamplerPtr sampler);
 	Ray generateRay(glm::vec2 uv, SamplerPtr sampler);
+	CameraIiSample sampleIi(glm::vec3 x, glm::vec2 u);
+
+	bool approximatePinhole() const { return lensRadius < 1e-6f; }
 
 private:
 	float FOV = 45.0f;
@@ -98,4 +120,5 @@ public:
 
 	Ray generateRay(SamplerPtr sampler);
 	Ray generateRay(glm::vec2 uv, SamplerPtr sampler);
+	CameraIiSample sampleIi(glm::vec3 x, glm::vec2 u);
 };

@@ -10,7 +10,7 @@ glm::vec3 PathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
     if (obj->type() == HittableType::Light)
     {
         auto lt = dynamic_cast<Light *>(obj.get());
-        return lt->getRadiance(ray.get(dist), -ray.dir);
+        return lt->Le(ray.get(dist), -ray.dir);
     }
     else
     {
@@ -40,7 +40,7 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
         auto directIllumSample = sampler->get<5>();
         if (!deltaBsdf && sampleDirectLight)
         {
-            auto [Wi, coef, samplePdf] = scene->sampleLightAndEnv(P, directIllumSample);
+            auto [Wi, coef, samplePdf] = scene->sampleLiLightAndEnv(P, directIllumSample);
             if (samplePdf != 0.0f)
             {
                 float bsdfPdf = mat->pdf(Wo, Wi, N);
@@ -65,7 +65,7 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             float weight = 1.0f;
             if (!deltaBsdf && sampleDirectLight)
             {
-                float envPdf = scene->env->pdfLi(Wi) * scene->pdfSelectEnv();
+                float envPdf = scene->env->pdfLi(Wi) * scene->pdfSampleEnv();
                 weight = (envPdf <= 0.0f) ? 0.0f : Math::biHeuristic(bsdfPdf, envPdf);
             }
             result += scene->env->getRadiance(Wi) * envStrength * beta * weight;
@@ -79,10 +79,10 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             auto hitPoint = newRay.get(dist);
             if (!deltaBsdf && sampleDirectLight)
             {
-                float lightPdf = lt->pdfLi(P, hitPoint) * scene->pdfSelectLight(lt);
+                float lightPdf = lt->pdfLi(P, hitPoint) * scene->pdfSampleLight(lt);
                 weight = (lightPdf <= 0.0f) ? 0.0f : Math::biHeuristic(bsdfPdf, lightPdf);
             }
-            result += lt->getRadiance(hitPoint, -Wi) * beta * weight;
+            result += lt->Le(hitPoint, -Wi) * beta * weight;
             break;
         }
 

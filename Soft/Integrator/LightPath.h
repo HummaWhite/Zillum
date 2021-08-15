@@ -11,5 +11,11 @@ public:
     void renderOnePass();
 
 private:
+    void trace();
+
+public:
+    int maxDepth = 5;
+
+private:
     int photonsOnePass;
 };

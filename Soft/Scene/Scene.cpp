@@ -1,14 +1,12 @@
 #include "Scene.h"
 
-Scene::Scene(const std::vector<HittablePtr> &hittables, EnvironmentPtr environment, CameraPtr camera) :
+Scene::Scene(const std::vector<HittablePtr> &hittables, EnvPtr environment, CameraPtr camera) :
     hittables(hittables), env(environment), camera(camera)
 {
     for (const auto &i : hittables)
     {
         if (i->type() == HittableType::Light)
-        {
-            lights.push_back(std::shared_ptr<Light>(dynamic_cast<Light *>(i.get())));
-        }
+            lights.push_back(std::shared_ptr<Light>(dynamic_cast<Light*>(i.get())));
     }
 }
 
@@ -23,57 +21,78 @@ void Scene::setupLightSampleTable()
     lightDistrib = Piecewise1D(lightPdf);
 }
 
-LightSample Scene::sampleOneLight(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2)
+std::optional<LightSample> Scene::sampleOneLight(glm::vec2 u)
 {
     if (lights.size() == 0)
-        return INVALID_LIGHT_SAMPLE;
-    bool sampleByPower = lightSelectStrategy == LightSelectStrategy::ByPower;
-    int index = sampleByPower ? lightDistrib.sample(u1) : static_cast<int>(lights.size() * u1.x);
+        return std::nullopt;
+    bool sampleByPower = lightSampleStrategy == LightSampleStrategy::ByPower;
+    int index = sampleByPower ? lightDistrib.sample(u) : static_cast<int>(lights.size() * u.x);
 
     auto lt = lights[index];
-    glm::vec3 y = lt->uniformSample(u2);
-    glm::vec3 Wi = glm::normalize(y - x);
-    glm::vec3 N = lt->surfaceNormal(y);
-    float cosTheta = glm::dot(N, -Wi);
+    float pdf = sampleByPower ? lt->getRgbPower() / lightDistrib.sum() : 1.0f / lights.size();
+    return LightSample{ lt, pdf };
+}
 
-    if (cosTheta <= 1e-6f)
-        return INVALID_LIGHT_SAMPLE;
+LightEnvSample Scene::sampleLightAndEnv(glm::vec2 u1, float u2)
+{
+    auto lightSample = sampleOneLight(u1);
+    if (!lightSample)
+        return { env, 1.0f };
 
-    float dist = glm::distance(x, y);
-    float pdf = dist * dist / (lt->surfaceArea() * cosTheta);
+    float pdfSampleLight = lightAndEnvStrategy == LightSampleStrategy::ByPower ?
+            lightDistrib.sum() / powerlightAndEnv() :
+            0.5f;
+    auto [lt, pdfLight] = lightSample.value();
+
+    if (u2 > pdfSampleLight)
+        return { env, 1.0f - pdfSampleLight };
+    else
+        return { lt, pdfLight * pdfSampleLight };
+}
+
+LiSample Scene::sampleLiOneLight(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2)
+{
+    if (lights.size() == 0)
+        return InvalidLiSample;
+    
+    auto lightSample = sampleOneLight(u1);
+    auto [lt, pdfSample] = lightSample.value();
+
+    auto liSample = lt->sampleLi(x, u2);
+    if (!liSample)
+        return InvalidLiSample;
+
+    auto [Wi, weight, dist, pdf] = liSample.value();
 
     Ray lightRay(x + Wi * 1e-4f, Wi);
     float testDist = dist - 1e-4f - 1e-6f;
 
     if (bvh->testIntersec(lightRay, testDist) || pdf < 1e-8f)
-        return INVALID_LIGHT_SAMPLE;
+        return InvalidLiSample;
 
-    glm::vec3 weight = lt->getRadiance(y, -Wi);
-    float pdfSample = sampleByPower ? lt->getRgbPower() / lightDistrib.sum() : 1.0f / lights.size();
     pdf *= pdfSample;
     return {Wi, weight / pdf, pdf};
 }
 
-LightSample Scene::sampleEnvironment(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2)
+LiSample Scene::sampleLiEnv(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2)
 {
-    auto [Wi, pdf] = env->importanceSample(u1, u2);
+    auto [Wi, weight, pdf] = env->sampleLi(u1, u2);
 
     Ray ray(x + Wi * 1e-4f, Wi);
     float tmp = 1e6;
     if (quickIntersect(ray, tmp))
-        return INVALID_LIGHT_SAMPLE;
+        return InvalidLiSample;
 
-    auto rad = env->getRadiance(Wi);
-    return {Wi, rad / pdf, pdf};
+    return { Wi, weight / pdf, pdf };
 }
 
-LightSample Scene::sampleLightAndEnv(const glm::vec3 &x, const std::array<float, 5> &sample)
+LiSample Scene::sampleLiLightAndEnv(const glm::vec3 &x, const std::array<float, 5> &sample)
 {
     float pdfSampleLight = 0.0f;
 
     if (lights.size() > 0)
     {
-        pdfSampleLight = lightAndEnvStrategy == LightSelectStrategy::ByPower ?
+        pdfSampleLight = lightAndEnvStrategy == LightSampleStrategy::ByPower ?
             lightDistrib.sum() / powerlightAndEnv() :
             0.5f;
     }
@@ -84,28 +103,43 @@ LightSample Scene::sampleLightAndEnv(const glm::vec3 &x, const std::array<float,
     glm::vec2 u1(sample[1], sample[2]);
     glm::vec2 u2(sample[3], sample[4]);
 
-    auto [Wi, coef, pdf] = sampleLight ? sampleOneLight(x, u1, u2) : sampleEnvironment(x, u1, u2);
+    auto [Wi, coef, pdf] = sampleLight ? sampleLiOneLight(x, u1, u2) : sampleLiEnv(x, u1, u2);
     return {Wi, coef / pdfSelect, pdf * pdfSelect};
 }
 
-float Scene::pdfSelectLight(Light *lt)
+float Scene::pdfSampleLight(Light *lt)
 {
-    float fstPdf = lightSelectStrategy == LightSelectStrategy::ByPower ?
+    if (lights.size() == 0)
+        return 0.0f;
+
+    float fstPdf = lightSampleStrategy == LightSampleStrategy::ByPower ?
         lt->getRgbPower() / lightDistrib.sum() :
         1.0f / lights.size();
 
-    float sndPdf = lightAndEnvStrategy == LightSelectStrategy::ByPower ?
+    float sndPdf = lightAndEnvStrategy == LightSampleStrategy::ByPower ?
         lightDistrib.sum() / powerlightAndEnv() :
         0.5f;
 
     return fstPdf * sndPdf;
 }
 
-float Scene::pdfSelectEnv()
+float Scene::pdfSampleEnv()
 {
-    return lightAndEnvStrategy == LightSelectStrategy::ByPower ?
+    return lightAndEnvStrategy == LightSampleStrategy::ByPower ?
         env->power() / (lightDistrib.sum() + env->power()) :
         0.5f;
+}
+
+IiSample Scene::sampleIiCamera(glm::vec3 x, glm::vec2 u)
+{
+    auto [Wo, dist, imp, uv, pdf] = camera->sampleIi(x, u);
+
+    Ray camRay(x + Wo * 1e-4f, Wo);
+    float testDist = dist - 1e-4f - 1e-6f;
+
+    if (bvh->testIntersec(camRay, testDist) || pdf < 1e-8f)
+        return InvalidIiSample;
+    return { Wo, imp / pdf, pdf };
 }
 
 void Scene::buildScene()
@@ -114,6 +148,8 @@ void Scene::buildScene()
     //auto [maxDepth, avgDepth] = bvh->dfsDetailed();
     //std::cout << "[BVH] TreeSize: " << bvh->size() << "  MaxDepth: " << maxDepth << "  AvgDepth: " << avgDepth << "\n";
     setupLightSampleTable();
+    box = bvh->box();
+    boundRadius = glm::distance(box.pMin, box.pMax) * 0.5f;
 }
 
 void Scene::addLight(LightPtr light)
