@@ -11,7 +11,7 @@ float EnvSingleColor::pdfLi(const glm::vec3 &Wi)
     return Math::PiInv * 0.25f;
 }
 
-EnvLeSample EnvSingleColor::sampleLe(float radius, const std::array<float, 6> &u)
+LightLeSample EnvSingleColor::sampleLe(float radius, const std::array<float, 6> &u)
 {
     auto Wi = Transform::planeToSphere({ u[0], u[1] });
     auto ori = glm::vec3(Transform::toConcentricDisk({ u[2], u[3] }), 1.0f) * radius;
@@ -67,7 +67,7 @@ float EnvSphereMapHDR::getPortion(const glm::vec3 &Wi)
     return Math::rgbBrightness(glm::vec3(sphereMap.getSpherical(Wi))) / distrib.sum();
 }
 
-EnvLeSample EnvSphereMapHDR::sampleLe(float radius, const std::array<float, 6> &u)
+LightLeSample EnvSphereMapHDR::sampleLe(float radius, const std::array<float, 6> &u)
 {
     auto [Wi, radiance, pdfDir] = sampleLi({ u[0], u[1] }, { u[2], u[3] });
     auto ori = glm::vec3(Transform::toConcentricDisk({ u[4], u[5] }), 1.0f) * radius;

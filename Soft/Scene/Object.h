@@ -12,7 +12,7 @@ class Object:
 {
 public:
 	Object(HittablePtr shape, MaterialPtr material):
-		shape(shape), material(material) {}
+		shape(shape), material(material), Hittable(HittableType::Object) {}
 
 	SurfaceInfo surfaceInfo(const glm::vec3 &x)
 	{

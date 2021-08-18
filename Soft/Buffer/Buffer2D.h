@@ -2,18 +2,22 @@
 
 #include "Buffer.h"
 
+#include "../glm/glm.hpp"
+#include "../glm/gtc/matrix_transform.hpp"
+#include "../glm/gtc/type_ptr.hpp"
+
 template<typename T>
-struct FrameBuffer:
+struct Buffer2D:
 	Buffer<T>
 {
-	FrameBuffer() = default;
+	Buffer2D() = default;
 
-	FrameBuffer(int w, int h)
+	Buffer2D(int w, int h)
 	{
 		init(w, h);
 	}
 
-	~FrameBuffer() = default;
+	~Buffer2D() = default;
 
 	void init(int w, int h)
 	{
@@ -36,6 +40,12 @@ struct FrameBuffer:
 	T& operator () (int i, int j)
 	{
 		return this->data[j * width + i];
+	}
+
+	T& operator () (glm::vec2 uv)
+	{
+		glm::ivec2 iuv(uv * glm::vec2(width, height));
+		return this->data[iuv.y * width + iuv.x];
 	}
 
 	int width = 0;

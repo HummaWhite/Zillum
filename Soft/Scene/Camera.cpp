@@ -77,15 +77,39 @@ void Camera::setAngle(glm::vec3 ang)
     update();
 }
 
+bool Camera::inFilmBound(glm::vec2 p)
+{
+    return (p.x >= 0.0f && p.x <= Math::OneMinusEpsilon && p.y >= 0.0f && p.y <= Math::OneMinusEpsilon);
+}
+
 void Camera::update()
 {
     float aX = cos(glm::radians(angle.y)) * cos(glm::radians(angle.x));
     float aY = cos(glm::radians(angle.y)) * sin(glm::radians(angle.x));
     float aZ = sin(glm::radians(angle.y));
+
     front = glm::normalize(glm::vec3(aX, aY, aZ));
-    glm::vec3 u(0.0f, 0.0f, 1.0f);
-    right = glm::normalize(glm::cross(front, u));
+    right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 0.0f, 1.0f)));
     up = glm::normalize(glm::cross(right, front));
+    
+    tbnMat = glm::mat3(right, up, front);
+    tbnInv = glm::inverse(tbnMat);
+}
+
+glm::vec2 ThinLensCamera::getRasterPos(Ray ray)
+{
+    float cosTheta = glm::dot(ray.dir, front);
+    float dFocus = (approxPinhole ? 1.0f : focalDist) / cosTheta;
+    glm::vec3 pFocus = tbnInv * (ray.get(dFocus) - pos);
+
+    glm::vec2 filmSize(film.width, film.height);
+    float aspect = filmSize.x / filmSize.y;
+    float tanFOV = glm::tan(glm::radians(FOV * 0.5f));
+
+    pFocus /= glm::vec3(glm::vec2(aspect, 1.0f) * tanFOV, 1.0f) * focalDist;
+    glm::vec2 ndc(pFocus);
+    ndc.y = -ndc.y;
+    return (ndc + 1.0f) * 0.5f;
 }
 
 Ray ThinLensCamera::generateRay(SamplerPtr sampler)
@@ -107,14 +131,76 @@ Ray ThinLensCamera::generateRay(glm::vec2 uv, SamplerPtr sampler)
     glm::vec3 pFocusPlane(ndc * glm::vec2(aspect, 1.0f) * focalDist * tanFOV, focalDist);
 
     auto dir = pFocusPlane - pLens;
-    dir = glm::normalize(right * dir.x + up * dir.y + front * dir.z);
-    auto ori = pos + right * pLens.x + up * pLens.y;
+    dir = glm::normalize(tbnMat * dir);
+    auto ori = pos + tbnMat * pLens;
 
     return { ori, dir };
 }
 
+float ThinLensCamera::pdfIi(glm::vec3 x, glm::vec3 y)
+{
+    if (approxPinhole)
+        return 0.0f;
+    auto N = front;
+    auto Wi = glm::normalize(y - x);
+
+    float cosTheta = Math::satDot(N, -Wi);
+    if (cosTheta < 1e-8f)
+        return 0.0f;
+    return Math::distSquare(x, y) / (lensArea * cosTheta);
+}
+
 CameraIiSample ThinLensCamera::sampleIi(glm::vec3 x, glm::vec2 u)
 {
+    glm::vec3 pLens(Transform::toConcentricDisk(u) * lensRadius, 0.0f);
+    glm::vec3 y = pos + tbnMat * pLens;
+    float dist = glm::distance(x, y);
+
+    glm::vec3 Wi = glm::normalize(y - x);
+    float cosTheta = Math::satDot(front, -Wi);
+    if (cosTheta < 1e-6f)
+        return InvalidCamIiSample;
+
+    Ray ray(y, -Wi);
+    glm::vec2 uv = getRasterPos(ray);
+    float pdf = dist * dist / (cosTheta * (approxPinhole ? 1.0f : lensArea));
+
+    return { Wi, Ie(ray), dist, uv, pdf };
+}
+
+std::pair<float, float> ThinLensCamera::pdfIe(Ray ray)
+{
+    float cosTheta = glm::dot(ray.dir, front);
+    if (cosTheta < 1e-6f)
+        return { 0.0f, 0.0f };
+    
+    glm::vec2 pRaster = getRasterPos(ray);
+
+    if (!inFilmBound(pRaster))
+        return { 0.0f, 0.0f };
+    
+    float pdfPos = approxPinhole ? 1.0f : 1.0f / lensArea;
+    float pdfDir = 1.0f / Math::qpow(cosTheta, 3);
+    return { pdfPos, pdfDir };
+}
+
+glm::vec3 ThinLensCamera::Ie(Ray ray)
+{
+    float cosTheta = glm::dot(ray.dir, front);
+    if (cosTheta < 1e-6f)
+        return glm::vec3(0.0f);
+
+    glm::vec2 pRaster = getRasterPos(ray);
+
+    if (!inFilmBound(pRaster))
+        return glm::vec3(0.0f);
+
+    return glm::vec3(1.0f / Math::qpow(cosTheta, 4)) / (approxPinhole ? 1.0f : lensArea);
+}
+
+glm::vec2 PanoramaCamera::getRasterPos(Ray ray)
+{
+    return {};
 }
 
 Ray PanoramaCamera::generateRay(SamplerPtr sampler)
@@ -132,4 +218,15 @@ Ray PanoramaCamera::generateRay(glm::vec2 uv, SamplerPtr sampler)
 
 CameraIiSample PanoramaCamera::sampleIi(glm::vec3 x, glm::vec2 u)
 {
+    return {};
+}
+
+std::pair<float, float> PanoramaCamera::pdfIe(Ray ray)
+{
+    return {};
+}
+
+glm::vec3 PanoramaCamera::Ie(Ray ray)
+{
+    return {};
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FrameBuffer.h"
+#include "Buffer2D.h"
 
 template<typename T>
 class FrameBufferDouble
@@ -50,7 +50,7 @@ public:
 		return buf[index][i];
 	}
 
-	FrameBuffer<T>& getCurrentBuffer()
+	Buffer2D<T>& getCurrentBuffer()
 	{
 		return buf[index];
 	}
@@ -61,6 +61,6 @@ public:
 	}
 
 private:
-	FrameBuffer<T> buf[2];
+	Buffer2D<T> buf[2];
 	int index = 0;
 };

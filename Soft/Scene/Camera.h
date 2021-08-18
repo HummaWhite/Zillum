@@ -8,7 +8,7 @@
 #include "../glm/gtc/type_ptr.hpp"
 
 #include "Ray.h"
-#include "../Buffer/FrameBuffer.h"
+#include "../Buffer/Buffer2D.h"
 #include "../Sampler/Sampler.h"
 #include "../Math/Transform.h"
 
@@ -18,7 +18,7 @@ const float CAMERA_ROLL_SENSITIVITY = 0.05f;
 const float CAMERA_FOV_SENSITIVITY = 150.0f;
 const float CAMERA_PITCH_LIMIT = 88.0f;
 
-typedef FrameBuffer<glm::vec3> Film;
+typedef Buffer2D<glm::vec3> Film;
 
 enum class CameraType
 {
@@ -27,18 +27,22 @@ enum class CameraType
 
 struct CameraIiSample
 {
-	glm::vec3 Wo;
+	glm::vec3 Wi;
+	glm::vec3 Ii;
 	float dist;
-	glm::vec3 importance;
 	glm::vec2 uv;
 	float pdf;
 };
 
 struct CameraIeSample
 {
+	Ray ray;
+	glm::vec3 Ie;
+	float pdfPos;
+	float pdfDir;
 };
 
-const CameraIiSample InvalidCamIiSample = { glm::vec3(), 0.0f, glm::vec3(), glm::vec2(), 0.0f };
+const CameraIiSample InvalidCamIiSample = { glm::vec3(), glm::vec3(), 0.0f, glm::vec2(), 0.0f };
 
 class Camera
 {
@@ -60,14 +64,27 @@ public:
 	Film& getFilm() { return film; }
 	CameraType getType() const { return type; }
 
+	glm::vec3 f() const { return front; }
+	glm::vec3 r() const { return right; }
+	glm::vec3 u() const { return up; }
+
 	void initFilm(int w, int h) { film.init(w, h); }
+
+	virtual glm::vec2 getRasterPos(Ray ray) = 0;
 
 	virtual Ray generateRay(SamplerPtr sampler) = 0;
 	virtual Ray generateRay(glm::vec2 uv, SamplerPtr sampler) = 0;
 
+	virtual float pdfIi(glm::vec3 x, glm::vec3 y) = 0;
 	virtual CameraIiSample sampleIi(glm::vec3 x, glm::vec2 u) = 0;
-	virtual float pdfIi() = 0;
-	virtual CameraIeSample sampleIe() = 0;
+	// [pdfPos, pdfDir]
+	virtual std::pair<float, float> pdfIe(Ray ray) = 0;
+	// This is really tough to implement, fortunately it's not likely to be used
+	virtual glm::vec3 Ie(Ray ray) = 0;
+
+	virtual bool deltaArea() const = 0;
+
+	static bool inFilmBound(glm::vec2 p);
 
 protected:
 	void update();
@@ -81,6 +98,9 @@ protected:
 	glm::vec3 front = { 0.0f, 1.0f, 0.0f };
 	glm::vec3 right = { 1.0f, 0.0f, 0.0f };
 	glm::vec3 up = { 0.0f, 0.0f, 1.0f };
+
+	glm::mat3 tbnMat;
+	glm::mat3 tbnInv;
 };
 
 typedef std::shared_ptr<Camera> CameraPtr;
@@ -90,7 +110,8 @@ class ThinLensCamera :
 {
 public:
 	ThinLensCamera(float FOV, float lensRadius = 0.0f, float focalDist = 1.0f) :
-		FOV(FOV), lensRadius(lensRadius), focalDist(focalDist), Camera(CameraType::ThinLens) {}
+		FOV(FOV), lensRadius(lensRadius), focalDist(focalDist), lensArea(Math::diskArea(lensRadius)),
+		approxPinhole(lensRadius < 1e-6f), Camera(CameraType::ThinLens) {}
 
 	void setFOV(float fov) { FOV = fov; }
 	void setLensRadius(float radius) { lensRadius = radius; }
@@ -100,16 +121,25 @@ public:
 	float getLensRadius() const { return lensRadius; }
 	float getFocalDist() const { return focalDist; }
 
+	glm::vec2 getRasterPos(Ray ray);
+
 	Ray generateRay(SamplerPtr sampler);
 	Ray generateRay(glm::vec2 uv, SamplerPtr sampler);
-	CameraIiSample sampleIi(glm::vec3 x, glm::vec2 u);
 
-	bool approximatePinhole() const { return lensRadius < 1e-6f; }
+	float pdfIi(glm::vec3 x, glm::vec3 y);
+	CameraIiSample sampleIi(glm::vec3 x, glm::vec2 u);
+	std::pair<float, float> pdfIe(Ray ray);
+	glm::vec3 Ie(Ray ray);
+
+	bool deltaArea() const { return approxPinhole; }
 
 private:
 	float FOV = 45.0f;
 	float lensRadius;
 	float focalDist;
+
+	float lensArea;
+	bool approxPinhole;
 };
 
 class PanoramaCamera :
@@ -118,7 +148,15 @@ class PanoramaCamera :
 public:
 	PanoramaCamera() : Camera(CameraType::Panorama) {}
 
+	glm::vec2 getRasterPos(Ray ray);
+
 	Ray generateRay(SamplerPtr sampler);
 	Ray generateRay(glm::vec2 uv, SamplerPtr sampler);
+
+	float pdfIi(glm::vec3 x, glm::vec3 y) { return 0.0f; }
 	CameraIiSample sampleIi(glm::vec3 x, glm::vec2 u);
+	std::pair<float, float> pdfIe(Ray ray);
+	glm::vec3 Ie(Ray ray);
+
+	bool deltaArea() const { return true; }
 };

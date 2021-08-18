@@ -7,19 +7,23 @@ glm::vec3 PathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
     if (obj == nullptr)
         return scene->env->getRadiance(ray.dir);
 
-    if (obj->type() == HittableType::Light)
+    if (obj->getType() == HittableType::Light)
     {
-        auto lt = dynamic_cast<Light *>(obj.get());
-        return lt->Le(ray.get(dist), -ray.dir);
+        auto lt = dynamic_cast<Light*>(obj.get());
+        auto y = ray.get(dist);
+        return lt->Le({ y, -ray.dir });
     }
-    else
+    else if (obj->getType() == HittableType::Object)
     {
         glm::vec3 p = ray.get(dist);
-        auto ob = dynamic_cast<Object *>(obj.get());
+        auto tmp = obj.get();
+        auto ob = dynamic_cast<Object*>(obj.get());
         SurfaceInfo sInfo = ob->surfaceInfo(p);
         ray.ori = p;
         return trace(ray, sInfo, sampler);
     }
+    Error::impossiblePath();
+    return glm::vec3(0.0f);
 }
 
 glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
@@ -32,10 +36,10 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
     {
         glm::vec3 P = ray.ori;
         glm::vec3 Wo = -ray.dir;
-        glm::vec3 N = sInfo.norm;
-        auto &mat = sInfo.material;
+        glm::vec3 N = sInfo.N;
+        auto &mat = sInfo.mat;
 
-        bool deltaBsdf = sInfo.material->bxdf().isDelta();
+        bool deltaBsdf = sInfo.mat->bxdf().isDelta();
 
         auto directIllumSample = sampler->get<5>();
         if (!deltaBsdf && sampleDirectLight)
@@ -49,7 +53,7 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             }
         }
 
-        auto [sample, bsdf] = sInfo.material->sampleWithBsdf(N, Wo, sampler->get1D(), sampler->get2D());
+        auto [sample, bsdf] = sInfo.mat->sampleWithBsdf(N, Wo, sampler->get1D(), sampler->get2D());
         auto [Wi, bsdfPdf, type, eta] = sample;
 
         float NoWi = type.isDelta() ? 1.0f : Math::absDot(N, Wi);
@@ -72,7 +76,7 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             break;
         }
 
-        if (obj->type() == HittableType::Light)
+        if (obj->getType() == HittableType::Light)
         {
             float weight = 1.0f;
             auto lt = dynamic_cast<Light *>(obj.get());
@@ -82,8 +86,13 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
                 float lightPdf = lt->pdfLi(P, hitPoint) * scene->pdfSampleLight(lt);
                 weight = (lightPdf <= 0.0f) ? 0.0f : Math::biHeuristic(bsdfPdf, lightPdf);
             }
-            result += lt->Le(hitPoint, -Wi) * beta * weight;
+            result += lt->Le({ hitPoint, -Wi }) * beta * weight;
             break;
+        }
+
+        if (obj->getType() != HittableType::Object)
+        {
+            std::cout << int(obj->getType()) << "\n";
         }
 
         if (sample.type.isTransmission())
@@ -95,7 +104,7 @@ glm::vec3 PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             if (sampler->get1D() > rr)
                 break;
             beta /= rr;
-        }  
+        }
 
         glm::vec3 nextP = newRay.get(dist);
         auto ob = dynamic_cast<Object *>(obj.get());

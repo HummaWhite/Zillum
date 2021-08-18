@@ -9,6 +9,8 @@
 
 struct Ray
 {
+	Ray() = default;
+
 	Ray(const glm::vec3 &_ori, const glm::vec3 &_dir):
 		ori(_ori), dir(glm::normalize(_dir)){}
 

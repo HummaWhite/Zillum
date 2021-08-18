@@ -9,7 +9,7 @@ class Sphere :
 {
 public:
 	Sphere(const glm::vec3 &center, float radius, bool intersectFromInside) :
-		center(center), radius(radius), intersectFromInside(intersectFromInside) {}
+		center(center), radius(radius), intersectFromInside(intersectFromInside), Hittable(HittableType::Shape) {}
 
 	std::optional<float> closestHit(const Ray &ray);
 	glm::vec3 uniformSample(const glm::vec2 &u);
@@ -32,7 +32,7 @@ class Triangle :
 {
 public:
 	Triangle(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c) :
-		va(a), vb(b), vc(c) {}
+		va(a), vb(b), vc(c), Hittable(HittableType::Shape) {}
 
 	std::optional<float> closestHit(const Ray &ray);
 	glm::vec3 uniformSample(const glm::vec2 &u);
@@ -55,7 +55,7 @@ public:
 	MeshTriangle(glm::vec3 *vertices, glm::vec2 *uvs, glm::vec3 *normals): 
 		triangle(vertices[0], vertices[1], vertices[2]),
 		ta(uvs[0]), tb(uvs[1]), tc(uvs[2]),
-		na(normals[0]), nb(normals[1]), nc(normals[2]) {}
+		na(normals[0]), nb(normals[1]), nc(normals[2]), Hittable(HittableType::Shape) {}
 
 	std::optional<float> closestHit(const Ray &ray) { return triangle.closestHit(ray); }
 	glm::vec3 uniformSample(const glm::vec2 &u) { return triangle.uniformSample(u); }
@@ -78,7 +78,7 @@ class Quad :
 {
 public:
 	Quad(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c) :
-		va(a), vb(b), vc(c) {}
+		va(a), vb(b), vc(c), Hittable(HittableType::Shape) {}
 
 	std::optional<float> closestHit(const Ray &ray);
 	glm::vec3 uniformSample(const glm::vec2 &u);

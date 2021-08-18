@@ -140,4 +140,9 @@ namespace Math
     {
         return glm::dot(BRIGHTNESS, c);
     }
+
+    float diskArea(float radius)
+    {
+        return radius * radius * Math::Pi;
+    }
 }

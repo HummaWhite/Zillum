@@ -48,7 +48,7 @@ namespace Math
 	template <typename T>
 	float lengthSquare(const T &v)
 	{
-		return square(glm::dot(v, v));
+		return glm::dot(v, v);
 	}
 
 	template <typename T>
@@ -88,4 +88,6 @@ namespace Math
 	float biHeuristic(float pf, float pg);
 
 	float rgbBrightness(const glm::vec3 &c);
+
+	float diskArea(float radius);
 }

@@ -16,6 +16,7 @@
 #include "Buffer/FrameBufferDouble.h"
 #include "Integrator/Path.h"
 #include "Integrator/AmbientOcclusion.h"
+#include "Integrator/LightPath.h"
 
 class Application
 {

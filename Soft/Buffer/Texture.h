@@ -3,19 +3,15 @@
 #include <iostream>
 #include <cstdlib>
 
-#include "../glm/glm.hpp"
-#include "../glm/gtc/matrix_transform.hpp"
-#include "../glm/gtc/type_ptr.hpp"
-
 #include "../Display/Color.h"
-#include "FrameBuffer.h"
+#include "Buffer2D.h"
 #include "../Math/Transform.h"
 
 #include "../stb_image/stb_image.h"
 #include "../stb_image/stb_image_write.h"
 
 class Texture:
-	public FrameBuffer<glm::vec3>
+	public Buffer2D<glm::vec3>
 {
 public:
 	enum FilterType

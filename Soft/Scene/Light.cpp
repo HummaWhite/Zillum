@@ -1,12 +1,5 @@
 #include "Light.h"
 
-glm::vec3 Light::Le(const glm::vec3 &y, const glm::vec3 &We)
-{
-    if (glm::dot(surfaceNormal(y), We) <= 0.0f)
-        return glm::vec3(0.0f);
-    return power / (2.0f * Math::Pi * surfaceArea());
-}
-
 std::optional<LightLiSample> Light::sampleLi(glm::vec3 x, glm::vec2 u)
 {
     glm::vec3 y = uniformSample(u);
@@ -19,9 +12,8 @@ std::optional<LightLiSample> Light::sampleLi(glm::vec3 x, glm::vec2 u)
 
     float dist = glm::distance(x, y);
     float pdf = dist * dist / (surfaceArea() * cosTheta);
-    glm::vec3 weight = Le(y, -Wi);
 
-    return LightLiSample{Wi, weight, dist, pdf};
+    return LightLiSample{Wi, Le({y, -Wi}), dist, pdf};
 }
 
 float Light::pdfLi(const glm::vec3 &x, const glm::vec3 &y)
@@ -35,16 +27,23 @@ float Light::pdfLi(const glm::vec3 &x, const glm::vec3 &y)
     return Math::distSquare(x, y) / (surfaceArea() * cosTheta);
 }
 
+glm::vec3 Light::Le(Ray ray)
+{
+    if (glm::dot(surfaceNormal(ray.ori), ray.dir) <= 0.0f)
+        return glm::vec3(0.0f);
+    return power / (2.0f * Math::Pi * surfaceArea());
+}
+
 LightLeSample Light::sampleLe(const std::array<float, 6> &u)
 {
     auto ori = uniformSample({ u[0], u[1] });
     float pdfPos = 1.0f / surfaceArea();
 
     auto N = surfaceNormal(ori);
-    auto We = Transform::planeToSphere({ u[2], u[3] });
-    We = Transform::normalToWorld(N, We);
+    auto [We, pdfDir] = Math::sampleHemisphereCosine(N, { u[2], u[3] });
+    Ray ray(ori, We);
 
-    return { { ori, We }, Le(ori, We), pdfPos * Math::PiInv * 0.5f };
+    return { ray, Le(ray), pdfPos, pdfDir };
 }
 
 Ray Light::getRandomRay()

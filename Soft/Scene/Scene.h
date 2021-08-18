@@ -39,7 +39,7 @@ struct LiSample
 
 struct IiSample
 {
-	glm::vec3 Wo;
+	glm::vec3 Wi;
 	glm::vec3 weight;
 	float pdf;
 };
@@ -76,6 +76,8 @@ public:
 	void addLight(LightPtr light);
 	void addObjectMesh(const char *path, TransformPtr transform, MaterialPtr material);
 	void addLightMesh(const char *path, TransformPtr transform, const glm::vec3 &power);
+
+	bool occlude(glm::vec3 x, glm::vec3 y);
 
 public:
 	std::vector<HittablePtr> hittables;

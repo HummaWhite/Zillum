@@ -22,6 +22,7 @@ void Application::init(const std::string &name, HINSTANCE instance, int width, i
     SetWindowPos(window, HWND_TOP, 0, 0, width, height, SWP_NOMOVE);
     ShowWindow(window, 1);
     UpdateWindow(window);
+    SetWindowPos(window, HWND_TOP, 0, 0, width, height, SWP_NOMOVE);
 
     colorBuffer.init(width, height);
     initScene(spp);
@@ -93,7 +94,7 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
     {
         if (cursorDisabled)
             break;
-        integrator->setModified();
+        integrator->reset();
 
         if (firstCursorMove)
         {
@@ -210,18 +211,15 @@ void Application::initScene(int spp)
     // //sphere->setTransform(std::make_shared<Transform>(glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 2.0f))));
     // scene->addHittable(sphere);
 
-    // scene->addHittable
-    // (
-    //  	std::make_shared<Object>
-    // 	(
-    // 	 	std::make_shared<Quad>(
-    // 			glm::vec3(-10.0f, -10.0f, 0.0f),
-    // 			glm::vec3(10.0f, -10.0f, 0.0f),
-    // 			glm::vec3(-10.0f, 10.0f, 0.0f)),
-    // 		//std::make_shared<Dielectric>(glm::vec3(1.0f), 0.0f, 1.4f)
-    // 		std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 0.0f, 1.0f)
-    // 	)
-    // );
+    // sc->addHittable(
+    //     std::make_shared<Object>(
+    //         std::make_shared<Quad>(
+    //             glm::vec3(-30.0f, -30.0f, -0.5f),
+    //             glm::vec3(30.0f, -30.0f, -0.5f),
+    //             glm::vec3(-30.0f, 30.0f, -0.5f)),
+    //         std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 1.0f, 0.2f)
+    //         //std::make_shared<Lambertian>(glm::vec3(1.0f))
+    //         ));
 
     sc->addHittable(
         std::make_shared<Object>(
@@ -273,34 +271,34 @@ void Application::initScene(int spp)
             //std::make_shared<Lambertian>(glm::vec3(1.0f))
             ));
 
-    sc->addHittable(
-        std::make_shared<Object>(
-            std::make_shared<Sphere>(glm::vec3(1.0f, 3.0f, 0.0f), 1.0f, true),
-            std::make_shared<Dielectric>(glm::vec3(1.0f), 0.0f, 1.5f)
-            //std::make_shared<MetalWorkflow>(glm::vec3(1.0f, 0.79f, 0.51f), 1.0f, 0.25f)
-            ));
+    // sc->addHittable(
+    //     std::make_shared<Object>(
+    //         std::make_shared<Sphere>(glm::vec3(1.0f, 3.0f, 0.0f), 1.0f, true),
+    //         std::make_shared<Dielectric>(glm::vec3(1.0f), 0.0f, 1.5f)
+    //         //std::make_shared<MetalWorkflow>(glm::vec3(1.0f, 0.79f, 0.51f), 1.0f, 0.25f)
+    //         ));
 
-    glm::mat4 model(1.0f);
-    model = glm::translate(model, glm::vec3(1.0f, 2.0f, -2.1f));
-    model = glm::rotate(model, glm::radians(-17.5f), glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::scale(model, glm::vec3(1.8f));
-    std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
+    // glm::mat4 model(1.0f);
+    // model = glm::translate(model, glm::vec3(1.0f, 2.0f, -2.1f));
+    // model = glm::rotate(model, glm::radians(-17.5f), glm::vec3(0.0f, 0.0f, 1.0f));
+    // model = glm::scale(model, glm::vec3(1.8f));
+    // std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
 
-    sc->addObjectMesh("res/model/cube.obj", trBoxSmall,
-                         std::make_shared<MetalWorkflow>(glm::vec3(1.0f, 0.8f, 0.6f), 0.0f, 1.0f)
-                         //std::make_shared<Lambertian>(glm::vec3(1.0f))
-    );
+    // sc->addObjectMesh("res/model/cube.obj", trBoxSmall,
+    //                      std::make_shared<MetalWorkflow>(glm::vec3(1.0f, 0.8f, 0.6f), 0.0f, 1.0f)
+    //                      //std::make_shared<Lambertian>(glm::vec3(1.0f))
+    // );
 
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(-1.0f, 4.0f, -1.2f));
-    model = glm::rotate(model, glm::radians(17.5f), glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::scale(model, glm::vec3(1.8f, 1.8f, 3.6f));
-    std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
+    // model = glm::mat4(1.0f);
+    // model = glm::translate(model, glm::vec3(-1.0f, 4.0f, -1.2f));
+    // model = glm::rotate(model, glm::radians(17.5f), glm::vec3(0.0f, 0.0f, 1.0f));
+    // model = glm::scale(model, glm::vec3(1.8f, 1.8f, 3.6f));
+    // std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
 
-    sc->addObjectMesh("res/model/cube.obj", trBoxLarge,
-                         std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 0.0f, 1.0f)
-                         //std::make_shared<Lambertian>(glm::vec3(1.0f))
-    );
+    // sc->addObjectMesh("res/model/cube.obj", trBoxLarge,
+    //                      std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 0.0f, 1.0f)
+    //                      //std::make_shared<Lambertian>(glm::vec3(1.0f))
+    // );
 
     sc->addLight(
         std::make_shared<Light>(
@@ -315,28 +313,28 @@ void Application::initScene(int spp)
     //camera->lookAt(glm::vec3(0.4f, 0.0f, 1.0f));
 
     //camera->setPos({ 2.4f, -3.6f, /*2.75f*/ 3.75f });
-    //auto camera = std::make_shared<ThinLensCamera>(40.0f);
-    auto camera = std::make_shared<PanoramaCamera>();
+    auto camera = std::make_shared<ThinLensCamera>(40.0f);
+    //auto camera = std::make_shared<PanoramaCamera>();
     camera->initFilm(windowWidth, windowHeight);
     camera->setPos({0.0f, -8.0f, 0.0f});
     camera->lookAt(glm::vec3(0.0f));
     //camera->lookAt(glm::vec3(0.4f, 0.0f, 0.5f));
 
-    sc->env = std::make_shared<EnvSphereMapHDR>("res/texture/076.hdr");
+    //sc->env = std::make_shared<EnvSphereMapHDR>("res/texture/076.hdr");
     sc->lightAndEnvStrategy = LightSampleStrategy::ByPower;
-    sc->lightAndEnvStrategy = LightSampleStrategy::Uniform;
+    //sc->lightAndEnvStrategy = LightSampleStrategy::Uniform;
     sc->camera = camera;
     sc->buildScene();
     scene = sc;
     
-    auto integ = std::make_shared<PathIntegrator>(sc, spp);
-    integ->limitSpp = (spp != 0);
-    integ->tracingDepth = 5;
-    integ->sampleDirectLight = true;
+    // auto integ = std::make_shared<PathIntegrator>(sc, spp);
+    // integ->limitSpp = (spp != 0);
+    // integ->tracingDepth = 1;
+    // integ->sampleDirectLight = true;
+    auto integ = std::make_shared<LightPathIntegrator>(sc, 20000);
+    integ->maxDepth = 1;
     //integ->mSampler = std::make_shared<IndependentSampler>();
-    integ->mSampler = std::make_shared<SimpleSobolSampler>(windowWidth, windowHeight);
-    //integ->roulette = true;
-    //integ->rouletteProb = 0.8f;
+    //integ->mSampler = std::make_shared<SimpleSobolSampler>(windowWidth, windowHeight);
     integrator = integ;
 }
 
@@ -404,7 +402,7 @@ void Application::processKey()
         if (keyPressing[keyList[i]])
         {
             scene->camera->move(keyList[i]);
-            integrator->setModified();
+            integrator->reset();
         }
     }
 }

@@ -3,7 +3,7 @@
 #include <thread>
 #include <mutex>
 
-#include "../Buffer/FrameBuffer.h"
+#include "../Buffer/Buffer2D.h"
 #include "../Display/Color.h"
 #include "../Scene/Camera.h"
 #include "../Buffer/Texture.h"
@@ -16,6 +16,7 @@
 #include "../Scene/ObjReader.h"
 #include "../Scene/Scene.h"
 #include "../Sampler/Samplers.h"
+#include "../Utils/Error.h"
 
 const int MaxThreads = std::thread::hardware_concurrency();
 
@@ -36,6 +37,7 @@ public:
 	IntegratorType getType() const { return type; }
 
 	void setModified();
+	virtual void reset() = 0;
 
 public:
 	SamplerPtr mSampler = std::make_shared<IndependentSampler>();
@@ -56,6 +58,8 @@ public:
 	PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type);
 	void renderOnePass();
 	virtual glm::vec3 tracePixel(Ray ray, SamplerPtr sampler) = 0;
+
+	void reset() { setModified(); }
 
 private:
 	void doTracing(int start, int end, SamplerPtr sampler);

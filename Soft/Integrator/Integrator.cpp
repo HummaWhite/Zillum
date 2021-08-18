@@ -68,7 +68,7 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
 
             if (Math::isNan(result.x) || Math::isNan(result.y) || Math::isNan(result.z))
             {
-                std::cout << "[Computational Error] NAN value occurred\n";
+                Error::log("[Computational Error] NAN value occurred");
                 result = glm::vec3(0.0f);
             }
 

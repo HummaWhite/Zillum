@@ -5,7 +5,7 @@ Scene::Scene(const std::vector<HittablePtr> &hittables, EnvPtr environment, Came
 {
     for (const auto &i : hittables)
     {
-        if (i->type() == HittableType::Light)
+        if (i->getType() == HittableType::Light)
             lights.push_back(std::shared_ptr<Light>(dynamic_cast<Light*>(i.get())));
     }
 }
@@ -132,14 +132,14 @@ float Scene::pdfSampleEnv()
 
 IiSample Scene::sampleIiCamera(glm::vec3 x, glm::vec2 u)
 {
-    auto [Wo, dist, imp, uv, pdf] = camera->sampleIi(x, u);
+    auto [Wi, imp, dist, uv, pdf] = camera->sampleIi(x, u);
 
-    Ray camRay(x + Wo * 1e-4f, Wo);
+    Ray camRay(x + Wi * 1e-4f, Wi);
     float testDist = dist - 1e-4f - 1e-6f;
 
     if (bvh->testIntersec(camRay, testDist) || pdf < 1e-8f)
         return InvalidIiSample;
-    return { Wo, imp / pdf, pdf };
+    return { Wi, imp / pdf, pdf };
 }
 
 void Scene::buildScene()
@@ -190,4 +190,12 @@ void Scene::addLightMesh(const char *path, TransformPtr transform, const glm::ve
         hittables.push_back(tr);
         lights.push_back(tr);
     }
+}
+
+bool Scene::occlude(glm::vec3 x, glm::vec3 y)
+{
+    float dist = glm::distance(x, y) - 1e-5f;
+    glm::vec3 Wi = glm::normalize(y - x);
+    Ray ray(x + Wi * 1e-5f, Wi);
+    return bvh->testIntersec(ray, dist);
 }

@@ -14,12 +14,14 @@
 
 enum class HittableType
 {
-	Object, Light
+	Object, Light, Shape
 };
 
 class Hittable
 {
 public:
+	Hittable(HittableType type) : type(type) {}
+
 	virtual std::optional<float> closestHit(const Ray &ray) = 0;
 	virtual glm::vec3 uniformSample(const glm::vec2 &u) = 0;
 	virtual glm::vec3 surfaceNormal(const glm::vec3 &p) = 0;
@@ -27,7 +29,7 @@ public:
 	virtual glm::vec2 surfaceUV(const glm::vec3 &p) = 0;
 	virtual AABB bound() = 0;
 
-	virtual HittableType type() { return HittableType::Object; }
+	HittableType getType() const { return type; }
 
 	virtual void setTransform(TransformPtr trans) { transform = trans; }
 	virtual void setTransform(const glm::mat4 &trans) { transform->set(trans); }
@@ -35,6 +37,7 @@ public:
 
 protected:
 	TransformPtr transform = std::make_shared<Transform>();
+	HittableType type;
 };
 
 typedef std::shared_ptr<Hittable> HittablePtr;
