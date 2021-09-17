@@ -2,9 +2,7 @@
 
 #include "Buffer.h"
 
-#include "../glm/glm.hpp"
-#include "../glm/gtc/matrix_transform.hpp"
-#include "../glm/gtc/type_ptr.hpp"
+#include "../glm/glmIncluder.h"
 
 template<typename T>
 struct Buffer2D:
@@ -42,9 +40,9 @@ struct Buffer2D:
 		return this->data[j * width + i];
 	}
 
-	T& operator () (glm::vec2 uv)
+	T& operator () (Vec2f uv)
 	{
-		glm::ivec2 iuv(uv * glm::vec2(width, height));
+		Vec2i iuv(uv * Vec2f(width, height));
 		return this->data[iuv.y * width + iuv.x];
 	}
 

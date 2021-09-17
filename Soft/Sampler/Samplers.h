@@ -12,7 +12,7 @@ public:
     IndependentSampler();
 
     float get1D();
-    glm::vec2 get2D();
+    Vec2f get2D();
 
     void setPixel(int x, int y) {}
     void nextSample() {}
@@ -33,7 +33,7 @@ public:
 		xPixels(xPixels), yPixels(yPixels), Sampler(SamplerType::SimpleSobol) {}
 
     float get1D();
-    glm::vec2 get2D();
+    Vec2f get2D();
 
     void setPixel(int x, int y);
     void nextSample() { index++; }

@@ -4,9 +4,7 @@
 #include <random>
 #include <cmath>
 
-#include "../glm/glm.hpp"
-#include "../glm/gtc/matrix_transform.hpp"
-#include "../glm/gtc/type_ptr.hpp"
+#include "../glm/glmIncluder.h"
 
 #include "../Surface/SurfaceInteraction.h"
 #include "../Scene/Ray.h"
@@ -23,48 +21,48 @@ struct Sample
 {
 	Sample(): dir(0.0f), pdf(0.0f), type(0), eta(0.0f) {}
 
-	Sample(const glm::vec4 &sample, int type, float eta = 1.0f):
+	Sample(const Vec4f &sample, int type, float eta = 1.0f):
 		dir(sample), pdf(sample.w), type(type), eta(eta) {}
 
-	Sample(const glm::vec3 &dir, float pdf, int type, float eta = 1.0f):
+	Sample(const Vec3f &dir, float pdf, int type, float eta = 1.0f):
 		dir(dir), pdf(pdf), type(type), eta(eta) {}
 
-	glm::vec3 dir;
+	Vec3f dir;
 	float pdf;
 	BXDF type;
 	float eta;
 };
 
-typedef std::pair<Sample, glm::vec3> SampleWithBsdf;
-const SampleWithBsdf INVALID_BSDF_SAMPLE = SampleWithBsdf(Sample(), glm::vec3(0.0f));
+typedef std::pair<Sample, Vec3f> SampleWithBsdf;
+const SampleWithBsdf INVALID_BSDF_SAMPLE = SampleWithBsdf(Sample(), Vec3f(0.0f));
 
 class Material
 {
 public:
 	Material(int bxdfType): matBxdf(bxdfType) {}
 
-	virtual glm::vec3 bsdf(const SurfaceInteraction &si, TransportMode mode = TransportMode::Radiance) = 0;
-	virtual Sample getSample(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode = TransportMode::Radiance) = 0;
-	virtual float pdf(const glm::vec3 &Wo, const glm::vec3 &Wi, const glm::vec3 &N, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual Vec3f bsdf(const SurfaceInteraction &si, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual float pdf(const Vec3f &Wo, const Vec3f &Wi, const Vec3f &N, TransportMode mode = TransportMode::Radiance) = 0;
 
-	virtual SampleWithBsdf sampleWithBsdf(const glm::vec3 &N, const glm::vec3 &Wo, float u1, const glm::vec2 &u2, TransportMode mode = TransportMode::Radiance)
+	virtual SampleWithBsdf sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode = TransportMode::Radiance)
 	{
 		Sample sample = getSample(N, Wo, u1, u2);
 		SurfaceInteraction si = { Wo, sample.dir, N };
-		glm::vec3 bsdf = this->bsdf(si, mode);
+		Vec3f bsdf = this->bsdf(si, mode);
 		return SampleWithBsdf(sample, bsdf);
 	}
 
-	virtual glm::vec4 getSampleForward(const glm::vec3 &N, const glm::vec3 &Wi)
+	virtual Vec4f getSampleForward(const Vec3f &N, const Vec3f &Wi)
 	{
 		Sample sample = getSample(N, Wi, 0.0f, {});
-		return glm::vec4(sample.dir, sample.pdf);
+		return Vec4f(sample.dir, sample.pdf);
 	}
 
 	const BXDF& bxdf() const { return matBxdf; }
 
 protected:
-	inline static bool refract(glm::vec3 &Wt, const glm::vec3 &Wi, const glm::vec3 &N, float eta)
+	inline static bool refract(Vec3f &Wt, const Vec3f &Wi, const Vec3f &N, float eta)
 	{
 		float cosTi = glm::dot(N, Wi);
 		if (cosTi < 0) eta = 1.0f / eta;
@@ -103,4 +101,4 @@ protected:
 	BXDF matBxdf;
 };
 
-typedef std::shared_ptr<Material> MaterialPtr;
+using MaterialPtr = std::shared_ptr<Material>;

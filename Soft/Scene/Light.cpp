@@ -1,10 +1,10 @@
 #include "Light.h"
 
-std::optional<LightLiSample> Light::sampleLi(glm::vec3 x, glm::vec2 u)
+std::optional<LightLiSample> Light::sampleLi(Vec3f x, Vec2f u)
 {
-    glm::vec3 y = uniformSample(u);
-    glm::vec3 Wi = glm::normalize(y - x);
-    glm::vec3 N = surfaceNormal(y);
+    Vec3f y = uniformSample(u);
+    Vec3f Wi = glm::normalize(y - x);
+    Vec3f N = surfaceNormal(y);
     float cosTheta = glm::dot(N, -Wi);
 
     if (cosTheta <= 1e-6f)
@@ -16,7 +16,7 @@ std::optional<LightLiSample> Light::sampleLi(glm::vec3 x, glm::vec2 u)
     return LightLiSample{Wi, Le({y, -Wi}), dist, pdf};
 }
 
-float Light::pdfLi(const glm::vec3 &x, const glm::vec3 &y)
+float Light::pdfLi(const Vec3f &x, const Vec3f &y)
 {
     auto N = surfaceNormal(y);
     auto Wi = glm::normalize(y - x);
@@ -27,10 +27,10 @@ float Light::pdfLi(const glm::vec3 &x, const glm::vec3 &y)
     return Math::distSquare(x, y) / (surfaceArea() * cosTheta);
 }
 
-glm::vec3 Light::Le(Ray ray)
+Vec3f Light::Le(Ray ray)
 {
     if (glm::dot(surfaceNormal(ray.ori), ray.dir) <= 0.0f)
-        return glm::vec3(0.0f);
+        return Vec3f(0.0f);
     return power / (2.0f * Math::Pi * surfaceArea());
 }
 
@@ -48,8 +48,8 @@ LightLeSample Light::sampleLe(const std::array<float, 6> &u)
 
 Ray Light::getRandomRay()
 {
-    glm::vec3 ori = uniformSample({});
-    glm::vec3 N = surfaceNormal(ori);
-    glm::vec3 dir = Transform::normalToWorld(N, {});
+    Vec3f ori = uniformSample({});
+    Vec3f N = surfaceNormal(ori);
+    Vec3f dir = Transform::normalToWorld(N, {});
     return {ori + dir * 1e-4f, dir};
 }

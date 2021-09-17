@@ -3,14 +3,12 @@
 #include <iostream>
 #include <cmath>
 
-#include "../glm/glm.hpp"
-#include "../glm/gtc/matrix_transform.hpp"
-#include "../glm/gtc/type_ptr.hpp"
+#include "../glm/glmIncluder.h"
 
 namespace ToneMapping
 {
-	glm::vec3 reinhard(const glm::vec3 &color);
-	glm::vec3 CE(const glm::vec3 &color);
-	glm::vec3 filmic(const glm::vec3 &color);
-	glm::vec3 ACES(const glm::vec3 &color);
+	Vec3f reinhard(const Vec3f &color);
+	Vec3f CE(const Vec3f &color);
+	Vec3f filmic(const Vec3f &color);
+	Vec3f ACES(const Vec3f &color);
 }

@@ -24,8 +24,8 @@ public:
 	void loadRGB24(const char *filePath);
 	void loadFloat(const char *filePath);
 
-	glm::vec4 get(float u, float v);
-	glm::vec4 getSpherical(const glm::vec3 &uv);
+	Vec4f get(float u, float v);
+	Vec4f getSpherical(const glm::vec3 &uv);
 
 	void setFilterType(FilterType type) { filterType = type; }
 

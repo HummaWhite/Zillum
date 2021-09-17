@@ -1,19 +1,19 @@
 #include "AmbientOcclusion.h"
 
-glm::vec3 AOIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
+Vec3f AOIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 {
     auto [dist, obj] = scene->closestHit(ray);
     if (obj == nullptr)
-        return glm::vec3(1.0f);
+        return Vec3f(1.0f);
 
     auto p = ray.get(dist);
     ray.ori = p;
     return trace(ray, obj->surfaceNormal(p), sampler);
 }
 
-glm::vec3 AOIntegrator::trace(Ray ray, glm::vec3 N, SamplerPtr sampler)
+Vec3f AOIntegrator::trace(Ray ray, Vec3f N, SamplerPtr sampler)
 {
-    glm::vec3 ao(0.0f);
+    Vec3f ao(0.0f);
 
     for (int i = 0; i < samples; i++)
     {
@@ -23,7 +23,7 @@ glm::vec3 AOIntegrator::trace(Ray ray, glm::vec3 N, SamplerPtr sampler)
         //auto [dist, obj] = scene->closestHit(newRay);
 
         if (scene->quickIntersect(newRay, occlusionRadius.x))
-            ao += glm::vec3(1.0f);
+            ao += Vec3f(1.0f);
 
         // if (obj == nullptr) continue;
 
@@ -32,5 +32,5 @@ glm::vec3 AOIntegrator::trace(Ray ray, glm::vec3 N, SamplerPtr sampler)
         // if (dist < occlusionRadius.z) ao.z += 1.0f;
     }
 
-    return glm::vec3(1.0f) - ao / (float)samples;
+    return Vec3f(1.0f) - ao / (float)samples;
 }

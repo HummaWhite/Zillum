@@ -4,9 +4,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "../glm/glm.hpp"
-#include "../glm/gtc/matrix_transform.hpp"
-#include "../glm/gtc/type_ptr.hpp"
+#include "../glm/glmIncluder.h"
 
 struct RGB24
 {
@@ -15,10 +13,10 @@ struct RGB24
 		r(glm::clamp<uint8_t>(_r, 0, 255u)),
 		g(glm::clamp<uint8_t>(_g, 0, 255u)),
 		b(glm::clamp<uint8_t>(_b, 0, 255u)) {}
-	RGB24(glm::vec3 color);
+	RGB24(Vec3f color);
 
-	glm::vec3 toVec3() { return glm::vec3(r, g, b) / 255.0f; }
-	glm::vec4 toVec4() { return glm::vec4(glm::vec3(r, g, b) / 255.0f, 1.0f); }
+	Vec3f toVec3() { return Vec3f(r, g, b) / 255.0f; }
+	Vec4f toVec4() { return Vec4f(Vec3f(r, g, b) / 255.0f, 1.0f); }
 
 	static RGB24 swapRB(RGB24 c);
 	

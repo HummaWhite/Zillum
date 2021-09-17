@@ -8,12 +8,12 @@ class AOIntegrator:
 public:
 	AOIntegrator(ScenePtr scene, int maxSpp):
 		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AO) {}
-	glm::vec3 tracePixel(Ray ray, SamplerPtr sampler);
+	Vec3f tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
-	glm::vec3 trace(Ray ray, glm::vec3 N, SamplerPtr sampler);
+	Vec3f trace(Ray ray, Vec3f N, SamplerPtr sampler);
 
 public:
-	glm::vec3 occlusionRadius = glm::vec3(1.0f);
+	Vec3f occlusionRadius = Vec3f(1.0f);
 	int samples = 1;
 };

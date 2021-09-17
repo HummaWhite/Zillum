@@ -17,12 +17,12 @@ namespace Math
         std::cout << info;
     }
 
-    void printVec3(const glm::vec3 &v, std::string info)
+    void printVec3(const Vec3f &v, std::string info)
     {
         std::cout << std::setprecision(6) << info << "  " << v.x << "  " << v.y << "  " << v.z << "\n";
     }
 
-    std::string vec3ToString(const glm::vec3 &v)
+    std::string vec3ToString(const Vec3f &v)
     {
         std::stringstream ss;
         ss << "[Vec3 " << v.x << " " << v.y << " " << v.z << "]";
@@ -35,7 +35,7 @@ namespace Math
         return ((u & FloatBitMask::Exp) == FloatBitMask::Exp && (u & FloatBitMask::Val) != 0);
     }
 
-    bool hasNan(const glm::vec3 &v)
+    bool hasNan(const Vec3f &v)
     {
         return isNan(v.x) || isNan(v.y) || isNan(v.z);
     }
@@ -46,10 +46,10 @@ namespace Math
         return ((u & FloatBitMask::Exp) == FloatBitMask::Exp && (u & FloatBitMask::Val) == 0);
     }
 
-    glm::mat3 TBNMatrix(const glm::vec3 &N)
+    glm::mat3 TBNMatrix(const Vec3f &N)
     {
-        glm::vec3 T = (glm::abs(N.z) > 0.99f) ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f, 0.0f, 1.0f);
-        glm::vec3 B = glm::normalize(glm::cross(N, T));
+        Vec3f T = (glm::abs(N.z) > 0.99f) ? Vec3f(0.0f, 1.0f, 0.0f) : Vec3f(0.0f, 0.0f, 1.0f);
+        Vec3f B = glm::normalize(glm::cross(N, T));
         T = glm::normalize(glm::cross(B, N));
         return glm::mat3(T, B, N);
     }
@@ -69,12 +69,12 @@ namespace Math
         return float(inverseBits(bits)) * 2.3283064365386963e-10;
     }
 
-    float satDot(const glm::vec3 &a, const glm::vec3 &b)
+    float satDot(const Vec3f &a, const Vec3f &b)
     {
         return glm::max(glm::dot(a, b), 0.0f);
     }
 
-    float absDot(const glm::vec3 &a, const glm::vec3 &b)
+    float absDot(const Vec3f &a, const Vec3f &b)
     {
         return glm::abs(glm::dot(a, b));
     }
@@ -84,29 +84,29 @@ namespace Math
         return u < 0.5f;
     }
 
-    bool sameHemisphere(const glm::vec3 &N, const glm::vec3 &A, const glm::vec3 &B)
+    bool sameHemisphere(const Vec3f &N, const Vec3f &A, const Vec3f &B)
     {
         return glm::dot(N, A) * glm::dot(N, B) > 0.0f;
     }
 
-    float maxComponent(const glm::vec3 &v)
+    float maxComponent(const Vec3f &v)
     {
         return glm::max(glm::max(v.x, v.y), v.z);
     }
 
-    float minComponent(const glm::vec3 &v)
+    float minComponent(const Vec3f &v)
     {
         return glm::min(glm::min(v.x, v.y), v.z);
     }
 
-    int maxExtent(const glm::vec3 &v)
+    int maxExtent(const Vec3f &v)
     {
         if (v.x > v.y)
             return v.x > v.z ? 0 : 2;
         return v.y > v.z ? 1 : 2;
     }
 
-    int cubeMapFace(const glm::vec3 &dir)
+    int cubeMapFace(const Vec3f &dir)
     {
         int maxDim = maxExtent(glm::abs(dir));
         return maxDim * 2 + (vecElement(dir, maxDim) < 0);
@@ -136,7 +136,7 @@ namespace Math
         return heuristic(1, pf, 1, pg, 2);
     }
 
-    float rgbBrightness(const glm::vec3 &c)
+    float rgbBrightness(const Vec3f &c)
     {
         return glm::dot(BRIGHTNESS, c);
     }

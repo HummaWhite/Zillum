@@ -1,8 +1,8 @@
 #include "Color.h"
 
-RGB24::RGB24(glm::vec3 color)
+RGB24::RGB24(Vec3f color)
 {
-    glm::vec3 c = glm::clamp(color, glm::vec3(0.0f), glm::vec3(1.0f));
+    Vec3f c = glm::clamp(color, Vec3f(0.0f), Vec3f(1.0f));
     c *= 255;
     *this = RGB24(c.x, c.y, c.z);
 }

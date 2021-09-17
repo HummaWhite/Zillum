@@ -10,10 +10,10 @@ class GGXDistrib:
 public:
 	GGXDistrib(float roughness, bool sampleVisible, float aniso = 0.0f);
 
-	float d(const glm::vec3 &N, const glm::vec3 &M);
-	float pdf(const glm::vec3 &N, const glm::vec3 &M, const glm::vec3 &Wo);
-	glm::vec3 sampleWm(const glm::vec3 &N, const glm::vec3 &Wo, const glm::vec2 &u);
-	float g(const glm::vec3 &N, const glm::vec3 &Wo, const glm::vec3 &Wi);
+	float d(const Vec3f &N, const Vec3f &M);
+	float pdf(const Vec3f &N, const Vec3f &M, const Vec3f &Wo);
+	Vec3f sampleWm(const Vec3f &N, const Vec3f &Wo, const Vec2f &u);
+	float g(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi);
 
 private:
 	bool visible;
@@ -26,9 +26,9 @@ class GTR1Distrib:
 public:
 	GTR1Distrib(float roughness) : alpha(roughness * roughness) {}
 
-	float d(const glm::vec3 &N, const glm::vec3 &M);
-	float pdf(const glm::vec3 &N, const glm::vec3 &M, const glm::vec3 &Wo);
-	glm::vec3 sampleWm(const glm::vec3 &N, const glm::vec3 &Wo, const glm::vec2 &u);
+	float d(const Vec3f &N, const Vec3f &M);
+	float pdf(const Vec3f &N, const Vec3f &M, const Vec3f &Wo);
+	Vec3f sampleWm(const Vec3f &N, const Vec3f &Wo, const Vec2f &u);
 
 private:
 	float alpha;

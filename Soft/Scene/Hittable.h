@@ -23,10 +23,10 @@ public:
 	Hittable(HittableType type) : type(type) {}
 
 	virtual std::optional<float> closestHit(const Ray &ray) = 0;
-	virtual glm::vec3 uniformSample(const glm::vec2 &u) = 0;
-	virtual glm::vec3 surfaceNormal(const glm::vec3 &p) = 0;
+	virtual Vec3f uniformSample(const Vec2f &u) = 0;
+	virtual Vec3f surfaceNormal(const Vec3f &p) = 0;
 	virtual float surfaceArea() = 0;
-	virtual glm::vec2 surfaceUV(const glm::vec3 &p) = 0;
+	virtual Vec2f surfaceUV(const Vec3f &p) = 0;
 	virtual AABB bound() = 0;
 
 	HittableType getType() const { return type; }
@@ -40,4 +40,4 @@ protected:
 	HittableType type;
 };
 
-typedef std::shared_ptr<Hittable> HittablePtr;
+using HittablePtr = std::shared_ptr<Hittable>;

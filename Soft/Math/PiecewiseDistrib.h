@@ -11,7 +11,7 @@ public:
     Piecewise1D() = default;
     Piecewise1D(const std::vector<float> &distrib);
 
-    int sample(const glm::vec2 &u);
+    int sample(const Vec2f &u);
     float sum() const { return sumDistrib; }
     std::vector<std::pair<int, float>> getTable() const { return table; }
 
@@ -29,7 +29,7 @@ public:
     PiecewiseIndependent2D() = default;
     PiecewiseIndependent2D(float *pdf, int width, int height);
 
-    std::pair<int, int> sample(const glm::vec2 &u1, const glm::vec2 &u2);
+    std::pair<int, int> sample(const Vec2f &u1, const Vec2f &u2);
     float sum() const { return colTable.sum(); }
 
 private:

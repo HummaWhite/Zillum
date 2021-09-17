@@ -13,7 +13,7 @@ namespace Microfacet
         return schlickG(cosThetaO, alpha) * schlickG(cosThetaI, alpha);
     }
 
-    float smithG(const glm::vec3 &N, const glm::vec3 &Wo, const glm::vec3 &Wi, float alpha)
+    float smithG(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, float alpha)
     {
         return smithG(Math::absDot(N, Wo), Math::absDot(N, Wi), alpha);
     }
@@ -31,7 +31,7 @@ namespace Microfacet
         return nom / denom;
     }
 
-    float ggx(float cosTheta, float sinPhi, const glm::vec2 &alph)
+    float ggx(float cosTheta, float sinPhi, const Vec2f &alph)
     {
         if (cosTheta < 1e-6f)
             return 0.0f;
@@ -51,13 +51,13 @@ namespace Microfacet
         return (a2 - 1.0f) / (2.0f * Math::Pi * glm::log(alpha) * (1.0f + (a2 - 1.0f) * cosTheta * cosTheta));
     }
 
-    glm::vec3 schlickF(float cosTheta, const glm::vec3 &F0)
+    Vec3f schlickF(float cosTheta, const Vec3f &F0)
     {
-        return F0 + (glm::vec3(1.0f) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
+        return F0 + (Vec3f(1.0f) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
     }
 
-    glm::vec3 schlickF(float cosTheta, const glm::vec3 &F0, float roughness)
+    Vec3f schlickF(float cosTheta, const Vec3f &F0, float roughness)
     {
-        return F0 + (glm::max(glm::vec3(1.0f - roughness), F0) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
+        return F0 + (glm::max(Vec3f(1.0f - roughness), F0) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
     }
 }

@@ -9,10 +9,10 @@ class PathIntegrator:
 public:
 	PathIntegrator(ScenePtr scene, int maxSpp):
 		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::Path) {}
-	glm::vec3 tracePixel(Ray ray, SamplerPtr sampler);
+	Vec3f tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
-	glm::vec3 trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler);
+	Vec3f trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler);
 
 public:
 	bool roulette = true;
@@ -22,4 +22,5 @@ public:
 	float indirectClamp = 20.0f;
 	float envStrength = 1.0f;
 	bool sampleDirectLight = false;
+	bool enableMIS = true;
 };

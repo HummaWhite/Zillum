@@ -15,9 +15,9 @@ namespace ObjReader
 {
 	struct VertexInfo
 	{
-		std::vector<glm::vec3> vertices;
-		std::vector<glm::vec2> texCoords;
-		std::vector<glm::vec3> normals;
+		std::vector<Vec3f> vertices;
+		std::vector<Vec2f> texCoords;
+		std::vector<Vec3f> normals;
 	};
 
 	static VertexInfo readFile(const char* filePath)
@@ -32,9 +32,9 @@ namespace ObjReader
 			return data;
 		}
 
-		std::vector<glm::vec3> points;
-		std::vector<glm::vec2> texCoords;
-		std::vector<glm::vec3> normals;
+		std::vector<Vec3f> points;
+		std::vector<Vec2f> texCoords;
+		std::vector<Vec3f> normals;
 
 		std::string line;
 		while (std::getline(file, line))
@@ -91,25 +91,25 @@ namespace ObjReader
 				for (int i = 0; i < 3; i++)
 				{
 					data.vertices.push_back(points[indexP[i] - 1]);
-					data.texCoords.push_back(withTexCoord ? texCoords[indexT[i] - 1] : glm::vec2(0.0f));
+					data.texCoords.push_back(withTexCoord ? texCoords[indexT[i] - 1] : Vec2f(0.0f));
 					data.normals.push_back(normals[indexT[i] - 1]);
 				}
 			}
 			else if (type == "v")
 			{
-				glm::vec3 v;
+				Vec3f v;
 				ss >> v.x >> v.y >> v.z;
 				points.push_back(v);
 			}
 			else if (type == "vt")
 			{
-				glm::vec2 v;
+				Vec2f v;
 				ss >> v.x >> v.y;
 				texCoords.push_back(v);
 			}
 			else if (type == "vn")
 			{
-				glm::vec3 v;
+				Vec3f v;
 				ss >> v.x >> v.y >> v.z;
 				normals.push_back(v);
 			}

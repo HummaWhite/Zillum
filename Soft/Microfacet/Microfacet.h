@@ -5,7 +5,7 @@
 class MicrofacetDistrib
 {
 public:
-	virtual float d(const glm::vec3 &N, const glm::vec3 &M) = 0;
-	virtual float pdf(const glm::vec3 &N, const glm::vec3 &M, const glm::vec3 &Wo) = 0;
-	virtual glm::vec3 sampleWm(const glm::vec3 &N, const glm::vec3 &Wo, const glm::vec2 &u) = 0;
+	virtual float d(const Vec3f &N, const Vec3f &M) = 0;
+	virtual float pdf(const Vec3f &N, const Vec3f &M, const Vec3f &Wo) = 0;
+	virtual Vec3f sampleWm(const Vec3f &N, const Vec3f &Wo, const Vec2f &u) = 0;
 };

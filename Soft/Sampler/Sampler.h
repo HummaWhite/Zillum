@@ -4,10 +4,7 @@
 #include <memory>
 #include <array>
 
-#include "../glm/glm.hpp"
-#include "../glm/gtc/matrix_transform.hpp"
-#include "../glm/gtc/type_ptr.hpp"
-
+#include "../glm/glmIncluder.h"
 #include "../Math/Math.h"
 
 enum class SamplerType
@@ -16,7 +13,7 @@ enum class SamplerType
 };
 
 class Sampler;
-typedef std::shared_ptr<Sampler> SamplerPtr;
+using SamplerPtr = std::shared_ptr<Sampler>;
 
 class Sampler
 {
@@ -24,7 +21,7 @@ public:
 	Sampler(SamplerType type) : type(type) {}
 
 	virtual float get1D() = 0;
-	virtual glm::vec2 get2D() = 0;
+	virtual Vec2f get2D() = 0;
 
 	template<int N>
 	std::array<float, N> get()

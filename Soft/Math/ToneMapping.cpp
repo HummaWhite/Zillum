@@ -2,30 +2,30 @@
 
 namespace ToneMapping
 {
-    glm::vec3 reinhard(const glm::vec3 &color)
+    Vec3f reinhard(const Vec3f &color)
     {
-        return color / (color + glm::vec3(1.0f));
+        return color / (color + Vec3f(1.0f));
     }
 
-    glm::vec3 CE(const glm::vec3 &color)
+    Vec3f CE(const Vec3f &color)
     {
-        return glm::vec3(1.0f) - glm::exp(-color);
+        return Vec3f(1.0f) - glm::exp(-color);
     }
 
-    glm::vec3 filmic(const glm::vec3 &color)
+    Vec3f filmic(const Vec3f &color)
     {
-        auto calc = [](const glm::vec3 &x)
+        auto calc = [](const Vec3f &x)
         {
             const float A = 0.22f, B = 0.3f, C = 0.1f, D = 0.2f, E = 0.01f, F = 0.3f;
-            return ((x * (x * A + glm::vec3(B * C)) + glm::vec3(D * E)) / (x * (x * A + glm::vec3(B)) + glm::vec3(D * F)) - glm::vec3(E / F));
+            return ((x * (x * A + Vec3f(B * C)) + Vec3f(D * E)) / (x * (x * A + Vec3f(B)) + Vec3f(D * F)) - Vec3f(E / F));
         };
         const float WHITE = 11.2f;
 
-        return calc(color * 1.6f) / calc(glm::vec3(WHITE));
+        return calc(color * 1.6f) / calc(Vec3f(WHITE));
     }
 
-    glm::vec3 ACES(const glm::vec3 &color)
+    Vec3f ACES(const Vec3f &color)
     {
-        return (color * (color * 2.51f + glm::vec3(0.03f))) / (color * (color * 2.43f + glm::vec3(0.59f)) + glm::vec3(0.14f));
+        return (color * (color * 2.51f + Vec3f(0.03f))) / (color * (color * 2.43f + Vec3f(0.59f)) + Vec3f(0.14f));
     }
 }

@@ -6,9 +6,7 @@
 #include <tuple>
 #include <cmath>
 
-#include "../glm/glm.hpp"
-#include "../glm/gtc/matrix_transform.hpp"
-#include "../glm/gtc/type_ptr.hpp"
+#include "../glm/glmIncluder.h"
 #include "RandomGenerator.h"
 #include "ToneMapping.h"
 
@@ -19,7 +17,7 @@ namespace Math
 
 	const float OneMinusEpsilon = 0x1.fffffep-1;
 
-	const glm::vec3 BRIGHTNESS = glm::vec3(0.299f, 0.587f, 0.114f);
+	const Vec3f BRIGHTNESS = Vec3f(0.299f, 0.587f, 0.114f);
 
 	template<typename T>
 	T lerp(T x, T y, float a)
@@ -58,36 +56,36 @@ namespace Math
 	}
 
 	void printBits32(void *bits, std::string info = "");
-	void printVec3(const glm::vec3 &v, std::string info = "");
-	std::string vec3ToString(const glm::vec3 &v);
+	void printVec3(const Vec3f &v, std::string info = "");
+	std::string vec3ToString(const Vec3f &v);
 
 	bool isNan(float v);
-	bool hasNan(const glm::vec3 &v);
+	bool hasNan(const Vec3f &v);
 	bool isInf(float v);
 
-	glm::mat3 TBNMatrix(const glm::vec3 &N);
+	glm::mat3 TBNMatrix(const Vec3f &N);
 
 	uint32_t inverseBits(uint32_t bits);
 	float radicalInverse(uint32_t bits);
 
-	float satDot(const glm::vec3 &a, const glm::vec3 &b);
-	float absDot(const glm::vec3 &a, const glm::vec3 &b);
+	float satDot(const Vec3f &a, const Vec3f &b);
+	float absDot(const Vec3f &a, const Vec3f &b);
 
 	bool coin(float u);
 
-	bool sameHemisphere(const glm::vec3 &N, const glm::vec3 &A, const glm::vec3 &B);
+	bool sameHemisphere(const Vec3f &N, const Vec3f &A, const Vec3f &B);
 
-	float maxComponent(const glm::vec3 &v);
-	float minComponent(const glm::vec3 &v);
-	int maxExtent(const glm::vec3 &v);
-	int cubeMapFace(const glm::vec3 &dir);
+	float maxComponent(const Vec3f &v);
+	float minComponent(const Vec3f &v);
+	int maxExtent(const Vec3f &v);
+	int cubeMapFace(const Vec3f &dir);
 
 	float qpow(float x, int n);
 
 	float heuristic(int nf, float pf, int ng, float pg, int pow);
 	float biHeuristic(float pf, float pg);
 
-	float rgbBrightness(const glm::vec3 &c);
+	float rgbBrightness(const Vec3f &c);
 
 	float diskArea(float radius);
 }

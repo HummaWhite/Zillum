@@ -6,35 +6,35 @@ void Camera::move(int key)
     switch (key)
     {
     case 'W':
-        pos.x += CAMERA_MOVE_SENSITIVITY * cos(glm::radians(angle.x));
-        pos.y += CAMERA_MOVE_SENSITIVITY * sin(glm::radians(angle.x));
+        pos.x += CameraMoveSensitivity * cos(glm::radians(angle.x));
+        pos.y += CameraMoveSensitivity * sin(glm::radians(angle.x));
         break;
     case 'S':
-        pos.x -= CAMERA_MOVE_SENSITIVITY * cos(glm::radians(angle.x));
-        pos.y -= CAMERA_MOVE_SENSITIVITY * sin(glm::radians(angle.x));
+        pos.x -= CameraMoveSensitivity * cos(glm::radians(angle.x));
+        pos.y -= CameraMoveSensitivity * sin(glm::radians(angle.x));
         break;
     case 'A':
-        pos.y += CAMERA_MOVE_SENSITIVITY * cos(glm::radians(angle.x));
-        pos.x -= CAMERA_MOVE_SENSITIVITY * sin(glm::radians(angle.x));
+        pos.y += CameraMoveSensitivity * cos(glm::radians(angle.x));
+        pos.x -= CameraMoveSensitivity * sin(glm::radians(angle.x));
         break;
     case 'D':
-        pos.y -= CAMERA_MOVE_SENSITIVITY * cos(glm::radians(angle.x));
-        pos.x += CAMERA_MOVE_SENSITIVITY * sin(glm::radians(angle.x));
+        pos.y -= CameraMoveSensitivity * cos(glm::radians(angle.x));
+        pos.x += CameraMoveSensitivity * sin(glm::radians(angle.x));
         break;
     case 'Q':
-        roll(-CAMERA_ROLL_SENSITIVITY);
+        roll(-CameraRollSensitivity);
         break;
     case 'E':
-        roll(CAMERA_ROLL_SENSITIVITY);
+        roll(CameraRollSensitivity);
         break;
     case 'R':
-        up = glm::vec3(0.0f, 0.0f, 1.0f);
+        up = Vec3f(0.0f, 0.0f, 1.0f);
         break;
     case VK_SPACE:
-        pos.z += CAMERA_MOVE_SENSITIVITY;
+        pos.z += CameraMoveSensitivity;
         break;
     case VK_SHIFT:
-        pos.z -= CAMERA_MOVE_SENSITIVITY;
+        pos.z -= CameraMoveSensitivity;
         break;
     }
     update();
@@ -46,38 +46,38 @@ void Camera::roll(float rolAngle)
     mul = glm::rotate(mul, glm::radians(rolAngle), front);
     glm::vec4 tmp(up.x, up.y, up.z, 1.0f);
     tmp = mul * tmp;
-    up = glm::vec3(tmp);
+    up = Vec3f(tmp);
     update();
 }
 
-void Camera::rotate(glm::vec3 rotAngle)
+void Camera::rotate(Vec3f rotAngle)
 {
-    angle += rotAngle * CAMERA_ROTATE_SENSITIVITY;
-    if (angle.y > CAMERA_PITCH_LIMIT)
-        angle.y = CAMERA_PITCH_LIMIT;
-    if (angle.y < -CAMERA_PITCH_LIMIT)
-        angle.y = -CAMERA_PITCH_LIMIT;
+    angle += rotAngle * CameraRotateSensitivity;
+    if (angle.y > CameraPitchSensitivity)
+        angle.y = CameraPitchSensitivity;
+    if (angle.y < -CameraPitchSensitivity)
+        angle.y = -CameraPitchSensitivity;
     update();
 }
 
-void Camera::setDir(glm::vec3 dir)
+void Camera::setDir(Vec3f dir)
 {
     dir = glm::normalize(dir);
     angle.y = glm::degrees(asin(dir.z / length(dir)));
-    glm::vec2 dxy(dir);
+    Vec2f dxy(dir);
     angle.x = glm::degrees(asin(dir.y / length(dxy)));
     if (dir.x < 0)
         angle.x = 180.0f - angle.x;
     update();
 }
 
-void Camera::setAngle(glm::vec3 ang)
+void Camera::setAngle(Vec3f ang)
 {
     angle = ang;
     update();
 }
 
-bool Camera::inFilmBound(glm::vec2 p)
+bool Camera::inFilmBound(Vec2f p)
 {
     return (p.x >= 0.0f && p.x <= Math::OneMinusEpsilon && p.y >= 0.0f && p.y <= Math::OneMinusEpsilon);
 }
@@ -88,26 +88,26 @@ void Camera::update()
     float aY = cos(glm::radians(angle.y)) * sin(glm::radians(angle.x));
     float aZ = sin(glm::radians(angle.y));
 
-    front = glm::normalize(glm::vec3(aX, aY, aZ));
-    right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 0.0f, 1.0f)));
+    front = glm::normalize(Vec3f(aX, aY, aZ));
+    right = glm::normalize(glm::cross(front, Vec3f(0.0f, 0.0f, 1.0f)));
     up = glm::normalize(glm::cross(right, front));
     
-    tbnMat = glm::mat3(right, up, front);
+    tbnMat = Mat3f(right, up, front);
     tbnInv = glm::inverse(tbnMat);
 }
 
-glm::vec2 ThinLensCamera::getRasterPos(Ray ray)
+Vec2f ThinLensCamera::getRasterPos(Ray ray)
 {
     float cosTheta = glm::dot(ray.dir, front);
     float dFocus = (approxPinhole ? 1.0f : focalDist) / cosTheta;
-    glm::vec3 pFocus = tbnInv * (ray.get(dFocus) - pos);
+    Vec3f pFocus = tbnInv * (ray.get(dFocus) - pos);
 
-    glm::vec2 filmSize(film.width, film.height);
+    Vec2f filmSize(film.width, film.height);
     float aspect = filmSize.x / filmSize.y;
-    float tanFOV = glm::tan(glm::radians(FOV * 0.5f));
+    float tanFOV = glm::tan(glm::radians(FOV_ * 0.5f));
 
-    pFocus /= glm::vec3(glm::vec2(aspect, 1.0f) * tanFOV, 1.0f) * focalDist;
-    glm::vec2 ndc(pFocus);
+    pFocus /= Vec3f(Vec2f(aspect, 1.0f) * tanFOV, 1.0f) * focalDist;
+    Vec2f ndc(pFocus);
     ndc.y = -ndc.y;
     return (ndc + 1.0f) * 0.5f;
 }
@@ -117,18 +117,18 @@ Ray ThinLensCamera::generateRay(SamplerPtr sampler)
     return generateRay(sampler->get2D(), sampler);
 }
 
-Ray ThinLensCamera::generateRay(glm::vec2 uv, SamplerPtr sampler)
+Ray ThinLensCamera::generateRay(Vec2f uv, SamplerPtr sampler)
 {
-    glm::vec2 filmSize(film.width, film.height);
-    auto texelSize = glm::vec2(1.0f) / filmSize;
+    Vec2f filmSize(film.width, film.height);
+    auto texelSize = Vec2f(1.0f) / filmSize;
     auto biased = uv + texelSize * sampler->get2D();
     auto ndc = biased;
 
     float aspect = filmSize.x / filmSize.y;
-    float tanFOV = glm::tan(glm::radians(FOV * 0.5f));
+    float tanFOV = glm::tan(glm::radians(FOV_ * 0.5f));
 
-    glm::vec3 pLens(Transform::toConcentricDisk(sampler->get2D()) * lensRadius, 0.0f);
-    glm::vec3 pFocusPlane(ndc * glm::vec2(aspect, 1.0f) * focalDist * tanFOV, focalDist);
+    Vec3f pLens(Transform::toConcentricDisk(sampler->get2D()) * lensRadius, 0.0f);
+    Vec3f pFocusPlane(ndc * Vec2f(aspect, 1.0f) * focalDist * tanFOV, focalDist);
 
     auto dir = pFocusPlane - pLens;
     dir = glm::normalize(tbnMat * dir);
@@ -137,7 +137,7 @@ Ray ThinLensCamera::generateRay(glm::vec2 uv, SamplerPtr sampler)
     return { ori, dir };
 }
 
-float ThinLensCamera::pdfIi(glm::vec3 x, glm::vec3 y)
+float ThinLensCamera::pdfIi(Vec3f x, Vec3f y)
 {
     if (approxPinhole)
         return 0.0f;
@@ -150,19 +150,19 @@ float ThinLensCamera::pdfIi(glm::vec3 x, glm::vec3 y)
     return Math::distSquare(x, y) / (lensArea * cosTheta);
 }
 
-CameraIiSample ThinLensCamera::sampleIi(glm::vec3 x, glm::vec2 u)
+CameraIiSample ThinLensCamera::sampleIi(Vec3f x, Vec2f u)
 {
-    glm::vec3 pLens(Transform::toConcentricDisk(u) * lensRadius, 0.0f);
-    glm::vec3 y = pos + tbnMat * pLens;
+    Vec3f pLens(Transform::toConcentricDisk(u) * lensRadius, 0.0f);
+    Vec3f y = pos + tbnMat * pLens;
     float dist = glm::distance(x, y);
 
-    glm::vec3 Wi = glm::normalize(y - x);
+    Vec3f Wi = glm::normalize(y - x);
     float cosTheta = Math::satDot(front, -Wi);
     if (cosTheta < 1e-6f)
         return InvalidCamIiSample;
 
     Ray ray(y, -Wi);
-    glm::vec2 uv = getRasterPos(ray);
+    Vec2f uv = getRasterPos(ray);
     float pdf = dist * dist / (cosTheta * (approxPinhole ? 1.0f : lensArea));
 
     return { Wi, Ie(ray), dist, uv, pdf };
@@ -174,7 +174,7 @@ std::pair<float, float> ThinLensCamera::pdfIe(Ray ray)
     if (cosTheta < 1e-6f)
         return { 0.0f, 0.0f };
     
-    glm::vec2 pRaster = getRasterPos(ray);
+    Vec2f pRaster = getRasterPos(ray);
 
     if (!inFilmBound(pRaster))
         return { 0.0f, 0.0f };
@@ -184,21 +184,21 @@ std::pair<float, float> ThinLensCamera::pdfIe(Ray ray)
     return { pdfPos, pdfDir };
 }
 
-glm::vec3 ThinLensCamera::Ie(Ray ray)
+Vec3f ThinLensCamera::Ie(Ray ray)
 {
     float cosTheta = glm::dot(ray.dir, front);
     if (cosTheta < 1e-6f)
-        return glm::vec3(0.0f);
+        return Vec3f(0.0f);
 
-    glm::vec2 pRaster = getRasterPos(ray);
+    Vec2f pRaster = getRasterPos(ray);
 
     if (!inFilmBound(pRaster))
-        return glm::vec3(0.0f);
+        return Vec3f(0.0f);
 
-    return glm::vec3(1.0f / Math::qpow(cosTheta, 4)) / (approxPinhole ? 1.0f : lensArea);
+    return Vec3f(1.0f / Math::qpow(cosTheta, 4)) / (approxPinhole ? 1.0f : lensArea);
 }
 
-glm::vec2 PanoramaCamera::getRasterPos(Ray ray)
+Vec2f PanoramaCamera::getRasterPos(Ray ray)
 {
     return {};
 }
@@ -208,15 +208,15 @@ Ray PanoramaCamera::generateRay(SamplerPtr sampler)
     return generateRay(sampler->get2D(), sampler);
 }
 
-Ray PanoramaCamera::generateRay(glm::vec2 uv, SamplerPtr sampler)
+Ray PanoramaCamera::generateRay(Vec2f uv, SamplerPtr sampler)
 {
-    auto dir = Transform::planeToSphere((uv + glm::vec2(0.5f, 1.0f)) * 0.5f);
+    auto dir = Transform::planeToSphere((uv + Vec2f(0.5f, 1.0f)) * 0.5f);
     dir.x = -dir.x;
     dir.z = -dir.z;
     return { pos, dir };
 }
 
-CameraIiSample PanoramaCamera::sampleIi(glm::vec3 x, glm::vec2 u)
+CameraIiSample PanoramaCamera::sampleIi(Vec3f x, Vec2f u)
 {
     return {};
 }
@@ -226,7 +226,7 @@ std::pair<float, float> PanoramaCamera::pdfIe(Ray ray)
     return {};
 }
 
-glm::vec3 PanoramaCamera::Ie(Ray ray)
+Vec3f PanoramaCamera::Ie(Ray ray)
 {
     return {};
 }

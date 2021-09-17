@@ -1,6 +1,6 @@
 #include "AABB.h"
 
-AABB::AABB(const glm::vec3 &va, const glm::vec3 &vb, const glm::vec3 &vc)
+AABB::AABB(const Vec3f &va, const Vec3f &vb, const Vec3f &vc)
 {
     pMin = glm::min(glm::min(va, vb), vc);
     pMax = glm::max(glm::max(va, vb), vc);
@@ -16,10 +16,10 @@ BoxHit AABB::hit(const Ray &ray)
 {
     const float eps = 1e-6f;
     float tMin, tMax;
-    glm::vec3 o = ray.ori;
-    glm::vec3 d = ray.dir;
+    Vec3f o = ray.ori;
+    Vec3f d = ray.dir;
 
-    glm::vec3 dInv = glm::vec3(1.0f) / d;
+    Vec3f dInv = Vec3f(1.0f) / d;
 
     if (glm::abs(d.x) > 1.0f - eps)
     {
@@ -63,8 +63,8 @@ BoxHit AABB::hit(const Ray &ray)
             return {false};
     }
 
-    glm::vec3 vtMin = (pMin - o) * dInv;
-    glm::vec3 vtMax = (pMax - o) * dInv;
+    Vec3f vtMin = (pMin - o) * dInv;
+    Vec3f vtMax = (pMax - o) * dInv;
 
     if (vtMin.x > vtMax.x)
         std::swap(vtMin.x, vtMax.x);
@@ -73,7 +73,7 @@ BoxHit AABB::hit(const Ray &ray)
     if (vtMin.z > vtMax.z)
         std::swap(vtMin.z, vtMax.z);
 
-    glm::vec3 dt = vtMax - vtMin;
+    Vec3f dt = vtMax - vtMin;
 
     float tyz = vtMax.z - vtMin.y;
     float tzx = vtMax.x - vtMin.z;
@@ -120,18 +120,18 @@ BoxHit AABB::hit(const Ray &ray)
 
 float AABB::volume() const
 {
-    glm::vec3 vol = pMax - pMin;
+    Vec3f vol = pMax - pMin;
     return vol.x * vol.y * vol.z;
 }
 
-glm::vec3 AABB::centroid() const
+Vec3f AABB::centroid() const
 {
     return (pMin + pMax) * 0.5f;
 }
 
 float AABB::surfaceArea() const
 {
-    glm::vec3 vol = pMax - pMin;
+    Vec3f vol = pMax - pMin;
     return 2.0f * (vol.x * vol.y + vol.y * vol.z + vol.z * vol.x);
 }
 

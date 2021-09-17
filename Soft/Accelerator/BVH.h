@@ -34,7 +34,7 @@ private:
 	struct HittableInfo
 	{
 		AABB bound;
-		glm::vec3 centroid;
+		Vec3f centroid;
 		int index;
 	};
 

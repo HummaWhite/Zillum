@@ -2,9 +2,9 @@
 
 std::optional<float> Sphere::closestHit(const Ray &ray)
 {
-    glm::vec3 o = transform->getInversed(ray.ori);
-    glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
-    glm::vec3 c = center;
+    Vec3f o = transform->getInversed(ray.ori);
+    Vec3f d = transform->getInversed(ray.ori + ray.dir) - o;
+    Vec3f c = center;
 
     float t = dot(d, c - o) / dot(d, d);
     float r = radius;
@@ -26,15 +26,15 @@ std::optional<float> Sphere::closestHit(const Ray &ray)
     return res >= 0 ? res : std::optional<float>();
 }
 
-glm::vec3 Sphere::uniformSample(const glm::vec2 &u)
+Vec3f Sphere::uniformSample(const Vec2f &u)
 {
     float t = Math::Pi * 2.0f * u.x;
     float p = Math::Pi * u.y;
 
-    return glm::vec3(cos(t) * sin(p), sin(t) * sin(p), cos(p)) * radius + center;
+    return Vec3f(cos(t) * sin(p), sin(t) * sin(p), cos(p)) * radius + center;
 }
 
-glm::vec3 Sphere::surfaceNormal(const glm::vec3 &p)
+Vec3f Sphere::surfaceNormal(const Vec3f &p)
 {
     return transform->getInversedNormal(glm::normalize(p - center));
 }
@@ -44,7 +44,7 @@ float Sphere::surfaceArea()
     return 4.0f * Math::Pi * radius * radius;
 }
 
-glm::vec2 Sphere::surfaceUV(const glm::vec3 &p)
+Vec2f Sphere::surfaceUV(const Vec3f &p)
 {
     auto oriP = transform->getInversed(p);
     return Transform::sphereToPlane(glm::normalize(oriP - center));
@@ -54,20 +54,20 @@ std::optional<float> Triangle::closestHit(const Ray &ray)
 {
     const float eps = 1e-6;
 
-    glm::vec3 ab = vb - va;
-    glm::vec3 ac = vc - va;
+    Vec3f ab = vb - va;
+    Vec3f ac = vc - va;
 
-    glm::vec3 o = transform->getInversed(ray.ori);
-    glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
+    Vec3f o = transform->getInversed(ray.ori);
+    Vec3f d = transform->getInversed(ray.ori + ray.dir) - o;
 
-    glm::vec3 p = glm::cross(d, ac);
+    Vec3f p = glm::cross(d, ac);
 
     float det = glm::dot(ab, p);
 
     if (glm::abs(det) < eps)
         return std::nullopt;
 
-    glm::vec3 ao = o - va;
+    Vec3f ao = o - va;
     if (det < 0.0f)
     {
         ao = -ao;
@@ -78,7 +78,7 @@ std::optional<float> Triangle::closestHit(const Ray &ray)
     if (u < 0.0f || u > det)
         return std::nullopt;
 
-    glm::vec3 q = glm::cross(ao, ab);
+    Vec3f q = glm::cross(ao, ab);
 
     float v = glm::dot(d, q);
     if (v < 0.0f || u + v > det)
@@ -88,19 +88,19 @@ std::optional<float> Triangle::closestHit(const Ray &ray)
     return t > 0.0f ? t : std::optional<float>();
 }
 
-glm::vec3 Triangle::uniformSample(const glm::vec2 &u)
+Vec3f Triangle::uniformSample(const Vec2f &u)
 {
     float r = glm::sqrt(u.y);
     float a = 1.0f - r;
     float b = u.x * r;
 
-    glm::vec3 p = va * (1.0f - a - b) + vb * a + vc * b;
+    Vec3f p = va * (1.0f - a - b) + vb * a + vc * b;
     return transform->get(p);
 }
 
-glm::vec3 Triangle::surfaceNormal(const glm::vec3 &p)
+Vec3f Triangle::surfaceNormal(const Vec3f &p)
 {
-    glm::vec3 N = glm::normalize(glm::cross(vb - va, vc - va));
+    Vec3f N = glm::normalize(glm::cross(vb - va, vc - va));
     return glm::normalize(transform->getInversedNormal(N));
 }
 
@@ -109,14 +109,14 @@ float Triangle::surfaceArea()
     return 0.5f * glm::length(glm::cross(vc - va, vb - va));
 }
 
-glm::vec2 Triangle::surfaceUV(const glm::vec3 &p)
+Vec2f Triangle::surfaceUV(const Vec3f &p)
 {
-    glm::vec3 oriP = transform->getInversed(p);
+    Vec3f oriP = transform->getInversed(p);
 
     float areaInv = 1.0f / glm::length(glm::cross(vb - va, vc - va));
     float u = glm::length(glm::cross(vb - oriP, vc - oriP)) * areaInv;
     float v = glm::length(glm::cross(vc - oriP, va - oriP)) * areaInv;
-    return glm::vec2(u, v);
+    return Vec2f(u, v);
 }
 
 AABB Triangle::bound()
@@ -124,10 +124,10 @@ AABB Triangle::bound()
     return AABB(transform->get(va), transform->get(vb), transform->get(vc));
 }
 
-glm::vec3 MeshTriangle::surfaceNormal(const glm::vec3 &p)
+Vec3f MeshTriangle::surfaceNormal(const Vec3f &p)
 {
     auto [va, vb, vc] = triangle.vertices();
-    glm::vec3 oriP = triangle.getTransform()->getInversed(p);
+    Vec3f oriP = triangle.getTransform()->getInversed(p);
 
     float areaInv = 1.0f / glm::length(glm::cross(vb - va, vc - va));
     float la = glm::length(glm::cross(vb - oriP, vc - oriP)) * areaInv;
@@ -137,16 +137,16 @@ glm::vec3 MeshTriangle::surfaceNormal(const glm::vec3 &p)
     return glm::normalize(triangle.getTransform()->getInversedNormal(na * la + nb * lb + nc * lc));
 }
 
-glm::vec2 MeshTriangle::surfaceUV(const glm::vec3 &p)
+Vec2f MeshTriangle::surfaceUV(const Vec3f &p)
 {
     auto [va, vb, vc] = triangle.vertices();
-    glm::vec3 oriP = triangle.getTransform()->getInversed(p);
+    Vec3f oriP = triangle.getTransform()->getInversed(p);
 
     float areaInv = 1.0f / glm::length(glm::cross(vb - va, vc - va));
     float u = glm::length(glm::cross(vb - oriP, vc - oriP)) * areaInv;
     float v = glm::length(glm::cross(vc - oriP, va - oriP)) * areaInv;
 
-    return glm::vec2(u, v);
+    return Vec2f(u, v);
 }
 
 void MeshTriangle::setTransform(TransformPtr trans)
@@ -157,11 +157,11 @@ void MeshTriangle::setTransform(TransformPtr trans)
 
 std::optional<float> Quad::closestHit(const Ray &ray)
 {
-    glm::vec3 o = transform->getInversed(ray.ori);
-    glm::vec3 d = transform->getInversed(ray.ori + ray.dir) - o;
+    Vec3f o = transform->getInversed(ray.ori);
+    Vec3f d = transform->getInversed(ray.ori + ray.dir) - o;
 
     Ray inversedRay = {o, d};
-    glm::vec3 vd = vb + vc - va;
+    Vec3f vd = vb + vc - va;
 
     auto ha = Triangle(va, vb, vc).closestHit(inversedRay);
     auto hb = Triangle(vc, vb, vd).closestHit(inversedRay);
@@ -174,14 +174,14 @@ std::optional<float> Quad::closestHit(const Ray &ray)
     return std::nullopt;
 }
 
-glm::vec3 Quad::uniformSample(const glm::vec2 &u)
+Vec3f Quad::uniformSample(const Vec2f &u)
 {
     return transform->get((vb - va) * u.x + (vc - va) * u.y + va);
 }
 
-glm::vec3 Quad::surfaceNormal(const glm::vec3 &p)
+Vec3f Quad::surfaceNormal(const Vec3f &p)
 {
-    glm::vec3 N = glm::normalize(glm::cross(vb - va, vc - va));
+    Vec3f N = glm::normalize(glm::cross(vb - va, vc - va));
     return glm::normalize(transform->getInversedNormal(N));
 }
 
@@ -192,9 +192,9 @@ float Quad::surfaceArea()
 
 AABB Quad::bound()
 {
-    glm::vec3 pa = transform->get(va);
-    glm::vec3 pb = transform->get(vb);
-    glm::vec3 pc = transform->get(vc);
-    glm::vec3 pd = pb + pc - pa;
+    Vec3f pa = transform->get(va);
+    Vec3f pb = transform->get(vb);
+    Vec3f pc = transform->get(vc);
+    Vec3f pd = pb + pc - pa;
     return AABB(AABB(pa, pb, pc), AABB(pb, pc, pd));
 }

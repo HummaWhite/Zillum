@@ -18,7 +18,7 @@ void Texture::loadRGB24(const char *filePath)
     {
         for (int j = 0; j < height; j++)
         {
-            (*this)(i, j) = glm::vec3((*(RGB24 *)&data[(j * width + i) * 3]).toVec4());
+            (*this)(i, j) = Vec3f((*(RGB24 *)&data[(j * width + i) * 3]).toVec4());
         }
     }
 
@@ -40,18 +40,18 @@ void Texture::loadFloat(const char *filePath)
     }
 
     init(width, height);
-    memcpy(bufPtr(), data, width * height * sizeof(glm::vec3));
+    memcpy(bufPtr(), data, width * height * sizeof(Vec3f));
 
     if (data != nullptr)
         stbi_image_free(data);
 }
 
-glm::vec4 Texture::get(float u, float v)
+Vec4f Texture::get(float u, float v)
 {
     if (Math::isNan(u) || Math::isNan(v))
-        return glm::vec4(0.0f);
+        return Vec4f(0.0f);
 
-    glm::vec4 res(1.0f);
+    Vec4f res(1.0f);
 
     float x = (width - 1) * u;
     float y = (height - 1) * v;
@@ -69,7 +69,7 @@ glm::vec4 Texture::get(float u, float v)
         pu = (pu + width) % width;
         pv = (pv + height) % height;
 
-        return glm::vec4((*this)(pu, pv), 1.0f);
+        return Vec4f((*this)(pu, pv), 1.0f);
     }
     else if (filterType == FilterType::LINEAR)
     {
@@ -78,27 +78,27 @@ glm::vec4 Texture::get(float u, float v)
         u2 = (u2 + width) % width;
         v2 = (v2 + height) % height;
 
-        glm::vec3 c1 = (*this)(u1, v1);
-        glm::vec3 c2 = (*this)(u2, v1);
-        glm::vec3 c3 = (*this)(u1, v2);
-        glm::vec3 c4 = (*this)(u2, v2);
+        Vec3f c1 = (*this)(u1, v1);
+        Vec3f c2 = (*this)(u2, v1);
+        Vec3f c3 = (*this)(u1, v2);
+        Vec3f c4 = (*this)(u2, v2);
 
         float lx = x - (int)x;
         float ly = y - (int)y;
 
-        return glm::vec4(Math::lerp(Math::lerp(c1, c2, lx), Math::lerp(c3, c4, lx), ly), 1.0f);
+        return Vec4f(glm::mix(glm::mix(c1, c2, lx), glm::mix(c3, c4, lx), ly), 1.0f);
     }
     else
-        return glm::vec4(0.0f);
+        return Vec4f(0.0f);
 }
 
-glm::vec4 Texture::getSpherical(const glm::vec3 &uv)
+Vec4f Texture::getSpherical(const Vec3f &uv)
 {
     if (Math::isNan(uv.x) || Math::isNan(uv.y) || Math::isNan(uv.z))
     {
         std::cout << "Texture::getSpherical: Invalid uv with NAN(s)\n";
         return get(0.0f, 0.0f);
     }
-    glm::vec2 planeUV = Transform::sphereToPlane(glm::normalize(uv));
+    Vec2f planeUV = Transform::sphereToPlane(glm::normalize(uv));
     return get(planeUV.x, planeUV.y);
 }

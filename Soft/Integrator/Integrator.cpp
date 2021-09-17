@@ -18,7 +18,7 @@ void PixelIndependentIntegrator::renderOnePass()
 {
     if (modified)
     {
-        scene->camera->getFilm().fill(glm::vec3(0.0f));
+        scene->camera->getFilm().fill(Vec3f(0.0f));
         curSpp = 0;
         modified = false;
     }
@@ -64,15 +64,15 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
             float sy = 1.0f - 2.0f * (y + 0.5f) * invH;
 
             Ray ray = scene->camera->generateRay({sx, sy}, sampler);
-            glm::vec3 result = tracePixel(ray, sampler);
+            Vec3f result = tracePixel(ray, sampler);
 
             if (Math::isNan(result.x) || Math::isNan(result.y) || Math::isNan(result.z))
             {
                 Error::log("[Computational Error] NAN value occurred");
-                result = glm::vec3(0.0f);
+                result = Vec3f(0.0f);
             }
 
-            result = glm::clamp(result, glm::vec3(0.0f), glm::vec3(1e8f));
+            result = glm::clamp(result, Vec3f(0.0f), Vec3f(1e8f));
             auto resultBuffer = scene->camera->getFilm();
             resultBuffer(x, y) = resultBuffer(x, y) * ((float)(curSpp) / (float)(curSpp + 1)) + result / (float)(curSpp + 1);
         }

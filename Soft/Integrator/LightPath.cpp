@@ -21,7 +21,7 @@ void LightPathIntegrator::renderOnePass()
 
 void LightPathIntegrator::reset()
 {
-    scene->camera->getFilm().fill(glm::vec3(0.0f));
+    scene->camera->getFilm().fill(Vec3f(0.0f));
     pixelCount.fill(0);
     pathCount = 0;
 }
@@ -33,44 +33,29 @@ void LightPathIntegrator::trace()
     if (lightSource.index() != 0)
         return;
     //Error::check(lightSource.index() == 0, "LightPath tracer currently only supports area light");
+    auto lt = std::get<0>(lightSource);
 
-    auto u0s = mSampler->get<6>();
-    auto leSamp = lightSource.index() == 0 ?
-        std::get<0>(lightSource)->sampleLe(u0s) :
-        std::get<1>(lightSource)->sampleLe(scene->boundRadius, u0s);
-
-    if (lightSource.index() == 0)
+    Vec3f Pd = lt->uniformSample(mSampler->get2D());
+    auto ciSamp = scene->camera->sampleIi(Pd, mSampler->get2D());
+    if (ciSamp.pdf != 0.0f)
     {
-        auto lt = std::get<0>(lightSource);
-        glm::vec3 Pl = leSamp.ray.ori;
-        glm::vec3 NL = lt->surfaceNormal(Pl);
-        auto [Wi, Ii, dist, uvRaster, pdfIi] = scene->camera->sampleIi(Pl, mSampler->get2D());
-        
-        if (pdfIi > 1e-8f)
+        Vec3f Pc = Pd + ciSamp.Wi * ciSamp.dist;
+        Vec3f Nd = lt->surfaceNormal(Pd);
+        float pdfPos = 1.0f / lt->surfaceArea();
+        if (scene->visible(Pd, Pc))
         {
-            glm::vec3 Pc = Pl + Wi * dist;
-            if (!scene->occlude(Pl, Pc))
-            {
-                float pdfLi = lt->pdfLi(Pc, Pl);
-                auto contrib = Ii * Math::absDot(NL, Wi) * leSamp.Le /
-                    (pdfSource * pdfLi * pdfIi);
-
-                //addToFilm(uvRaster, contrib);
-            }
+            auto Le = lt->Le({ Pd, ciSamp.Wi });
+            auto contrib = Le;
+            addToFilm(ciSamp.uv, contrib);
         }
     }
-
-    auto lt = std::get<0>(lightSource);
-    glm::vec3 Nl = lt->surfaceNormal(leSamp.ray.ori);
-    glm::vec3 Wo = -leSamp.ray.dir;
-
-    glm::vec3 beta = leSamp.Le * Math::satDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
+    
+    auto u0s = mSampler->get<6>();
+    auto leSamp = lt->sampleLe(mSampler->get<6>());
+    Vec3f Nl = lt->surfaceNormal(leSamp.ray.ori);
+    Vec3f Wo = -leSamp.ray.dir;
     Ray ray(leSamp.ray.ori - Wo * 1e-4f, -Wo);
-
-    // Math::printVec3(beta, "Beta");
-    // Math::printVec3(leSamp.Le, "Le");
-    // Math::printVec3(Wo, "Wo");
-    // std::cout << "\n";
+    Vec3f beta = leSamp.Le / (pdfSource * leSamp.pdfPos * leSamp.pdfDir) * Math::satDot(Nl, -Wo);
 
     for (int bounce = 1; bounce <= maxDepth; bounce++)
     {
@@ -81,24 +66,21 @@ void LightPathIntegrator::trace()
             break;
         auto obj = dynamic_cast<Object*>(hit.get());
 
-        glm::vec3 Ps = ray.get(dHit);
+        Vec3f Ps = ray.get(dHit);
         auto sInfo = obj->surfaceInfo(Ps);
         bool deltaBsdf = sInfo.mat->bxdf().isDelta();
-
-        if (bounce == 1)
-            beta *= Math::satDot(sInfo.N, Wo) / (dHit * dHit);
 
         if (!deltaBsdf)
         {
             auto [Wi, Ii, dist, uvRaster, pdfIi] = scene->camera->sampleIi(Ps, mSampler->get2D());
             if (pdfIi != 0.0f)
             {
-                glm::vec3 Pc = Ps + Wi * dist;
-                if (!scene->occlude(Ps, Pc))
+                Vec3f Pc = Ps + Wi * dist;
+                if (scene->visible(Ps, Pc))
                 {
                     auto res = Ii * sInfo.mat->bsdf({ Wo, Wi, sInfo.N }, TransportMode::Importance) *
-                        beta * Math::absDot(sInfo.N, Wi) / pdfIi;
-                    addToFilm(uvRaster, res * 40.0f);
+                        beta * Math::satDot(sInfo.N, Wi) / pdfIi;
+                    addToFilm(uvRaster, res);
                 }
             }
         }
@@ -115,7 +97,7 @@ void LightPathIntegrator::trace()
     }
 }
 
-void LightPathIntegrator::addToFilm(glm::vec2 uv, glm::vec3 val)
+void LightPathIntegrator::addToFilm(Vec2f uv, Vec3f val)
 {
     if (!Camera::inFilmBound(uv))
         return;

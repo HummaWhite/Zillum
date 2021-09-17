@@ -22,7 +22,7 @@ const int MaxThreads = std::thread::hardware_concurrency();
 
 enum class IntegratorType
 {
-	AO, LightPath, Path, Bidirectional, MLT, PM
+	AO, LightPath, Path, AdjointPath, Bidirectional, MLT, PM
 };
 
 class Integrator
@@ -49,7 +49,7 @@ protected:
 	bool finished = false;
 };
 
-typedef std::shared_ptr<Integrator> IntegratorPtr;
+using IntegratorPtr = std::shared_ptr<Integrator>;
 
 class PixelIndependentIntegrator :
 	public Integrator
@@ -57,7 +57,7 @@ class PixelIndependentIntegrator :
 public:
 	PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type);
 	void renderOnePass();
-	virtual glm::vec3 tracePixel(Ray ray, SamplerPtr sampler) = 0;
+	virtual Vec3f tracePixel(Ray ray, SamplerPtr sampler) = 0;
 
 	void reset() { setModified(); }
 

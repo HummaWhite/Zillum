@@ -8,7 +8,7 @@ class BidirectionalIntegrator:
 public:
 	BidirectionalIntegrator(int width, int height, int maxSpp):
 		PixelIndependentIntegrator(width, height, maxSpp) {}
-	glm::vec3 tracePixel(Ray ray);
+	Vec3f tracePixel(Ray ray);
 
 private:
 

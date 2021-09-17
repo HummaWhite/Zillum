@@ -22,9 +22,9 @@ float IndependentSampler::get1D()
     return std::uniform_real_distribution<float>(0.0f, Math::OneMinusEpsilon)(rng);
 }
 
-glm::vec2 IndependentSampler::get2D()
+Vec2f IndependentSampler::get2D()
 {
-    return glm::vec2(get1D(), get1D());
+    return Vec2f(get1D(), get1D());
 }
 
 SamplerPtr IndependentSampler::copy()
@@ -40,9 +40,9 @@ float SimpleSobolSampler::get1D()
     return std::min(r, Math::OneMinusEpsilon);
 }
 
-glm::vec2 SimpleSobolSampler::get2D()
+Vec2f SimpleSobolSampler::get2D()
 {
-    return glm::vec2(get1D(), get1D());
+    return Vec2f(get1D(), get1D());
 }
 
 void SimpleSobolSampler::setPixel(int x, int y)

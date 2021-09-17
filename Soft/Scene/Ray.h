@@ -3,19 +3,17 @@
 #include <iostream>
 #include <cmath>
 
-#include "../glm/glm.hpp"
-#include "../glm/gtc/matrix_transform.hpp"
-#include "../glm/gtc/type_ptr.hpp"
+#include "../glm/glmIncluder.h"
 
 struct Ray
 {
 	Ray() = default;
 
-	Ray(const glm::vec3 &_ori, const glm::vec3 &_dir):
+	Ray(const Vec3f &_ori, const Vec3f &_dir):
 		ori(_ori), dir(glm::normalize(_dir)){}
 
-	glm::vec3 get(float t) const { return ori + dir * t; }
+	Vec3f get(float t) const { return ori + dir * t; }
 
-	glm::vec3 ori;
-	glm::vec3 dir;
+	Vec3f ori;
+	Vec3f dir;
 };

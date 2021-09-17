@@ -14,7 +14,7 @@ public:
 	Object(HittablePtr shape, MaterialPtr material):
 		shape(shape), material(material), Hittable(HittableType::Object) {}
 
-	SurfaceInfo surfaceInfo(const glm::vec3 &x)
+	SurfaceInfo surfaceInfo(const Vec3f &x)
 	{
 		return { shape->surfaceUV(x), shape->surfaceNormal(x), material };
 	}
@@ -24,12 +24,12 @@ public:
 		return shape->closestHit(r);
 	}
 
-	glm::vec3 uniformSample(const glm::vec2 &u)
+	Vec3f uniformSample(const Vec2f &u)
 	{
 		return shape->uniformSample(u);
 	}
 
-	glm::vec3 surfaceNormal(const glm::vec3 &p)
+	Vec3f surfaceNormal(const Vec3f &p)
 	{
 		return shape->surfaceNormal(p);
 	}
@@ -39,7 +39,7 @@ public:
 		return shape->surfaceArea();
 	}
 
-	glm::vec2 surfaceUV(const glm::vec3 &p)
+	Vec2f surfaceUV(const Vec3f &p)
 	{
 		return shape->surfaceUV(p);
 	}
@@ -60,4 +60,4 @@ protected:
 	MaterialPtr material;
 };
 
-typedef std::shared_ptr<Object> ObjectPtr;
+using ObjectPtr = std::shared_ptr<Object>;

@@ -249,7 +249,7 @@ void BVH::buildRecursive(BVHNode *&k, std::vector<HittableInfo> &hittableInfo, c
 
     case BVHSplitMethod::Middle:
     {
-        glm::vec3 nodeCentroid = nodeBound.centroid();
+        Vec3f nodeCentroid = nodeBound.centroid();
         float mid = Math::vecElement(nodeCentroid, dim);
         for (m = l; m < r - 1; m++)
         {
@@ -317,19 +317,19 @@ void BVH::makeCompact()
 
 void BVH::buildHitTable()
 {
-    bool (*cmpFuncs[6])(const glm::vec3 &a, const glm::vec3 &b) =
+    bool (*cmpFuncs[6])(const Vec3f &a, const Vec3f &b) =
         {
-            [](const glm::vec3 &a, const glm::vec3 &b)
+            [](const Vec3f &a, const Vec3f &b)
             { return a.x > b.x; }, // X+
-            [](const glm::vec3 &a, const glm::vec3 &b)
+            [](const Vec3f &a, const Vec3f &b)
             { return a.x < b.x; }, // X-
-            [](const glm::vec3 &a, const glm::vec3 &b)
+            [](const Vec3f &a, const Vec3f &b)
             { return a.y > b.y; }, // Y+
-            [](const glm::vec3 &a, const glm::vec3 &b)
+            [](const Vec3f &a, const Vec3f &b)
             { return a.y < b.y; }, // Y-
-            [](const glm::vec3 &a, const glm::vec3 &b)
+            [](const Vec3f &a, const Vec3f &b)
             { return a.z > b.z; }, // Z+
-            [](const glm::vec3 &a, const glm::vec3 &b)
+            [](const Vec3f &a, const Vec3f &b)
             { return a.z < b.z; } // Z-
         };
 

@@ -21,7 +21,7 @@ void Scene::setupLightSampleTable()
     lightDistrib = Piecewise1D(lightPdf);
 }
 
-std::optional<LightSample> Scene::sampleOneLight(glm::vec2 u)
+std::optional<LightSample> Scene::sampleOneLight(Vec2f u)
 {
     if (lights.size() == 0)
         return std::nullopt;
@@ -33,7 +33,7 @@ std::optional<LightSample> Scene::sampleOneLight(glm::vec2 u)
     return LightSample{ lt, pdf };
 }
 
-LightEnvSample Scene::sampleLightAndEnv(glm::vec2 u1, float u2)
+LightEnvSample Scene::sampleLightAndEnv(Vec2f u1, float u2)
 {
     auto lightSample = sampleOneLight(u1);
     if (!lightSample)
@@ -50,7 +50,7 @@ LightEnvSample Scene::sampleLightAndEnv(glm::vec2 u1, float u2)
         return { lt, pdfLight * pdfSampleLight };
 }
 
-LiSample Scene::sampleLiOneLight(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2)
+LiSample Scene::sampleLiOneLight(const Vec3f &x, const Vec2f &u1, const Vec2f &u2)
 {
     if (lights.size() == 0)
         return InvalidLiSample;
@@ -74,7 +74,7 @@ LiSample Scene::sampleLiOneLight(const glm::vec3 &x, const glm::vec2 &u1, const 
     return {Wi, weight / pdf, pdf};
 }
 
-LiSample Scene::sampleLiEnv(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2)
+LiSample Scene::sampleLiEnv(const Vec3f &x, const Vec2f &u1, const Vec2f &u2)
 {
     auto [Wi, weight, pdf] = env->sampleLi(u1, u2);
 
@@ -86,7 +86,7 @@ LiSample Scene::sampleLiEnv(const glm::vec3 &x, const glm::vec2 &u1, const glm::
     return { Wi, weight / pdf, pdf };
 }
 
-LiSample Scene::sampleLiLightAndEnv(const glm::vec3 &x, const std::array<float, 5> &sample)
+LiSample Scene::sampleLiLightAndEnv(const Vec3f &x, const std::array<float, 5> &sample)
 {
     float pdfSampleLight = 0.0f;
 
@@ -100,8 +100,8 @@ LiSample Scene::sampleLiLightAndEnv(const glm::vec3 &x, const std::array<float, 
     bool sampleLight = sample[0] < pdfSampleLight;
     float pdfSelect = sampleLight ? pdfSampleLight : 1.0f - pdfSampleLight;
 
-    glm::vec2 u1(sample[1], sample[2]);
-    glm::vec2 u2(sample[3], sample[4]);
+    Vec2f u1(sample[1], sample[2]);
+    Vec2f u2(sample[3], sample[4]);
 
     auto [Wi, coef, pdf] = sampleLight ? sampleLiOneLight(x, u1, u2) : sampleLiEnv(x, u1, u2);
     return {Wi, coef / pdfSelect, pdf * pdfSelect};
@@ -130,7 +130,7 @@ float Scene::pdfSampleEnv()
         0.5f;
 }
 
-IiSample Scene::sampleIiCamera(glm::vec3 x, glm::vec2 u)
+IiSample Scene::sampleIiCamera(Vec3f x, Vec2f u)
 {
     auto [Wi, imp, dist, uv, pdf] = camera->sampleIi(x, u);
 
@@ -164,9 +164,9 @@ void Scene::addObjectMesh(const char *path, TransformPtr transform, MaterialPtr 
     int faceCount = vertices.size() / 3;
     for (int i = 0; i < faceCount; i++)
     {
-        glm::vec3 v[] = {vertices[i * 3 + 0], vertices[i * 3 + 1], vertices[i * 3 + 2]};
-        glm::vec3 n[] = {normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]};
-        glm::vec2 t[3];
+        Vec3f v[] = {vertices[i * 3 + 0], vertices[i * 3 + 1], vertices[i * 3 + 2]};
+        Vec3f n[] = {normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]};
+        Vec2f t[3];
 
         auto tr = std::make_shared<MeshTriangle>(v, t, n);
         tr->setTransform(transform);
@@ -174,15 +174,15 @@ void Scene::addObjectMesh(const char *path, TransformPtr transform, MaterialPtr 
     }
 }
 
-void Scene::addLightMesh(const char *path, TransformPtr transform, const glm::vec3 &power)
+void Scene::addLightMesh(const char *path, TransformPtr transform, const Vec3f &power)
 {
     auto [vertices, texcoords, normals] = ObjReader::readFile(path);
     int faceCount = vertices.size() / 3;
     for (int i = 0; i < faceCount; i++)
     {
-        glm::vec3 v[] = {vertices[i * 3 + 0], vertices[i * 3 + 1], vertices[i * 3 + 2]};
-        glm::vec3 n[] = {normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]};
-        glm::vec2 t[3];
+        Vec3f v[] = {vertices[i * 3 + 0], vertices[i * 3 + 1], vertices[i * 3 + 2]};
+        Vec3f n[] = {normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]};
+        Vec2f t[3];
 
         auto tr = std::make_shared<Light>(std::make_shared<MeshTriangle>(v, t, n), power, false);
 
@@ -192,10 +192,25 @@ void Scene::addLightMesh(const char *path, TransformPtr transform, const glm::ve
     }
 }
 
-bool Scene::occlude(glm::vec3 x, glm::vec3 y)
+bool Scene::visible(Vec3f x, Vec3f y)
 {
-    float dist = glm::distance(x, y) - 1e-5f;
-    glm::vec3 Wi = glm::normalize(y - x);
+    float dist = glm::distance(x, y) - 2e-5f;
+    Vec3f Wi = glm::normalize(y - x);
     Ray ray(x + Wi * 1e-5f, Wi);
-    return bvh->testIntersec(ray, dist);
+    return !bvh->testIntersec(ray, dist);
+}
+
+float Scene::v(Vec3f x, Vec3f y)
+{
+    return visible(x, y) ? 1.0f : 0.0f;
+}
+
+float Scene::g(Vec3f x, Vec3f y, Vec3f Nx, Vec3f Ny)
+{
+    if (!visible(x, y))
+        return 0.0f;
+    Vec3f W = y - x;
+    float r = glm::length(W);
+    W /= r;
+    return Math::satDot(Nx, W) * Math::satDot(Ny, -W) / (r * r);
 }

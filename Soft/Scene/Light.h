@@ -9,8 +9,8 @@
 
 struct LightLiSample
 {
-	glm::vec3 Wi;
-	glm::vec3 Li;
+	Vec3f Wi;
+	Vec3f Li;
 	float dist;
 	float pdf;
 };
@@ -18,7 +18,7 @@ struct LightLiSample
 struct LightLeSample
 {
 	Ray ray;
-	glm::vec3 Le;
+	Vec3f Le;
 	float pdfPos;
 	float pdfDir;
 };
@@ -27,15 +27,15 @@ class Light:
 	public Hittable
 {
 public:
-	Light(HittablePtr shape, const glm::vec3 &power, bool delta):
+	Light(HittablePtr shape, const Vec3f &power, bool delta):
 		shape(shape), power(power), Hittable(HittableType::Light) {}
 
 	std::optional<float> closestHit(const Ray &ray) { return shape->closestHit(ray); }
 
-	glm::vec3 uniformSample(const glm::vec2 &u) { return shape->uniformSample(u); }
-	glm::vec3 surfaceNormal(const glm::vec3 &p) { return shape->surfaceNormal(p); }
+	Vec3f uniformSample(const Vec2f &u) { return shape->uniformSample(u); }
+	Vec3f surfaceNormal(const Vec3f &p) { return shape->surfaceNormal(p); }
 	float surfaceArea() { return shape->surfaceArea(); }
-	glm::vec2 surfaceUV(const glm::vec3 &p) { return shape->surfaceUV(p); }
+	Vec2f surfaceUV(const Vec3f &p) { return shape->surfaceUV(p); }
 	AABB bound() { return shape->bound(); }
 
 	void setTransform(TransformPtr trans) override
@@ -44,19 +44,19 @@ public:
 		shape->setTransform(trans);
 	}
 
-	glm::vec3 getPower(){ return power; }
+	Vec3f getPower(){ return power; }
 	float getRgbPower() { return Math::rgbBrightness(power); }
 	
-	std::optional<LightLiSample> sampleLi(glm::vec3 x, glm::vec2 u);
-	float pdfLi(const glm::vec3 &x, const glm::vec3 &y);
-	glm::vec3 Le(Ray ray);
+	std::optional<LightLiSample> sampleLi(Vec3f x, Vec2f u);
+	float pdfLi(const Vec3f &x, const Vec3f &y);
+	Vec3f Le(Ray ray);
 	LightLeSample sampleLe(const std::array<float, 6> &u);
 
 	Ray getRandomRay();
 
 protected:
 	HittablePtr shape;
-	glm::vec3 power;
+	Vec3f power;
 };
 
-typedef std::shared_ptr<Light> LightPtr;
+using LightPtr = std::shared_ptr<Light>;

@@ -14,7 +14,7 @@ public:
 
 private:
     void trace();
-    void addToFilm(glm::vec2 uv, glm::vec3 val);
+    void addToFilm(Vec2f uv, Vec3f val);
 
 public:
     int maxDepth = 5;

@@ -17,6 +17,7 @@
 #include "Integrator/Path.h"
 #include "Integrator/AmbientOcclusion.h"
 #include "Integrator/LightPath.h"
+#include "Integrator/AdjointPath.h"
 
 class Application
 {

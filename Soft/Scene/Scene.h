@@ -32,20 +32,20 @@ struct LightEnvSample
 
 struct LiSample
 {
-	glm::vec3 Wi;
-	glm::vec3 weight;
+	Vec3f Wi;
+	Vec3f weight;
 	float pdf;
 };
 
 struct IiSample
 {
-	glm::vec3 Wi;
-	glm::vec3 weight;
+	Vec3f Wi;
+	Vec3f weight;
 	float pdf;
 };
 
-const LiSample InvalidLiSample = {glm::vec3(0.0f), glm::vec3(0.0f), 0.0f};
-const IiSample InvalidIiSample = {glm::vec3(0.0f), glm::vec3(0.0f), 0.0f};
+const LiSample InvalidLiSample = {Vec3f(0.0f), Vec3f(0.0f), 0.0f};
+const IiSample InvalidIiSample = {Vec3f(0.0f), Vec3f(0.0f), 0.0f};
 
 class Scene
 {
@@ -54,18 +54,18 @@ public:
 	Scene(const std::vector<HittablePtr> &hittables, EnvPtr environment, CameraPtr camera);
 	void setupLightSampleTable();
 
-	std::optional<LightSample> sampleOneLight(glm::vec2 u);
-	LightEnvSample sampleLightAndEnv(glm::vec2 u1, float u2);
+	std::optional<LightSample> sampleOneLight(Vec2f u);
+	LightEnvSample sampleLightAndEnv(Vec2f u1, float u2);
 
-	LiSample sampleLiOneLight(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2);
-	LiSample sampleLiEnv(const glm::vec3 &x, const glm::vec2 &u1, const glm::vec2 &u2);
-	LiSample sampleLiLightAndEnv(const glm::vec3 &x, const std::array<float, 5> &sample);
+	LiSample sampleLiOneLight(const Vec3f &x, const Vec2f &u1, const Vec2f &u2);
+	LiSample sampleLiEnv(const Vec3f &x, const Vec2f &u1, const Vec2f &u2);
+	LiSample sampleLiLightAndEnv(const Vec3f &x, const std::array<float, 5> &sample);
 
 	float pdfSampleLight(Light *lt);
 	float pdfSampleEnv();
 	float powerlightAndEnv() { return lightDistrib.sum() + env->power(); }
 
-	IiSample sampleIiCamera(glm::vec3 x, glm::vec2 u);
+	IiSample sampleIiCamera(Vec3f x, Vec2f u);
 
 	void buildScene();
 
@@ -75,14 +75,16 @@ public:
 	void addHittable(HittablePtr hittable) { hittables.push_back(hittable); }
 	void addLight(LightPtr light);
 	void addObjectMesh(const char *path, TransformPtr transform, MaterialPtr material);
-	void addLightMesh(const char *path, TransformPtr transform, const glm::vec3 &power);
+	void addLightMesh(const char *path, TransformPtr transform, const Vec3f &power);
 
-	bool occlude(glm::vec3 x, glm::vec3 y);
+	bool visible(Vec3f x, Vec3f y);
+	float v(Vec3f x, Vec3f y);
+	float g(Vec3f x, Vec3f y, Vec3f Nx, Vec3f Ny);
 
 public:
 	std::vector<HittablePtr> hittables;
 	std::vector<LightPtr> lights;
-	EnvPtr env = std::make_shared<EnvSingleColor>(glm::vec3(0.0f));
+	EnvPtr env = std::make_shared<EnvSingleColor>(Vec3f(0.0f));
 	CameraPtr camera;
 
 	std::shared_ptr<BVH> bvh;
@@ -94,4 +96,4 @@ public:
 	float boundRadius;
 };
 
-typedef std::shared_ptr<Scene> ScenePtr;
+using ScenePtr = std::shared_ptr<Scene>;

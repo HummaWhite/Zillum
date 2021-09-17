@@ -103,10 +103,10 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
             firstCursorMove = false;
         }
 
-        float offsetX = ((int)LOWORD(lParam) - lastCursorX) * CAMERA_ROTATE_SENSITIVITY;
-        float offsetY = ((int)HIWORD(lParam) - lastCursorY) * CAMERA_ROTATE_SENSITIVITY;
+        float offsetX = ((int)LOWORD(lParam) - lastCursorX) * CameraRotateSensitivity;
+        float offsetY = ((int)HIWORD(lParam) - lastCursorY) * CameraRotateSensitivity;
 
-        glm::vec3 offset(-offsetX, -offsetY, 0.0f);
+        Vec3f offset(-offsetX, -offsetY, 0.0f);
         scene->camera->rotate(offset);
 
         lastCursorX = (int)LOWORD(lParam);
@@ -157,20 +157,6 @@ void Application::initScene(int spp)
     auto sc = std::make_shared<Scene>();
 
     /*
-		const float level = -2.0f;
-		hittableList.push_back
-		(
-			std::make_shared<Quad>
-			(
-			  	glm::vec3(-200.0f, -10.0f, level),
-			  	glm::vec3(200.0f, -10.0f, level),
-			  	glm::vec3(-200.0f, 100.0f, level),
-			  	std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 0.0f, 1.0f)
-			)
-		);
-		*/
-
-    /*
 		const float step = 1.0f, level = -2.0f;
 		for (int i = -10; i < 10; i++)
 		{
@@ -180,149 +166,158 @@ void Application::initScene(int spp)
 				(
 				 	std::make_shared<Quad>
 				 	(
-					 	glm::vec3(i * step, j * step, level),
-						glm::vec3((i + 1) * step, j * step, level),
-						glm::vec3(i * step, (j + 1) * step, level),
-						std::make_shared<MetalWorkflow>(((i ^ j) & 1) ? glm::vec3(1.0f) : glm::vec3(0.1f), 0.0f, 1.0f)
+					 	Vec3f(i * step, j * step, level),
+						Vec3f((i + 1) * step, j * step, level),
+						Vec3f(i * step, (j + 1) * step, level),
+						std::make_shared<MetalWorkflow>(((i ^ j) & 1) ? Vec3f(1.0f) : Vec3f(0.1f), 0.0f, 1.0f)
 					)
 				);
 			}
 		}
 		*/
     // glm::mat4 model(1.0f);
-    // model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.0f));
-    // model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    // model = glm::scale(model, glm::vec3(0.3f));
+    // model = glm::translate(model, Vec3f(0.0f, 0.0f, -2.0f));
+    // model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
+    // model = glm::scale(model, Vec3f(0.3f));
     // std::shared_ptr<Transform> trTeapot = std::make_shared<Transform>(model);
-    // scene->addObjectMesh("res/model/dragon2.obj", trTeapot, std::make_shared<Dielectric>(glm::vec3(1.0f), 0.0f, 1.4f));
-    // scene->addObjectMesh("res/model/dragon2_armor.obj", trTeapot, std::make_shared<Dielectric>(glm::vec3(1.0f), 0.0f, 1.5f));
+    // scene->addObjectMesh("res/model/dragon2.obj", trTeapot, std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.4f));
+    // scene->addObjectMesh("res/model/dragon2_armor.obj", trTeapot, std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.5f));
 
     // auto sphere = std::make_shared<Object>(
-    // 	std::make_shared<Sphere>(glm::vec3(0.0f, 0.0f, 1.0f), 1.0f, true),
-    // 	//std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 1.0f, 0.2f)
+    // 	std::make_shared<Sphere>(Vec3f(0.0f, 0.0f, 1.0f), 1.0f, true),
+    // 	//std::make_shared<MetalWorkflow>(Vec3f(1.0f), 1.0f, 0.2f)
     // 	//std::make_shared<Clearcoat>(0.01f, 1.0f)
-    // 	std::make_shared<Dielectric>(glm::vec3(1.0f), 0.0f, 1.4f)
+    // 	std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.4f)
     // 	// std::make_shared<MixedMaterial>(
-    // 	// 	std::make_shared<MetalWorkflow>(glm::vec3(1.0, 0.2f, 0.2f), 0.0f, 0.1f),
+    // 	// 	std::make_shared<MetalWorkflow>(Vec3f(1.0, 0.2f, 0.2f), 0.0f, 0.1f),
     // 	// 	std::make_shared<Clearcoat>(0.01f, 1.0f),
-    // 	// 	std::make_shared<Dielectric>(glm::vec3(1.0f), 0.1f, 1.4f),
+    // 	// 	std::make_shared<Dielectric>(Vec3f(1.0f), 0.1f, 1.4f),
     // 	// 	0.9)
     // );
-    // //sphere->setTransform(std::make_shared<Transform>(glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 2.0f))));
+    // //sphere->setTransform(std::make_shared<Transform>(glm::scale(glm::mat4(1.0f), Vec3f(1.0f, 1.0f, 2.0f))));
     // scene->addHittable(sphere);
+
+    // const float level = -2.0f;
+    // sc->addHittable(
+    //     std::make_shared<Object>(
+    //     std::make_shared<Quad>(
+    //         Vec3f(-200.0f, -10.0f, level),
+    //         Vec3f(200.0f, -10.0f, level),
+    //         Vec3f(-200.0f, 100.0f, level)),
+    //     std::make_shared<MetalWorkflow>(Vec3f(1.0f), 0.0f, 1.0f)));
 
     // sc->addHittable(
     //     std::make_shared<Object>(
     //         std::make_shared<Quad>(
-    //             glm::vec3(-30.0f, -30.0f, -0.5f),
-    //             glm::vec3(30.0f, -30.0f, -0.5f),
-    //             glm::vec3(-30.0f, 30.0f, -0.5f)),
-    //         std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 1.0f, 0.2f)
-    //         //std::make_shared<Lambertian>(glm::vec3(1.0f))
+    //             Vec3f(-30.0f, -30.0f, -0.5f),
+    //             Vec3f(30.0f, -30.0f, -0.5f),
+    //             Vec3f(-30.0f, 30.0f, -0.5f)),
+    //         std::make_shared<MetalWorkflow>(Vec3f(1.0f), 1.0f, 0.2f)
+    //         //std::make_shared<Lambertian>(Vec3f(1.0f))
     //         ));
 
     sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
-                glm::vec3(-3.0f, 0.0f, -3.0f),
-                glm::vec3(3.0f, 0.0f, -3.0f),
-                glm::vec3(-3.0f, 6.0f, -3.0f)),
-            std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(glm::vec3(1.0f))
+                Vec3f(-3.0f, 0.0f, -3.0f),
+                Vec3f(3.0f, 0.0f, -3.0f),
+                Vec3f(-3.0f, 6.0f, -3.0f)),
+            std::make_shared<MetalWorkflow>(Vec3f(1.0f), 0.0f, 1.0f)
+            //std::make_shared<Lambertian>(Vec3f(1.0f))
             ));
 
     sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
-                glm::vec3(-3.0f, 0.0f, -3.0f),
-                glm::vec3(-3.0f, 6.0f, -3.0f),
-                glm::vec3(-3.0f, 0.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(glm::vec3(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(glm::vec3(1.0f, 0.25f, 0.25f))
+                Vec3f(-3.0f, 0.0f, -3.0f),
+                Vec3f(-3.0f, 6.0f, -3.0f),
+                Vec3f(-3.0f, 0.0f, 3.0f)),
+            std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
+            //std::make_shared<Lambertian>(Vec3f(1.0f, 0.25f, 0.25f))
             ));
 
     sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
-                glm::vec3(3.0f, 6.0f, -3.0f),
-                glm::vec3(3.0f, 0.0f, -3.0f),
-                glm::vec3(3.0f, 6.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(glm::vec3(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(glm::vec3(0.25f, 0.25f, 1.0f))
+                Vec3f(3.0f, 6.0f, -3.0f),
+                Vec3f(3.0f, 0.0f, -3.0f),
+                Vec3f(3.0f, 6.0f, 3.0f)),
+            std::make_shared<MetalWorkflow>(Vec3f(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
+            //std::make_shared<Lambertian>(Vec3f(0.25f, 0.25f, 1.0f))
             ));
 
     sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
-                glm::vec3(3.0f, 6.0f, 3.0f),
-                glm::vec3(3.0f, 0.0f, 3.0f),
-                glm::vec3(-3.0f, 6.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(glm::vec3(1.0f))
+                Vec3f(3.0f, 6.0f, 3.0f),
+                Vec3f(3.0f, 0.0f, 3.0f),
+                Vec3f(-3.0f, 6.0f, 3.0f)),
+            std::make_shared<MetalWorkflow>(Vec3f(1.0f), 0.0f, 1.0f)
+            //std::make_shared<Lambertian>(Vec3f(1.0f))
             ));
 
     sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
-                glm::vec3(-3.0f, 6.0f, -3.0f),
-                glm::vec3(3.0f, 6.0f, -3.0f),
-                glm::vec3(-3.0f, 6.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(glm::vec3(1.0f))
+                Vec3f(-3.0f, 6.0f, -3.0f),
+                Vec3f(3.0f, 6.0f, -3.0f),
+                Vec3f(-3.0f, 6.0f, 3.0f)),
+            std::make_shared<MetalWorkflow>(Vec3f(1.0f), 0.0f, 1.0f)
+            //std::make_shared<Lambertian>(Vec3f(1.0f))
             ));
 
     // sc->addHittable(
     //     std::make_shared<Object>(
-    //         std::make_shared<Sphere>(glm::vec3(1.0f, 3.0f, 0.0f), 1.0f, true),
-    //         std::make_shared<Dielectric>(glm::vec3(1.0f), 0.0f, 1.5f)
-    //         //std::make_shared<MetalWorkflow>(glm::vec3(1.0f, 0.79f, 0.51f), 1.0f, 0.25f)
+    //         std::make_shared<Sphere>(Vec3f(1.0f, 3.0f, 0.0f), 1.0f, true),
+    //         std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.5f)
+    //         //std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.79f, 0.51f), 1.0f, 0.25f)
     //         ));
 
     // glm::mat4 model(1.0f);
-    // model = glm::translate(model, glm::vec3(1.0f, 2.0f, -2.1f));
-    // model = glm::rotate(model, glm::radians(-17.5f), glm::vec3(0.0f, 0.0f, 1.0f));
-    // model = glm::scale(model, glm::vec3(1.8f));
+    // model = glm::translate(model, Vec3f(1.0f, 2.0f, -2.1f));
+    // model = glm::rotate(model, glm::radians(-17.5f), Vec3f(0.0f, 0.0f, 1.0f));
+    // model = glm::scale(model, Vec3f(1.8f));
     // std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
 
     // sc->addObjectMesh("res/model/cube.obj", trBoxSmall,
-    //                      std::make_shared<MetalWorkflow>(glm::vec3(1.0f, 0.8f, 0.6f), 0.0f, 1.0f)
-    //                      //std::make_shared<Lambertian>(glm::vec3(1.0f))
+    //                      std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.8f, 0.6f), 0.0f, 1.0f)
+    //                      //std::make_shared<Lambertian>(Vec3f(1.0f))
     // );
 
     // model = glm::mat4(1.0f);
-    // model = glm::translate(model, glm::vec3(-1.0f, 4.0f, -1.2f));
-    // model = glm::rotate(model, glm::radians(17.5f), glm::vec3(0.0f, 0.0f, 1.0f));
-    // model = glm::scale(model, glm::vec3(1.8f, 1.8f, 3.6f));
+    // model = glm::translate(model, Vec3f(-1.0f, 4.0f, -1.2f));
+    // model = glm::rotate(model, glm::radians(17.5f), Vec3f(0.0f, 0.0f, 1.0f));
+    // model = glm::scale(model, Vec3f(1.8f, 1.8f, 3.6f));
     // std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
 
     // sc->addObjectMesh("res/model/cube.obj", trBoxLarge,
-    //                      std::make_shared<MetalWorkflow>(glm::vec3(1.0f), 0.0f, 1.0f)
-    //                      //std::make_shared<Lambertian>(glm::vec3(1.0f))
+    //                      std::make_shared<MetalWorkflow>(Vec3f(1.0f), 0.0f, 1.0f)
+    //                      //std::make_shared<Lambertian>(Vec3f(1.0f))
     // );
 
     sc->addLight(
         std::make_shared<Light>(
             std::make_shared<Quad>(
-                glm::vec3(-0.75f, 3.75f, 2.999f),
-                glm::vec3(0.75f, 3.75f, 2.999f),
-                glm::vec3(-0.75f, 2.25f, 2.999f)),
-            glm::vec3(100.0f), false));
+                Vec3f(-0.75f, 3.75f, 2.999f),
+                Vec3f(0.75f, 3.75f, 2.999f),
+                Vec3f(-0.75f, 2.25f, 2.999f)),
+            Vec3f(100.0f), false));
 
     //camera->setPos({ 2.4f, -3.0f, 1.75f });
     //camera->setFOV(80.0f);
-    //camera->lookAt(glm::vec3(0.4f, 0.0f, 1.0f));
+    //camera->lookAt(Vec3f(0.4f, 0.0f, 1.0f));
 
     //camera->setPos({ 2.4f, -3.6f, /*2.75f*/ 3.75f });
     auto camera = std::make_shared<ThinLensCamera>(40.0f);
     //auto camera = std::make_shared<PanoramaCamera>();
     camera->initFilm(windowWidth, windowHeight);
     camera->setPos({0.0f, -8.0f, 0.0f});
-    camera->lookAt(glm::vec3(0.0f));
-    //camera->lookAt(glm::vec3(0.4f, 0.0f, 0.5f));
+    camera->lookAt(Vec3f(0.0f));
+    //camera->lookAt(Vec3f(0.4f, 0.0f, 0.5f));
 
     //sc->env = std::make_shared<EnvSphereMapHDR>("res/texture/076.hdr");
     sc->lightAndEnvStrategy = LightSampleStrategy::ByPower;
-    //sc->lightAndEnvStrategy = LightSampleStrategy::Uniform;
+    sc->lightAndEnvStrategy = LightSampleStrategy::ByPower;
     sc->camera = camera;
     sc->buildScene();
     scene = sc;
@@ -331,8 +326,12 @@ void Application::initScene(int spp)
     // integ->limitSpp = (spp != 0);
     // integ->tracingDepth = 1;
     // integ->sampleDirectLight = true;
-    auto integ = std::make_shared<LightPathIntegrator>(sc, 20000);
-    integ->maxDepth = 1;
+    // integ->enableMIS = true;
+    //auto integ = std::make_shared<LightPathIntegrator>(sc, 20000);
+    //integ->maxDepth = 10;
+    auto integ = std::make_shared<AdjointPathIntegrator>(sc, spp);
+    integ->maxCameraDepth = 1;
+    integ->maxLightDepth = 1;
     //integ->mSampler = std::make_shared<IndependentSampler>();
     //integ->mSampler = std::make_shared<SimpleSobolSampler>(windowWidth, windowHeight);
     integrator = integ;
@@ -343,16 +342,16 @@ void Application::writeBuffer()
     auto resultBuffer = integrator->result();
     using namespace ToneMapping;
 
-    glm::vec3 (*toneMapping[4])(const glm::vec3 &) = {reinhard, CE, filmic, ACES};
+    Vec3f (*toneMapping[4])(const Vec3f &) = {reinhard, CE, filmic, ACES};
 
     for (int i = 0; i < windowWidth; i++)
     {
         for (int j = 0; j < windowHeight; j++)
         {
             auto result = resultBuffer(i, j);
-            result = glm::clamp(result, glm::vec3(0.0f), glm::vec3(1e8f));
+            result = glm::clamp(result, Vec3f(0.0f), Vec3f(1e8f));
             result = toneMapping[toneMappingMethod](result);
-            result = glm::pow(result, glm::vec3(1.0f / 2.2f));
+            result = glm::pow(result, Vec3f(1.0f / 2.2f));
             colorBuffer(i, j) = RGB24::swapRB(RGB24(result));
         }
     }
