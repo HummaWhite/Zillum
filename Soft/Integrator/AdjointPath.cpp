@@ -28,9 +28,9 @@ std::optional<AdjointPathIntegrator::Vertex> AdjointPathIntegrator::findNonSpecu
     {
         bool deltaBsdf = sInfo.mat->bxdf().isDelta();
         if (!deltaBsdf)
-            return Vertex{ray.ori, sInfo.N, ray.dir, sInfo.mat, Vec3f(1.0f)};
+            return Vertex{ray.ori, sInfo.Ns, ray.dir, sInfo.mat, Vec3f(1.0f)};
 
-        auto [Wi, pdf, type, eta] = sInfo.mat->getSample(sInfo.N, ray.dir, sampler->get1D(), sampler->get2D());
+        auto [Wi, pdf, type, eta] = sInfo.mat->getSample(sInfo.Ns, ray.dir, sampler->get1D(), sampler->get2D());
         Ray newRay(ray.ori + Wi * 1e-4f, Wi);
         auto [dist, hit] = scene->closestHit(newRay);
         if (hit == nullptr)
@@ -39,8 +39,8 @@ std::optional<AdjointPathIntegrator::Vertex> AdjointPathIntegrator::findNonSpecu
             return std::nullopt;
         
         auto obj = dynamic_cast<Object*>(hit.get());
-        float NoWi = deltaBsdf ? 1.0f : Math::satDot(sInfo.N, Wi);
-        beta *= sInfo.mat->bsdf({ ray.dir, Wi, sInfo.N }, TransportMode::Importance) * NoWi / pdf;
+        float NoWi = deltaBsdf ? 1.0f : Math::satDot(sInfo.Ns, Wi);
+        beta *= sInfo.mat->bsdf(sInfo.Ns, ray.dir, Wi, TransportMode::Importance) * NoWi / pdf;
         Vec3f y = newRay.get(dist);
         sInfo = obj->surfaceInfo(y);
         ray = { y, -Wi };
@@ -83,15 +83,15 @@ Vec3f AdjointPathIntegrator::trace(Vertex v, SamplerPtr sampler)
         if (!deltaBsdf)
         {
             Vec3f Wi = glm::normalize(v.P - P);
-            res += v.beta * v.mat->bsdf({ -Wi, v.Wo, v.N }, TransportMode::Importance) *
-                scene->g(v.P, P, v.N, sInfo.N) * sInfo.mat->bsdf({ -ray.dir, Wi, sInfo.N }, TransportMode::Importance) *
+            res += v.beta * v.mat->bsdf(v.N, -Wi, v.Wo, TransportMode::Importance) *
+                scene->g(v.P, P, v.N, sInfo.Ns) * sInfo.mat->bsdf(sInfo.Ns, -ray.dir, Wi, TransportMode::Importance) *
                 beta;
         }
         break;
         
-        auto [bsSamp, bsdf] = sInfo.mat->sampleWithBsdf(sInfo.N, -ray.dir, sampler->get1D(), sampler->get2D(),
+        auto [bsSamp, bsdf] = sInfo.mat->sampleWithBsdf(sInfo.Ns, -ray.dir, sampler->get1D(), sampler->get2D(),
             TransportMode::Importance);
-        float NoWi = deltaBsdf ? 1.0f : Math::satDot(sInfo.N, bsSamp.dir);
+        float NoWi = deltaBsdf ? 1.0f : Math::satDot(sInfo.Ns, bsSamp.dir);
         beta *= bsdf * NoWi / bsSamp.pdf;
 
         ray = { P, bsSamp.dir };

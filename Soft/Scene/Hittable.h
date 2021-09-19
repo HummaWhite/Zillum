@@ -24,7 +24,8 @@ public:
 
 	virtual std::optional<float> closestHit(const Ray &ray) = 0;
 	virtual Vec3f uniformSample(const Vec2f &u) = 0;
-	virtual Vec3f surfaceNormal(const Vec3f &p) = 0;
+	virtual Vec3f normalGeom(const Vec3f &p) = 0;
+	virtual Vec3f normalShading(const Vec3f &p) { return normalGeom(p); }
 	virtual float surfaceArea() = 0;
 	virtual Vec2f surfaceUV(const Vec3f &p) = 0;
 	virtual AABB bound() = 0;

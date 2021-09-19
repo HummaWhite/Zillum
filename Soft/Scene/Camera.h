@@ -71,8 +71,8 @@ public:
 	virtual Ray generateRay(SamplerPtr sampler) = 0;
 	virtual Ray generateRay(Vec2f uv, SamplerPtr sampler) = 0;
 
-	virtual float pdfIi(Vec3f x, Vec3f y) = 0;
-	virtual CameraIiSample sampleIi(Vec3f x, Vec2f u) = 0;
+	virtual float pdfIi(Vec3f ref, Vec3f y) = 0;
+	virtual CameraIiSample sampleIi(Vec3f ref, Vec2f u) = 0;
 	// [pdfPos, pdfDir]
 	virtual std::pair<float, float> pdfIe(Ray ray) = 0;
 	// This is really tough to implement, fortunately it's not likely to be used
@@ -122,8 +122,8 @@ public:
 	Ray generateRay(SamplerPtr sampler);
 	Ray generateRay(Vec2f uv, SamplerPtr sampler);
 
-	float pdfIi(Vec3f x, Vec3f y);
-	CameraIiSample sampleIi(Vec3f x, Vec2f u);
+	float pdfIi(Vec3f ref, Vec3f y);
+	CameraIiSample sampleIi(Vec3f ref, Vec2f u);
 	std::pair<float, float> pdfIe(Ray ray);
 	Vec3f Ie(Ray ray);
 
@@ -149,8 +149,8 @@ public:
 	Ray generateRay(SamplerPtr sampler);
 	Ray generateRay(Vec2f uv, SamplerPtr sampler);
 
-	float pdfIi(Vec3f x, Vec3f y) { return 0.0f; }
-	CameraIiSample sampleIi(Vec3f x, Vec2f u);
+	float pdfIi(Vec3f ref, Vec3f y) { return 0.0f; }
+	CameraIiSample sampleIi(Vec3f ref, Vec2f u);
 	std::pair<float, float> pdfIe(Ray ray);
 	Vec3f Ie(Ray ray);
 

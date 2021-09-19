@@ -33,7 +33,7 @@ public:
 	std::optional<float> closestHit(const Ray &ray) { return shape->closestHit(ray); }
 
 	Vec3f uniformSample(const Vec2f &u) { return shape->uniformSample(u); }
-	Vec3f surfaceNormal(const Vec3f &p) { return shape->surfaceNormal(p); }
+	Vec3f normalGeom(const Vec3f &p) { return shape->normalGeom(p); }
 	float surfaceArea() { return shape->surfaceArea(); }
 	Vec2f surfaceUV(const Vec3f &p) { return shape->surfaceUV(p); }
 	AABB bound() { return shape->bound(); }
@@ -47,8 +47,8 @@ public:
 	Vec3f getPower(){ return power; }
 	float getRgbPower() { return Math::rgbBrightness(power); }
 	
-	std::optional<LightLiSample> sampleLi(Vec3f x, Vec2f u);
-	float pdfLi(const Vec3f &x, const Vec3f &y);
+	std::optional<LightLiSample> sampleLi(Vec3f ref, Vec2f u);
+	float pdfLi(const Vec3f &ref, const Vec3f &y);
 	Vec3f Le(Ray ray);
 	LightLeSample sampleLe(const std::array<float, 6> &u);
 

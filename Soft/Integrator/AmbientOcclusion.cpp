@@ -8,7 +8,7 @@ Vec3f AOIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 
     auto p = ray.get(dist);
     ray.ori = p;
-    return trace(ray, obj->surfaceNormal(p), sampler);
+    return trace(ray, obj->normalGeom(p), sampler);
 }
 
 Vec3f AOIntegrator::trace(Ray ray, Vec3f N, SamplerPtr sampler)

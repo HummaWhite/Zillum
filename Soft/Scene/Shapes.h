@@ -14,7 +14,7 @@ public:
 	std::optional<float> closestHit(const Ray &ray);
 	Vec3f uniformSample(const Vec2f &u);
 
-	Vec3f surfaceNormal(const Vec3f &p);
+	Vec3f normalGeom(const Vec3f &p);
 	float surfaceArea();
 	Vec2f surfaceUV(const Vec3f &p);
 	Vec3f getCenter() const { return center; }
@@ -37,7 +37,7 @@ public:
 	std::optional<float> closestHit(const Ray &ray);
 	Vec3f uniformSample(const Vec2f &u);
 
-	Vec3f surfaceNormal(const Vec3f &p);
+	Vec3f normalGeom(const Vec3f &p);
 	float surfaceArea();
 	Vec2f surfaceUV(const Vec3f &p);
 	AABB bound();
@@ -60,7 +60,8 @@ public:
 	std::optional<float> closestHit(const Ray &ray) { return triangle.closestHit(ray); }
 	Vec3f uniformSample(const Vec2f &u) { return triangle.uniformSample(u); }
 
-	Vec3f surfaceNormal(const Vec3f &p);
+	Vec3f normalGeom(const Vec3f &p) { return triangle.normalGeom(p); }
+	Vec3f normalShading(const Vec3f &p) override;
 	float surfaceArea() { return triangle.surfaceArea(); }
 	Vec2f surfaceUV(const Vec3f &p);
 	AABB bound() { return triangle.bound(); }
@@ -83,7 +84,7 @@ public:
 	std::optional<float> closestHit(const Ray &ray);
 	Vec3f uniformSample(const Vec2f &u);
 
-	Vec3f surfaceNormal(const Vec3f &p);
+	Vec3f normalGeom(const Vec3f &p);
 	float surfaceArea();
 	Vec2f surfaceUV(const Vec3f &p) { return Triangle(va, vb, vc).surfaceUV(p); }
 	AABB bound();

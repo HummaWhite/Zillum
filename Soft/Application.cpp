@@ -324,14 +324,14 @@ void Application::initScene(int spp)
     
     // auto integ = std::make_shared<PathIntegrator>(sc, spp);
     // integ->limitSpp = (spp != 0);
-    // integ->tracingDepth = 1;
+    // integ->tracingDepth = 5;
     // integ->sampleDirectLight = true;
     // integ->enableMIS = true;
-    //auto integ = std::make_shared<LightPathIntegrator>(sc, 20000);
-    //integ->maxDepth = 10;
-    auto integ = std::make_shared<AdjointPathIntegrator>(sc, spp);
-    integ->maxCameraDepth = 1;
-    integ->maxLightDepth = 1;
+    auto integ = std::make_shared<LightPathIntegrator>(sc, 20000);
+    integ->maxDepth = 1;
+    // auto integ = std::make_shared<AdjointPathIntegrator>(sc, spp);
+    // integ->maxCameraDepth = 1;
+    // integ->maxLightDepth = 1;
     //integ->mSampler = std::make_shared<IndependentSampler>();
     //integ->mSampler = std::make_shared<SimpleSobolSampler>(windowWidth, windowHeight);
     integrator = integ;

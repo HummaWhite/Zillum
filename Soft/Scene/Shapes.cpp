@@ -34,7 +34,7 @@ Vec3f Sphere::uniformSample(const Vec2f &u)
     return Vec3f(cos(t) * sin(p), sin(t) * sin(p), cos(p)) * radius + center;
 }
 
-Vec3f Sphere::surfaceNormal(const Vec3f &p)
+Vec3f Sphere::normalGeom(const Vec3f &p)
 {
     return transform->getInversedNormal(glm::normalize(p - center));
 }
@@ -98,7 +98,7 @@ Vec3f Triangle::uniformSample(const Vec2f &u)
     return transform->get(p);
 }
 
-Vec3f Triangle::surfaceNormal(const Vec3f &p)
+Vec3f Triangle::normalGeom(const Vec3f &p)
 {
     Vec3f N = glm::normalize(glm::cross(vb - va, vc - va));
     return glm::normalize(transform->getInversedNormal(N));
@@ -124,7 +124,7 @@ AABB Triangle::bound()
     return AABB(transform->get(va), transform->get(vb), transform->get(vc));
 }
 
-Vec3f MeshTriangle::surfaceNormal(const Vec3f &p)
+Vec3f MeshTriangle::normalShading(const Vec3f &p)
 {
     auto [va, vb, vc] = triangle.vertices();
     Vec3f oriP = triangle.getTransform()->getInversed(p);
@@ -179,7 +179,7 @@ Vec3f Quad::uniformSample(const Vec2f &u)
     return transform->get((vb - va) * u.x + (vc - va) * u.y + va);
 }
 
-Vec3f Quad::surfaceNormal(const Vec3f &p)
+Vec3f Quad::normalGeom(const Vec3f &p)
 {
     Vec3f N = glm::normalize(glm::cross(vb - va, vc - va));
     return glm::normalize(transform->getInversedNormal(N));

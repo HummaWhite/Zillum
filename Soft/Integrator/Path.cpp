@@ -36,7 +36,7 @@ Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
     {
         Vec3f P = ray.ori;
         Vec3f Wo = -ray.dir;
-        Vec3f N = sInfo.N;
+        Vec3f N = sInfo.Ns;
         auto &mat = sInfo.mat;
 
         bool deltaBsdf = sInfo.mat->bxdf().isDelta();
@@ -47,9 +47,9 @@ Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             auto [Wi, coef, samplePdf] = scene->sampleLiLightAndEnv(P, directIllumSample);
             if (samplePdf != 0.0f)
             {
-                float bsdfPdf = mat->pdf(Wo, Wi, N);
+                float bsdfPdf = mat->pdf(N, Wo, Wi);
                 float weight = enableMIS ? Math::biHeuristic(samplePdf, bsdfPdf) : 0.5f;
-                result += mat->bsdf({Wo, Wi, N}, TransportMode::Radiance) * beta * Math::satDot(N, Wi) * coef * weight;
+                result += mat->bsdf(N, Wo, Wi, TransportMode::Radiance) * beta * Math::satDot(N, Wi) * coef * weight;
             }
         }
 

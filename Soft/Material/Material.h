@@ -41,15 +41,14 @@ class Material
 public:
 	Material(int bxdfType): matBxdf(bxdfType) {}
 
-	virtual Vec3f bsdf(const SurfaceInteraction &si, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode = TransportMode::Radiance) = 0;
 	virtual Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode = TransportMode::Radiance) = 0;
-	virtual float pdf(const Vec3f &Wo, const Vec3f &Wi, const Vec3f &N, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode = TransportMode::Radiance) = 0;
 
 	virtual SampleWithBsdf sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode = TransportMode::Radiance)
 	{
 		Sample sample = getSample(N, Wo, u1, u2);
-		SurfaceInteraction si = { Wo, sample.dir, N };
-		Vec3f bsdf = this->bsdf(si, mode);
+		Vec3f bsdf = this->bsdf(N, Wo, sample.dir, mode);
 		return SampleWithBsdf(sample, bsdf);
 	}
 

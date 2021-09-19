@@ -137,26 +137,25 @@ Ray ThinLensCamera::generateRay(Vec2f uv, SamplerPtr sampler)
     return { ori, dir };
 }
 
-float ThinLensCamera::pdfIi(Vec3f x, Vec3f y)
+float ThinLensCamera::pdfIi(Vec3f ref, Vec3f y)
 {
     if (approxPinhole)
         return 0.0f;
-    auto N = front;
-    auto Wi = glm::normalize(y - x);
+    auto Wi = glm::normalize(y - ref);
 
-    float cosTheta = Math::satDot(N, -Wi);
+    float cosTheta = Math::satDot(front, -Wi);
     if (cosTheta < 1e-8f)
         return 0.0f;
-    return Math::distSquare(x, y) / (lensArea * cosTheta);
+    return Math::distSquare(ref, y) / (lensArea * cosTheta);
 }
 
-CameraIiSample ThinLensCamera::sampleIi(Vec3f x, Vec2f u)
+CameraIiSample ThinLensCamera::sampleIi(Vec3f ref, Vec2f u)
 {
     Vec3f pLens(Transform::toConcentricDisk(u) * lensRadius, 0.0f);
     Vec3f y = pos + tbnMat * pLens;
-    float dist = glm::distance(x, y);
+    float dist = glm::distance(ref, y);
 
-    Vec3f Wi = glm::normalize(y - x);
+    Vec3f Wi = glm::normalize(y - ref);
     float cosTheta = Math::satDot(front, -Wi);
     if (cosTheta < 1e-6f)
         return InvalidCamIiSample;
@@ -216,7 +215,7 @@ Ray PanoramaCamera::generateRay(Vec2f uv, SamplerPtr sampler)
     return { pos, dir };
 }
 
-CameraIiSample PanoramaCamera::sampleIi(Vec3f x, Vec2f u)
+CameraIiSample PanoramaCamera::sampleIi(Vec3f ref, Vec2f u)
 {
     return {};
 }
