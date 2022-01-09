@@ -1,9 +1,9 @@
-/Soft/version/
-/Soft/stb_image/
-/Soft/.vscode/
-/Soft/glm/
-/Soft/res/
-/Soft/screenshot
+/src/version/
+/src/stb_image/
+/src/.vscode/
+/src/glm/
+/src/res/
+/src/screenshot
 *.exe
 *.txt
 *.o
