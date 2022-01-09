@@ -104,7 +104,7 @@ Vec2f ThinLensCamera::getRasterPos(Ray ray)
 
     Vec2f filmSize(film.width, film.height);
     float aspect = filmSize.x / filmSize.y;
-    float tanFOV = glm::tan(glm::radians(FOV_ * 0.5f));
+    float tanFOV = glm::tan(glm::radians(FOV * 0.5f));
 
     pFocus /= Vec3f(Vec2f(aspect, 1.0f) * tanFOV, 1.0f) * focalDist;
     Vec2f ndc(pFocus);
@@ -125,7 +125,7 @@ Ray ThinLensCamera::generateRay(Vec2f uv, SamplerPtr sampler)
     auto ndc = biased;
 
     float aspect = filmSize.x / filmSize.y;
-    float tanFOV = glm::tan(glm::radians(FOV_ * 0.5f));
+    float tanFOV = glm::tan(glm::radians(FOV * 0.5f));
 
     Vec3f pLens(Transform::toConcentricDisk(sampler->get2D()) * lensRadius, 0.0f);
     Vec3f pFocusPlane(ndc * Vec2f(aspect, 1.0f) * focalDist * tanFOV, focalDist);

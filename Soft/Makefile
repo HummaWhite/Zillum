@@ -20,5 +20,5 @@ $(target) : $(obj)
 %.cpp : %.h
 
 clean :
-	rm ./*o ./Accelerator/*.o ./Buffer/*.o ./Display/*.o ./Environment/*.o ./Integrator/*.o \
+	rm ./*.o ./Accelerator/*.o ./Buffer/*.o ./Display/*.o ./Environment/*.o ./Integrator/*.o \
 	./Material/*.o ./Math/*.o ./Microfacet/*.o ./Sampler/*.o ./Scene/*.o

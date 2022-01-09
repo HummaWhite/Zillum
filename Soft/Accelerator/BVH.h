@@ -5,57 +5,54 @@
 #include <stack>
 #include <list>
 
-#include "BVHnode.h"
+#include "../Scene/Hittable.h"
+#include "AABB.h"
 
 enum class BVHSplitMethod { SAH, Middle, EqualCounts, HLBVH };
 
-struct BVHTransTableElement
+const int BVHLeafMark = 0x80000000;
+
+struct BVHNode
+{
+	AABB box;
+	HittablePtr hittable;
+	int size;
+};
+
+struct BVHTableElement
 {
 	int misNext;
 	int nodeIndex;
+};
+
+struct HittableInfo
+{
+	AABB bound;
+	Vec3f centroid;
+	HittablePtr hittable;
 };
 
 class BVH
 {
 public:
 	BVH() = default;
-	BVH(const std::vector<HittablePtr> &_hittables, BVHSplitMethod method = BVHSplitMethod::SAH);
-	~BVH() = default;
+	BVH(const std::vector<HittablePtr> &hittables, BVHSplitMethod method = BVHSplitMethod::SAH);
 
 	bool testIntersec(const Ray &ray, float dist);
 	std::pair<float, HittablePtr> closestHit(const Ray &ray);
-	void dfs() { dfs(root, 1); }
-	std::pair<int, float> dfsDetailed();
-	AABB box() const;
 
-	inline int size() const { return treeSize; }
+	int size() const { return treeSize; }
+	AABB box() const { return tree[0].box; }
 
 private:
-	struct HittableInfo
-	{
-		AABB bound;
-		Vec3f centroid;
-		int index;
-	};
-
-private:
-	void radixSort16(HittableInfo *a, int count, int dim);
-	void buildRecursive(BVHNode *&k, std::vector<HittableInfo> &hittableInfo, const AABB &nodeBound, int l, int r);
-	void destroyRecursive(BVHNode *&k);
-	void makeCompact();
+	void quickBuild(std::vector<HittableInfo> &primInfo, const AABB &rootExtent);
+	void standardBuild(std::vector<HittableInfo> &primInfo, const AABB &rootExtent);
 	void buildHitTable();
-
-	void dfs(BVHNode *k, int depth);
-	int dfsDetailed(BVHNode *k, int depth, int &sumDepth);
 	
 private:
-	const int maxHittablesInNode = 1;
-	std::vector<HittablePtr> hittables;
-
-	BVHNode *root = nullptr;
 	int treeSize = 0;
 	BVHSplitMethod splitMethod;
 
-	BVHNodeCompact *compactNodes;
-	BVHTransTableElement *transTables[6];
+	std::vector<BVHNode> tree;
+	std::vector<BVHTableElement> hitTables[6];
 };

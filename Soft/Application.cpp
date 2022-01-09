@@ -22,7 +22,7 @@ void Application::init(const std::string &name, HINSTANCE instance, int width, i
     SetWindowPos(window, HWND_TOP, 0, 0, width, height, SWP_NOMOVE);
     ShowWindow(window, 1);
     UpdateWindow(window);
-    SetWindowPos(window, HWND_TOP, 0, 0, width, height, SWP_NOMOVE);
+    SetWindowPos(window, HWND_TOP, 0, 0, width + 5, height + 25, SWP_NOMOVE);
 
     colorBuffer.init(width, height);
     initScene(spp);
@@ -156,33 +156,6 @@ void Application::initScene(int spp)
 
     auto sc = std::make_shared<Scene>();
 
-    /*
-		const float step = 1.0f, level = -2.0f;
-		for (int i = -10; i < 10; i++)
-		{
-			for (int j = -10; j < 10; j++)
-			{
-				hittableList.push_back
-				(
-				 	std::make_shared<Quad>
-				 	(
-					 	Vec3f(i * step, j * step, level),
-						Vec3f((i + 1) * step, j * step, level),
-						Vec3f(i * step, (j + 1) * step, level),
-						std::make_shared<MetalWorkflow>(((i ^ j) & 1) ? Vec3f(1.0f) : Vec3f(0.1f), 0.0f, 1.0f)
-					)
-				);
-			}
-		}
-		*/
-    // glm::mat4 model(1.0f);
-    // model = glm::translate(model, Vec3f(0.0f, 0.0f, -2.0f));
-    // model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
-    // model = glm::scale(model, Vec3f(0.3f));
-    // std::shared_ptr<Transform> trTeapot = std::make_shared<Transform>(model);
-    // scene->addObjectMesh("res/model/dragon2.obj", trTeapot, std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.4f));
-    // scene->addObjectMesh("res/model/dragon2_armor.obj", trTeapot, std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.5f));
-
     // auto sphere = std::make_shared<Object>(
     // 	std::make_shared<Sphere>(Vec3f(0.0f, 0.0f, 1.0f), 1.0f, true),
     // 	//std::make_shared<MetalWorkflow>(Vec3f(1.0f), 1.0f, 0.2f)
@@ -266,34 +239,34 @@ void Application::initScene(int spp)
             //std::make_shared<Lambertian>(Vec3f(1.0f))
             ));
 
-    // sc->addHittable(
-    //     std::make_shared<Object>(
-    //         std::make_shared<Sphere>(Vec3f(1.0f, 3.0f, 0.0f), 1.0f, true),
-    //         std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.5f)
-    //         //std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.79f, 0.51f), 1.0f, 0.25f)
-    //         ));
+    sc->addHittable(
+        std::make_shared<Object>(
+            std::make_shared<Sphere>(Vec3f(1.0f, 3.0f, 0.0f), 1.0f, true),
+            std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.5f)
+            //std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.79f, 0.51f), 1.0f, 0.25f)
+            ));
 
-    // glm::mat4 model(1.0f);
-    // model = glm::translate(model, Vec3f(1.0f, 2.0f, -2.1f));
-    // model = glm::rotate(model, glm::radians(-17.5f), Vec3f(0.0f, 0.0f, 1.0f));
-    // model = glm::scale(model, Vec3f(1.8f));
-    // std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, Vec3f(1.0f, 2.0f, -2.1f));
+    model = glm::rotate(model, glm::radians(-17.5f), Vec3f(0.0f, 0.0f, 1.0f));
+    model = glm::scale(model, Vec3f(1.8f));
+    std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
 
-    // sc->addObjectMesh("res/model/cube.obj", trBoxSmall,
-    //                      std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.8f, 0.6f), 0.0f, 1.0f)
-    //                      //std::make_shared<Lambertian>(Vec3f(1.0f))
-    // );
+    sc->addObjectMesh("res/model/cube.obj", trBoxSmall,
+                         std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.8f, 0.6f), 0.0f, 1.0f)
+                         //std::make_shared<Lambertian>(Vec3f(1.0f))
+    );
 
-    // model = glm::mat4(1.0f);
-    // model = glm::translate(model, Vec3f(-1.0f, 4.0f, -1.2f));
-    // model = glm::rotate(model, glm::radians(17.5f), Vec3f(0.0f, 0.0f, 1.0f));
-    // model = glm::scale(model, Vec3f(1.8f, 1.8f, 3.6f));
-    // std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, Vec3f(-1.0f, 4.0f, -1.2f));
+    model = glm::rotate(model, glm::radians(17.5f), Vec3f(0.0f, 0.0f, 1.0f));
+    model = glm::scale(model, Vec3f(1.8f, 1.8f, 3.6f));
+    std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
 
-    // sc->addObjectMesh("res/model/cube.obj", trBoxLarge,
-    //                      std::make_shared<MetalWorkflow>(Vec3f(1.0f), 0.0f, 1.0f)
-    //                      //std::make_shared<Lambertian>(Vec3f(1.0f))
-    // );
+    sc->addObjectMesh("res/model/cube.obj", trBoxLarge,
+                         std::make_shared<MetalWorkflow>(Vec3f(1.0f), 0.0f, 1.0f)
+                         //std::make_shared<Lambertian>(Vec3f(1.0f))
+    );
 
     sc->addLight(
         std::make_shared<Light>(
@@ -322,13 +295,13 @@ void Application::initScene(int spp)
     sc->buildScene();
     scene = sc;
     
-    // auto integ = std::make_shared<PathIntegrator>(sc, spp);
-    // integ->limitSpp = (spp != 0);
-    // integ->tracingDepth = 5;
-    // integ->sampleDirectLight = true;
-    // integ->enableMIS = true;
-    auto integ = std::make_shared<LightPathIntegrator>(sc, 20000);
-    integ->maxDepth = 1;
+    auto integ = std::make_shared<PathIntegrator>(sc, spp);
+    integ->limitSpp = (spp != 0);
+    integ->tracingDepth = 5;
+    integ->sampleDirectLight = true;
+    integ->enableMIS = true;
+    // auto integ = std::make_shared<LightPathIntegrator>(sc, 20000);
+    // integ->maxDepth = 1;
     // auto integ = std::make_shared<AdjointPathIntegrator>(sc, spp);
     // integ->maxCameraDepth = 1;
     // integ->maxLightDepth = 1;

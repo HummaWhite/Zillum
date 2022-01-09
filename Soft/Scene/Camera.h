@@ -106,14 +106,14 @@ class ThinLensCamera :
 {
 public:
 	ThinLensCamera(float FOV, float lensRadius = 0.0f, float focalDist = 1.0f) :
-		FOV_(FOV), lensRadius(lensRadius), focalDist(focalDist), lensArea(Math::diskArea(lensRadius)),
+		FOV(FOV), lensRadius(lensRadius), focalDist(focalDist), lensArea(Math::diskArea(lensRadius)),
 		approxPinhole(lensRadius < 1e-6f), Camera(CameraType::ThinLens) {}
 
-	void setFOV(float fov) { FOV_ = fov; }
+	void setFOV(float fov) { FOV = fov; }
 	void setLensRadius(float radius) { lensRadius = radius; }
 	void setFocalDist(float dist) { focalDist = dist; }
 
-	float getFOV() const { return FOV_; }
+	float getFOV() const { return FOV; }
 	float getLensRadius() const { return lensRadius; }
 	float getFocalDist() const { return focalDist; }
 
@@ -130,7 +130,7 @@ public:
 	bool deltaArea() const { return approxPinhole; }
 
 private:
-	float FOV_ = 45.0f;
+	float FOV = 45.0f;
 	float lensRadius;
 	float focalDist;
 

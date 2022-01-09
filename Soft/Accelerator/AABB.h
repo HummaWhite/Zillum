@@ -16,17 +16,17 @@ struct BoxHit
 
 struct AABB
 {
-	AABB() = default;
-	AABB(const Vec3f _pMin, const Vec3f _pMax):
-		pMin(_pMin), pMax(_pMax) {}
-	AABB(float xMin, float yMin, float zMin, float xMax, float yMax, float zMax):
-		pMin(xMin, yMin, zMin), pMax(xMax, yMax, zMax) {}
+	AABB() : pMin(1e30f), pMax(-1e30f) {}
+	AABB(const Vec3f &p) : pMin(p), pMax(p) {}
+	AABB(const Vec3f &pMin, const Vec3f &pMax):
+		pMin(pMin), pMax(pMax) {}
 	AABB(const Vec3f &center, float radius):
 		pMin(center - Vec3f(radius)), pMax(center + Vec3f(radius)) {}
 
 	AABB(const Vec3f &va, const Vec3f &vb, const Vec3f &vc);
 	AABB(const AABB &boundA, const AABB &boundB);
 
+	void expand(const AABB& rhs);
 	BoxHit hit(const Ray &ray);
 	float volume() const;
 	Vec3f centroid() const;
@@ -35,6 +35,6 @@ struct AABB
 
 	std::string toString();
 	
-	Vec3f pMin = Vec3f(0.0f);
-	Vec3f pMax = Vec3f(0.0f);
+	Vec3f pMin;
+	Vec3f pMax;
 };
