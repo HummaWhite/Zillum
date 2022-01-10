@@ -1,5 +1,6 @@
-#include "Camera.h"
 #include <Windows.h>
+
+#include "../../../include/Core/Camera.h"
 
 void Camera::move(int key)
 {

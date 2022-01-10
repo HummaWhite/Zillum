@@ -1,4 +1,4 @@
-#include "Camera.h"
+#include "../../../include/Core/Camera.h"
 
 Vec2f PanoramaCamera::getRasterPos(Ray ray)
 {

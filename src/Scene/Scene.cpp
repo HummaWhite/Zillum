@@ -1,4 +1,4 @@
-#include "Scene.h"
+#include "../../include/Core/Scene.h"
 
 Scene::Scene(const std::vector<HittablePtr> &hittables, EnvPtr environment, CameraPtr camera) :
     hittables(hittables), env(environment), camera(camera)

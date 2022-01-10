@@ -1,4 +1,4 @@
-#include "ToneMapping.h"
+#include "../../include/Core/ToneMapping.h"
 
 NAMESPACE_BEGIN(ToneMapping)
 

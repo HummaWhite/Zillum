@@ -1,4 +1,4 @@
-#include "Environment.h"
+#include "../../../include/Core/Environment.h"
 
 EnvLiSample EnvSingleColor::sampleLi(const Vec2f &u1, const Vec2f &u2)
 {

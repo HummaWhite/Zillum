@@ -1,4 +1,4 @@
-#include "Light.h"
+#include "../../include/Core/Light.h"
 
 std::optional<LightLiSample> Light::sampleLi(Vec3f ref, Vec2f u)
 {

@@ -1,4 +1,4 @@
-#include "Math.h"
+#include "../../include/Core/Math.h"
 
 NAMESPACE_BEGIN(Math)
 

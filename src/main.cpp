@@ -1,6 +1,6 @@
 #include <windows.h>
 
-#include "Application.h"
+#include "../include/Application.h"
 
 Application app;
 

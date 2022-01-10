@@ -1,4 +1,4 @@
-#include "PiecewiseDistrib.h"
+#include "../../include/Core/PiecewiseDistrib.h"
 
 Piecewise1D::Piecewise1D(const std::vector<float> &distrib)
 {

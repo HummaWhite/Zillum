@@ -1,4 +1,4 @@
-#include "Integrator.h"
+#include "../../include/Core/Integrator.h"
 
 Vec3f PathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 {

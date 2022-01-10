@@ -1,4 +1,4 @@
-#include "Integrator.h"
+#include "../../include/Core/Integrator.h"
 
 void Integrator::setModified()
 {

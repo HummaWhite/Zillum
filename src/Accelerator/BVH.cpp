@@ -1,4 +1,4 @@
-#include "BVH.h"
+#include "../../include/Core/BVH.h"
 
 using RadixSortElement = std::pair<int, int>;
 

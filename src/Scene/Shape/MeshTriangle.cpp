@@ -1,4 +1,4 @@
-#include "Shape.h"
+#include "../../../include/Core/Shape.h"
 
 Vec3f MeshTriangle::normalShading(const Vec3f &p)
 {

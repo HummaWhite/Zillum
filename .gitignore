@@ -1,9 +1,8 @@
 /version/
-/src/stb_image/
-/src/.vscode/
-/src/glm/
+/include/stb_image/
+/.vscode
 /res
 /screenshot
+/ext/
 *.exe
-*.txt
 *.o

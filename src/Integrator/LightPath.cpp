@@ -1,4 +1,4 @@
-#include "Integrator.h"
+#include "../../include/Core/Integrator.h"
 
 LightPathIntegrator::LightPathIntegrator(ScenePtr scene, int photonsOnePass) :
     pathsOnePass(photonsOnePass), Integrator(scene, IntegratorType::LightPath)
@@ -103,8 +103,8 @@ void LightPathIntegrator::addToFilm(Vec2f uv, Vec3f val)
 {
     if (!Camera::inFilmBound(uv))
         return;
-    auto &spp = pixelCount(uv);
-    auto &v = scene->camera->getFilm()(uv);
+    auto &spp = pixelCount(uv.x, uv.y);
+    auto &v = scene->camera->getFilm()(uv.x, uv.y);
     v = (v * static_cast<float>(spp) + val) / static_cast<float>(spp + 1);
     spp++;
 }

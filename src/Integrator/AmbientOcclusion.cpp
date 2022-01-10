@@ -1,4 +1,4 @@
-#include "Integrator.h"
+#include "../../include/Core/Integrator.h"
 
 Vec3f AOIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 {
@@ -18,18 +18,9 @@ Vec3f AOIntegrator::trace(Ray ray, Vec3f N, SamplerPtr sampler)
     for (int i = 0; i < samples; i++)
     {
         auto Wi = Math::sampleHemisphereCosine(N, sampler->get2D()).first;
-
         Ray newRay(ray.ori + Wi * 1e-4f, Wi);
-        //auto [dist, obj] = scene->closestHit(newRay);
-
-        if (scene->quickIntersect(newRay, occlusionRadius.x))
+        if (scene->quickIntersect(newRay, radius))
             ao += Vec3f(1.0f);
-
-        // if (obj == nullptr) continue;
-
-        // if (dist < occlusionRadius.x) ao.x += 1.0f;
-        // if (dist < occlusionRadius.y) ao.y += 1.0f;
-        // if (dist < occlusionRadius.z) ao.z += 1.0f;
     }
 
     return Vec3f(1.0f) - ao / (float)samples;

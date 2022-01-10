@@ -1,5 +1,5 @@
-#include "Sampler.h"
-#include "SobolMatrices1024x52.h"
+#include "../../include/Core/Sampler.h"
+#include "../../include/Utils/SobolMatrices1024x52.h"
 
 uint32_t sobolSample(uint64_t index, int dim, uint32_t scramble = 0)
 {

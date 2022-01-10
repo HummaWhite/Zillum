@@ -1,4 +1,4 @@
-#include "Application.h"
+#include "../include/Application.h"
 
 void Application::init(const std::string &name, HINSTANCE instance, int width, int height, int spp)
 {

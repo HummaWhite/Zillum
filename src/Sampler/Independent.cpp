@@ -1,4 +1,4 @@
-#include "Sampler.h"
+#include "../../include/Core/Sampler.h"
 
 IndependentSampler::IndependentSampler() :
     Sampler(SamplerType::Independent)

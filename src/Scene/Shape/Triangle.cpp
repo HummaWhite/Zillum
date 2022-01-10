@@ -1,4 +1,4 @@
-#include "Shape.h"
+#include "../../../include/Core/Shape.h"
 
 std::optional<float> Triangle::closestHit(const Ray &ray)
 {
