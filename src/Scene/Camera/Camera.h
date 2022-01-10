@@ -3,10 +3,10 @@
 #include <iostream>
 #include <memory>
 
-#include "Ray.h"
-#include "../Buffer/Buffer2D.h"
-#include "../Sampler/Sampler.h"
-#include "../Math/Transform.h"
+#include "../Ray.h"
+#include "../../Sampler/Sampler.h"
+#include "../../Math/Transform.h"
+#include "../../Buffer/Buffer2D.h"
 
 const float CameraRotateSensitivity = 0.5f;
 const float CameraMoveSensitivity = 0.1f;

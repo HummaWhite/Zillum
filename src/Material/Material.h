@@ -4,13 +4,13 @@
 #include <random>
 #include <cmath>
 
+#include "BXDF.h"
+#include "Microfacet/Microfacet.h"
 #include "../glm/glmIncluder.h"
-
-#include "../Surface/SurfaceInteraction.h"
+#include "../Scene/SurfaceInteraction.h"
 #include "../Scene/Ray.h"
-#include "../BXDF/BXDF.h"
+#include "../Math/Math.h"
 #include "../Math/Transform.h"
-#include "../Microfacet/Microfacets.h"
 
 enum class TransportMode
 {
@@ -101,3 +101,90 @@ protected:
 };
 
 using MaterialPtr = std::shared_ptr<Material>;
+
+class Lambertian:
+	public Material
+{
+public:
+	Lambertian(const Vec3f &albedo) :
+		albedo(albedo), Material(BXDF::Diffuse) {}
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+
+private:
+	Vec3f albedo;
+};
+
+class MetalWorkflow:
+	public Material
+{
+public:
+	MetalWorkflow(const Vec3f &albedo, float metallic, float roughness) :
+		albedo(albedo), metallic(metallic), roughness(roughness),
+		distrib(roughness, true), Material(BXDF::Diffuse | BXDF::GlosRefl) {}
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+
+private:
+	Vec3f albedo;
+	float metallic;
+	float roughness;
+	GGXDistrib distrib;
+};
+
+class Clearcoat:
+	public Material
+{
+public:
+	Clearcoat(float roughness, float weight):
+		distrib(roughness), weight(weight), Material(BXDF::GlosRefl) {}
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+
+private:
+	GTR1Distrib distrib;
+	float weight;
+};
+
+class Dielectric:
+	public Material
+{
+public:
+	Dielectric(const Vec3f &tint, float roughness, float ior):
+		tint(tint), ior(ior), distrib(roughness, false),
+		approxDelta(roughness < 0.014f), Material(BXDF::SpecRefl | BXDF::SpecTrans) {}
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode) { return Sample(); }
+	SampleWithBsdf sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode) override;
+
+private:
+	float ior;
+	Vec3f tint;
+	GGXDistrib distrib;
+	bool approxDelta;
+};
+
+class ThinDielectric:
+	public Material
+{
+public:
+	ThinDielectric(const Vec3f &tint, float ior):
+		tint(tint), ior(ior), Material(BXDF::SpecRefl | BXDF::SpecTrans) {}
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode) { return 0.0f; }
+	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode) { return Sample(); }
+	SampleWithBsdf sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode) override;
+
+private:
+	Vec3f tint;
+	float ior;
+};

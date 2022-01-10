@@ -5,13 +5,13 @@
 #include <vector>
 #include <memory>
 
-#include "Shapes.h"
 #include "Light.h"
-#include "Environments.h"
-#include "../Accelerator/BVH.h"
-#include "Camera.h"
-#include "ObjReader.h"
 #include "Object.h"
+#include "Environment/Environment.h"
+#include "Camera/Camera.h"
+#include "Shape/Shape.h"
+#include "../Accelerator/BVH.h"
+#include "../Utils/ObjReader.h"
 
 enum class LightSampleStrategy
 {

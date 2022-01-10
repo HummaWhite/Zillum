@@ -5,7 +5,7 @@
 #include <memory>
 #include <array>
 
-#include "Shapes.h"
+#include "Shape/Shape.h"
 
 struct LightLiSample
 {

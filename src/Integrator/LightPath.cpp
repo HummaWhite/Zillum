@@ -1,4 +1,4 @@
-#include "LightPath.h"
+#include "Integrator.h"
 
 LightPathIntegrator::LightPathIntegrator(ScenePtr scene, int photonsOnePass) :
     pathsOnePass(photonsOnePass), Integrator(scene, IntegratorType::LightPath)

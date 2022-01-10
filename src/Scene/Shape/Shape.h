@@ -1,8 +1,8 @@
 #pragma once
 
 #include <utility>
-#include "Hittable.h"
-#include "../Math/Math.h"
+#include "../Hittable.h"
+#include "../../Math/Math.h"
 
 class Sphere :
 	public Hittable
@@ -92,40 +92,3 @@ public:
 private:
 	Vec3f va, vb, vc;
 };
-
-/*
-class HittableDisk:
-	public Hittable
-{
-public:
-	HittableDisk(const Vec3f &_center, float _radius):
-		center(_center), radius(_radius) {}
-
-	HitInfo closestHit(const Ray &ray)
-	{
-		Vec3f o = ray.ori;
-		Vec3f d = ray.dir;
-
-		glm::mat3 normMatrix = glm::transpose(glm::inverse(transform));
-		Vec3f norm = normMatrix * Vec3f(0.0f, 0.0f, 1.0f);
-
-		const float eps = 1e-6;
-	}
-
-	Vec3f surfaceNormal(const Vec3f &p)
-	{
-	}
-
-	Vec3f getRandomPoint()
-	{
-	}
-
-	AABB bound()
-	{
-	}
-
-private:
-	Vec3f center;
-	float radius;
-};
-*/

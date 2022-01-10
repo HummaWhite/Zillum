@@ -1,4 +1,4 @@
-#include "AmbientOcclusion.h"
+#include "Integrator.h"
 
 Vec3f AOIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 {

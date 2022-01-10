@@ -14,10 +14,7 @@
 
 #include "Buffer/Texture.h"
 #include "Buffer/FrameBufferDouble.h"
-#include "Integrator/Path.h"
-#include "Integrator/AmbientOcclusion.h"
-#include "Integrator/LightPath.h"
-#include "Integrator/AdjointPath.h"
+#include "Integrator/Integrator.h"
 
 class Application
 {

@@ -3,8 +3,8 @@
 #include <iostream>
 #include <memory>
 
-#include "../Surface/SurfaceInfo.h"
-#include "Shapes.h"
+#include "SurfaceInfo.h"
+#include "Shape/Shape.h"
 #include "../Material/Material.h"
 
 class Object:

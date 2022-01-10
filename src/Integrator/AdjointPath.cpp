@@ -1,4 +1,4 @@
-#include "AdjointPath.h"
+#include "Integrator.h"
 
 Vec3f AdjointPathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 {
