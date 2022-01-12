@@ -86,9 +86,11 @@ void LightPathIntegrator::trace()
                 }
             }
         }
-        auto [bsdfSample, bsdf] = sInfo.mat->sampleWithBsdf(sInfo.Ns, Wo, mSampler->get1D(), mSampler->get2D(),
+        auto sample = sInfo.mat->sample(sInfo.Ns, Wo, mSampler->get1D(), mSampler->get2D(),
             TransportMode::Importance);
-        auto [Wi, bsdfPdf, type, eta] = bsdfSample;
+        if (!sample)
+            break;
+        auto [Wi, bsdfPdf, type, eta, bsdf] = sample.value();
 
         float NoWi = deltaBsdf ? 1.0f : Math::satDot(sInfo.Ns, Wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))

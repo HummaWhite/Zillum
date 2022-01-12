@@ -30,7 +30,11 @@ std::optional<AdjointPathIntegrator::Vertex> AdjointPathIntegrator::findNonSpecu
         if (!deltaBsdf)
             return Vertex{ray.ori, sInfo.Ns, ray.dir, sInfo.mat, Vec3f(1.0f)};
 
-        auto [Wi, pdf, type, eta] = sInfo.mat->getSample(sInfo.Ns, ray.dir, sampler->get1D(), sampler->get2D());
+        auto sample = sInfo.mat->sample(sInfo.Ns, ray.dir, sampler->get1D(), sampler->get2D());
+        if (!sample)
+            return std::nullopt;
+        auto [Wi, pdf, type, eta, bsdf] = sample.value();
+        
         Ray newRay(ray.ori + Wi * 1e-4f, Wi);
         auto [dist, hit] = scene->closestHit(newRay);
         if (hit == nullptr)
@@ -89,12 +93,15 @@ Vec3f AdjointPathIntegrator::trace(Vertex v, SamplerPtr sampler)
         }
         break;
         
-        auto [bsSamp, bsdf] = sInfo.mat->sampleWithBsdf(sInfo.Ns, -ray.dir, sampler->get1D(), sampler->get2D(),
+        auto sample = sInfo.mat->sample(sInfo.Ns, -ray.dir, sampler->get1D(), sampler->get2D(),
             TransportMode::Importance);
-        float NoWi = deltaBsdf ? 1.0f : Math::satDot(sInfo.Ns, bsSamp.dir);
-        beta *= bsdf * NoWi / bsSamp.pdf;
+        if (!sample)
+            break;
+        auto [Wi, pdf, type, eta, bsdf] = sample.value();
+        float NoWi = deltaBsdf ? 1.0f : Math::satDot(sInfo.Ns, Wi);
+        beta *= bsdf * NoWi / pdf;
 
-        ray = { P, bsSamp.dir };
+        ray = { P, Wi };
     }
     return res;
 }

@@ -2,7 +2,7 @@
 
 float GTR1Distrib::d(const Vec3f &N, const Vec3f &M)
 {
-    return Microfacet::gtr1(Math::absDot(N, M), alpha);
+    return gtr1(Math::absDot(N, M), alpha);
 }
 
 float GTR1Distrib::pdf(const Vec3f &N, const Vec3f &M, const Vec3f &Wo)

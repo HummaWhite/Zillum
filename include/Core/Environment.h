@@ -41,7 +41,7 @@ public:
 	EnvLiSample sampleLi(const Vec2f &u1, const Vec2f &u2);
 	float pdfLi(const Vec3f &Wi);
 	LightLeSample sampleLe(float radius, const std::array<float, 6> &u);
-	float power() { return Math::rgbBrightness(radiance) * 2.0f * Math::square(Math::Pi); }
+	float power() { return Math::luminance(radiance) * 2.0f * Math::square(Math::Pi); }
 
 private:
 	Vec3f radiance;

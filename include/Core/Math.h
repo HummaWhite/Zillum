@@ -20,6 +20,13 @@ const float OneMinusEpsilon = 0x1.fffffep-1;
 
 const Vec3f BRIGHTNESS = Vec3f(0.299f, 0.587f, 0.114f);
 
+template<typename T>
+T pow5(const T &v)
+{
+    T v2 = v * v;
+    return v2 * v2 * v;
+}
+
 template <typename T>
 T lerp(T x, T y, float a)
 {
@@ -86,7 +93,7 @@ float qpow(float x, int n);
 float heuristic(int nf, float pf, int ng, float pg, int pow);
 float biHeuristic(float pf, float pg);
 
-float rgbBrightness(const Vec3f &c);
+float luminance(const Vec3f &c);
 
 float diskArea(float radius);
 

@@ -53,8 +53,10 @@ Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             }
         }
 
-        auto [sample, bsdf] = sInfo.mat->sampleWithBsdf(N, Wo, sampler->get1D(), sampler->get2D());
-        auto [Wi, bsdfPdf, type, eta] = sample;
+        auto sampled = sInfo.mat->sample(N, Wo, sampler->get1D(), sampler->get2D());
+        if (!sampled)
+            break;
+        auto [Wi, bsdfPdf, type, eta, bsdf] = sampled.value();
 
         float NoWi = type.isDelta() ? 1.0f : Math::absDot(N, Wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
@@ -92,7 +94,7 @@ Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             break;
         }
 
-        if (sample.type.isTransmission())
+        if (type.isTransmission())
             etaScale *= Math::square(eta);
 
         float rr = rouletteProb * etaScale;

@@ -11,7 +11,7 @@ EnvSphereMapHDR::EnvSphereMapHDR(const char *filePath)
     {
         for (int i = 0; i < w; i++)
         {
-            pdf[j * w + i] = Math::rgbBrightness(sphereMap(i, j)) * glm::sin((float)(j + 0.5f) / h * Math::Pi);
+            pdf[j * w + i] = Math::luminance(sphereMap(i, j)) * glm::sin((float)(j + 0.5f) / h * Math::Pi);
         }
     }
 
@@ -43,7 +43,7 @@ float EnvSphereMapHDR::pdfLi(const Vec3f &Wi)
 
 float EnvSphereMapHDR::getPortion(const Vec3f &Wi)
 {
-    return Math::rgbBrightness(Vec3f(sphereMap.getSpherical(Wi))) / distrib.sum();
+    return Math::luminance(Vec3f(sphereMap.getSpherical(Wi))) / distrib.sum();
 }
 
 LightLeSample EnvSphereMapHDR::sampleLe(float radius, const std::array<float, 6> &u)

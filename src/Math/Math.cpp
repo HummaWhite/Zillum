@@ -136,7 +136,7 @@ float biHeuristic(float pf, float pg)
     return heuristic(1, pf, 1, pg, 2);
 }
 
-float rgbBrightness(const Vec3f &c)
+float luminance(const Vec3f &c)
 {
     return glm::dot(BRIGHTNESS, c);
 }

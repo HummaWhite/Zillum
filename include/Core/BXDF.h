@@ -27,7 +27,8 @@ public:
 
 	bool isDelta() const
 	{
-		return (mType & SpecRefl) || (mType & SpecTrans);
+		return ((mType & SpecRefl) || (mType & SpecTrans)) &&
+			!(mType & GlosTrans || mType & GlosRefl || mType & Diffuse);
 	}
 
 	bool isReflection() const

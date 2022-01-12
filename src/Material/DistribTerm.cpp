@@ -1,6 +1,4 @@
-#include "../../include/Core/DistribTerm.h"
-
-NAMESPACE_BEGIN(Microfacet)
+#include "../../include/Core/Microfacet.h"
 
 float schlickG(float cosTheta, float alpha)
 {
@@ -51,14 +49,23 @@ float gtr1(float cosTheta, float alpha)
     return (a2 - 1.0f) / (2.0f * Math::Pi * glm::log(alpha) * (1.0f + (a2 - 1.0f) * cosTheta * cosTheta));
 }
 
+float schlickW(float cosTheta)
+{
+    return Math::pow5(1.0f - cosTheta);
+}
+
+float schilickF(float cosTheta, float eta)
+{
+    float F0 = Math::square(eta - 1.0f) / Math::square(eta + 1.0f);
+    return F0 + (1.0f - F0) * Math::pow5(1.0f - cosTheta);
+}
+
 Vec3f schlickF(float cosTheta, const Vec3f &F0)
 {
-    return F0 + (Vec3f(1.0f) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
+    return F0 + (Vec3f(1.0f) - F0) * Math::pow5(1.0f - cosTheta);
 }
 
 Vec3f schlickF(float cosTheta, const Vec3f &F0, float roughness)
 {
-    return F0 + (glm::max(Vec3f(1.0f - roughness), F0) - F0) * (float)glm::pow(1.0f - cosTheta, 5.0f);
+    return F0 + (glm::max(Vec3f(1.0f - roughness), F0) - F0) * Math::pow5(1.0f - cosTheta);
 }
-
-NAMESPACE_END(Microfacet)

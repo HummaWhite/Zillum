@@ -45,7 +45,7 @@ public:
 	}
 
 	Vec3f getPower(){ return power; }
-	float getRgbPower() { return Math::rgbBrightness(power); }
+	float getRgbPower() { return Math::luminance(power); }
 	
 	std::optional<LightLiSample> sampleLi(Vec3f ref, Vec2f u);
 	float pdfLi(const Vec3f &ref, const Vec3f &y);

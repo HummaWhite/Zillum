@@ -242,8 +242,26 @@ void Application::initScene(int spp)
     sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Sphere>(Vec3f(1.0f, 3.0f, 0.0f), 1.0f, true),
-            std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.5f)
-            //std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.79f, 0.51f), 1.0f, 0.25f)
+            //std::make_shared<Clearcoat>(0.01f, 1.0f)
+            //std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.5f, 0.2f), 0.0f, 1.0f)
+            //std::make_shared<Lambertian>(Vec3f(1.0f, 0.5f, 0.2f))
+            //std::make_shared<DisneyDiffuse>(Vec3f(1.0f, 0.5f, 0.2f), 1.0f, 1.0f)
+            //std::make_shared<DisneyMetal>(Vec3f(1.0f, 0.5f, 0.2f), 0.1f)
+            //std::make_shared<DisneyClearcoat>(0.0f)
+            //std::make_shared<DisneySheen>(Vec3f(1.0f, 0.5f, 0.2f), 0.0f)
+            std::make_shared<DisneyBSDF>(
+                Vec3f(1.0f, 0.5f, 0.2f),
+                1.0f,
+                0.0f,
+                1.0f,
+                1.0f,
+                1.0f,
+                0.0f,
+                0.0f,
+                1.0f,
+                1.0f,
+                0.0f,
+                1.5f)
             ));
 
     glm::mat4 model(1.0f);

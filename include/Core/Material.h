@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <random>
 #include <cmath>
 
@@ -11,30 +12,24 @@
 #include "Ray.h"
 #include "Math.h"
 #include "Transform.h"
+#include "PiecewiseDistrib.h"
 
 enum class TransportMode
 {
 	Radiance, Importance
 };
 
-struct Sample
+struct BSDFSample
 {
-	Sample(): dir(0.0f), pdf(0.0f), type(0), eta(0.0f) {}
-
-	Sample(const Vec4f &sample, int type, float eta = 1.0f):
-		dir(sample), pdf(sample.w), type(type), eta(eta) {}
-
-	Sample(const Vec3f &dir, float pdf, int type, float eta = 1.0f):
-		dir(dir), pdf(pdf), type(type), eta(eta) {}
+	BSDFSample(const Vec3f &dir, float pdf, int type, const Vec3f &bsdf, float eta = 1.0f):
+		dir(dir), pdf(pdf), type(type), bsdf(bsdf), eta(eta) {}
 
 	Vec3f dir;
 	float pdf;
 	BXDF type;
 	float eta;
+	Vec3f bsdf;
 };
-
-typedef std::pair<Sample, Vec3f> SampleWithBsdf;
-const SampleWithBsdf INVALID_BSDF_SAMPLE = SampleWithBsdf(Sample(), Vec3f(0.0f));
 
 class Material
 {
@@ -42,59 +37,10 @@ public:
 	Material(int bxdfType): matBxdf(bxdfType) {}
 
 	virtual Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode = TransportMode::Radiance) = 0;
-	virtual Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode = TransportMode::Radiance) = 0;
 	virtual float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode = TransportMode::Radiance) = 0;
-
-	virtual SampleWithBsdf sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode = TransportMode::Radiance)
-	{
-		Sample sample = getSample(N, Wo, u1, u2);
-		Vec3f bsdf = this->bsdf(N, Wo, sample.dir, mode);
-		return SampleWithBsdf(sample, bsdf);
-	}
-
-	virtual Vec4f getSampleForward(const Vec3f &N, const Vec3f &Wi)
-	{
-		Sample sample = getSample(N, Wi, 0.0f, {});
-		return Vec4f(sample.dir, sample.pdf);
-	}
+	virtual std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode = TransportMode::Radiance) = 0;
 
 	const BXDF& bxdf() const { return matBxdf; }
-
-protected:
-	inline static bool refract(Vec3f &Wt, const Vec3f &Wi, const Vec3f &N, float eta)
-	{
-		float cosTi = glm::dot(N, Wi);
-		if (cosTi < 0) eta = 1.0f / eta;
-		float sin2Ti = glm::max(0.0f, 1.0f - cosTi * cosTi);
-		float sin2Tt = sin2Ti / (eta * eta);
-
-		if (sin2Tt >= 1.0f) return false;
-
-		float cosTt = glm::sqrt(1.0f - sin2Tt);
-		if (cosTi < 0) cosTt = -cosTt;
-		Wt = glm::normalize(-Wi / eta + N * (cosTi / eta - cosTt));
-		return true;
-	}
-
-	inline static float fresnelDielectric(float cosTi, float eta)
-	{
-		cosTi = glm::clamp(cosTi, -1.0f, 1.0f);
-		if (cosTi < 0.0f)
-		{
-			eta = 1.0f / eta;
-			cosTi = -cosTi;
-		}
-
-		float sinTi = glm::sqrt(1.0f - cosTi * cosTi);
-		float sinTt = sinTi / eta;
-		if (sinTt >= 1.0f) return 1.0f;
-
-		float cosTt = glm::sqrt(1.0f - sinTt * sinTt);
-
-		float rPa = (cosTi - eta * cosTt) / (cosTi + eta * cosTt);
-		float rPe = (eta * cosTi - cosTt) / (eta * cosTi + cosTt);
-		return (rPa * rPa + rPe * rPe) * 0.5f;
-	}
 
 protected:
 	BXDF matBxdf;
@@ -111,7 +57,7 @@ public:
 
 	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
 	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
-	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
 
 private:
 	Vec3f albedo;
@@ -127,7 +73,7 @@ public:
 
 	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
 	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
-	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
 
 private:
 	Vec3f albedo;
@@ -145,7 +91,7 @@ public:
 
 	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
 	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
-	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
 
 private:
 	GTR1Distrib distrib;
@@ -162,8 +108,7 @@ public:
 
 	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
 	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
-	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode) { return Sample(); }
-	SampleWithBsdf sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode) override;
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
 
 private:
 	float ior;
@@ -181,10 +126,112 @@ public:
 
 	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
 	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode) { return 0.0f; }
-	Sample getSample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode) { return Sample(); }
-	SampleWithBsdf sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode) override;
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
 
 private:
 	Vec3f tint;
 	float ior;
 };
+
+class DisneyDiffuse :
+	public Material
+{
+public:
+	DisneyDiffuse(const Vec3f &baseColor, float roughness, float subsurface) :
+		baseColor(baseColor), roughness(roughness), subsurface(subsurface),
+		Material(BXDF::Diffuse) {}
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+
+private:
+	Vec3f baseColor;
+	float roughness;
+	float subsurface;
+};
+
+class DisneyMetal :
+	public Material
+{
+public:
+	DisneyMetal(const Vec3f &baseColor, float roughness, float anisotropic = 0.0f) :
+		baseColor(baseColor), distrib(roughness, true, anisotropic), Material(BXDF::GlosRefl) {}
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+
+private:
+	Vec3f baseColor;
+	GGXDistrib distrib;
+};
+
+class DisneyClearcoat :
+	public Material
+{
+public:
+	DisneyClearcoat(float gloss) : alpha(glm::mix(0.1f, 0.001f, gloss)), distrib(alpha),
+		Material(BXDF::GlosRefl) {}
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+
+private:
+	float alpha;
+	GTR1Distrib distrib;
+};
+
+class DisneySheen :
+	public Material
+{
+public:
+	DisneySheen(const Vec3f &baseColor, float tint) :
+		baseColor(baseColor), tint(tint), Material(BXDF::GlosRefl) {}
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+
+private:
+	Vec3f baseColor;
+	float tint;
+};
+
+class DisneyBSDF :
+	public Material
+{
+public:
+	DisneyBSDF(
+		const Vec3f &baseColor = Vec3f(1.0f),
+		float subsurface = 0.0f,
+		float metallic = 0.0f,
+		float roughness = 0.5f,
+		float specular = 0.5f,
+		float specularTint = 0.0f,
+		float sheen = 0.0f,
+		float sheenTint = 0.0f,
+		float clearcoat = 0.0f,
+		float clearcoatTint = 0.0f,
+		float transmission = 0.0f,
+		float ior = 1.5f
+	);
+
+	Vec3f bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	float pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode);
+	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
+
+private:
+	DisneyDiffuse diffuse;
+	DisneyMetal metal;
+	DisneyClearcoat clearcoat;
+	DisneySheen sheen;
+	Dielectric dielectric;
+	Piecewise1D piecewiseSampler;
+	float weights[5];
+	Material *components[5];
+};
+
+bool refract(Vec3f &Wt, const Vec3f &Wi, const Vec3f &N, float eta);
+float fresnelDielectric(float cosTi, float eta);

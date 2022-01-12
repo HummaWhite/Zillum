@@ -1,5 +1,44 @@
 #include "../../include/Core/Material.h"
 
+bool refract(Vec3f &Wt, const Vec3f &Wi, const Vec3f &N, float eta)
+{
+    float cosTi = glm::dot(N, Wi);
+    if (cosTi < 0)
+        eta = 1.0f / eta;
+    float sin2Ti = glm::max(0.0f, 1.0f - cosTi * cosTi);
+    float sin2Tt = sin2Ti / (eta * eta);
+
+    if (sin2Tt >= 1.0f)
+        return false;
+
+    float cosTt = glm::sqrt(1.0f - sin2Tt);
+    if (cosTi < 0)
+        cosTt = -cosTt;
+    Wt = glm::normalize(-Wi / eta + N * (cosTi / eta - cosTt));
+    return true;
+}
+
+float fresnelDielectric(float cosTi, float eta)
+{
+    cosTi = glm::clamp(cosTi, -1.0f, 1.0f);
+    if (cosTi < 0.0f)
+    {
+        eta = 1.0f / eta;
+        cosTi = -cosTi;
+    }
+
+    float sinTi = glm::sqrt(1.0f - cosTi * cosTi);
+    float sinTt = sinTi / eta;
+    if (sinTt >= 1.0f)
+        return 1.0f;
+
+    float cosTt = glm::sqrt(1.0f - sinTt * sinTt);
+
+    float rPa = (cosTi - eta * cosTt) / (cosTi + eta * cosTt);
+    float rPe = (eta * cosTi - cosTt) / (eta * cosTi + cosTt);
+    return (rPa * rPa + rPe * rPe) * 0.5f;
+}
+
 Vec3f Dielectric::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     if (approxDelta)
@@ -58,7 +97,7 @@ float Dielectric::pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, Transpor
     }
 }
 
-SampleWithBsdf Dielectric::sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)
+std::optional<BSDFSample> Dielectric::sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)
 {
     if (approxDelta)
     {
@@ -67,7 +106,7 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float
         if (u1 < refl)
         {
             Vec3f Wi = -glm::reflect(Wo, N);
-            return SampleWithBsdf(Sample(Wi, 1.0f, BXDF::SpecRefl), tint);
+            return BSDFSample(Wi, 1.0f, BXDF::SpecRefl, tint);
         }
         else
         {
@@ -75,10 +114,10 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float
             Vec3f Wi;
             bool refr = refract(Wi, Wo, N, ior);
             if (!refr)
-                return INVALID_BSDF_SAMPLE;
+                return std::nullopt;
 
             float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
-            return SampleWithBsdf(Sample(Wi, 1.0f, BXDF::SpecTrans, eta), tint * factor);
+            return BSDFSample(Wi, 1.0f, BXDF::SpecTrans, tint * factor, eta);
         }
     }
     else
@@ -93,7 +132,7 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float
         {
             auto Wi = -glm::reflect(Wo, H);
             if (!Math::sameHemisphere(N, Wo, Wi))
-                return INVALID_BSDF_SAMPLE;
+                return std::nullopt;
 
             float p = distrib.pdf(N, H, Wo) / (4.0f * Math::absDot(H, Wo));
             float HoWo = Math::absDot(H, Wo);
@@ -105,7 +144,7 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return SampleWithBsdf(Sample(Wi, p, BXDF::GlosRefl), r);
+            return BSDFSample(Wi, p, BXDF::GlosRefl, r);
         }
         else
         {
@@ -113,12 +152,8 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float
 
             Vec3f Wi;
             bool refr = refract(Wi, Wo, H, ior);
-            if (!refr)
-                return INVALID_BSDF_SAMPLE;
-            if (Math::sameHemisphere(N, Wo, Wi))
-                return INVALID_BSDF_SAMPLE;
-            if (Math::absDot(N, Wi) < 1e-10f)
-                return INVALID_BSDF_SAMPLE;
+            if (!refr || Math::sameHemisphere(N, Wo, Wi) || Math::absDot(N, Wi) < 1e-10f)
+                return std::nullopt;
 
             float HoWo = Math::absDot(H, Wo);
             float HoWi = Math::absDot(H, Wi);
@@ -138,7 +173,7 @@ SampleWithBsdf Dielectric::sampleWithBsdf(const Vec3f &N, const Vec3f &Wo, float
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return SampleWithBsdf(Sample(Wi, p, BXDF::GlosTrans, eta), r);
+            return BSDFSample(Wi, p, BXDF::GlosTrans, r, eta);
         }
     }
 }

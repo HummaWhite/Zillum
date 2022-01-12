@@ -1,10 +1,9 @@
 #pragma once
 
-#include "DistribTerm.h"
 #include "Transform.h"
 #include "Math.h"
 
-class MicrofacetDistrib
+class NormalDistrib
 {
 public:
 	virtual float d(const Vec3f &N, const Vec3f &M) = 0;
@@ -13,7 +12,7 @@ public:
 };
 
 class GGXDistrib:
-	public MicrofacetDistrib
+	public NormalDistrib
 {
 public:
 	GGXDistrib(float roughness, bool sampleVisible, float aniso = 0.0f);
@@ -29,7 +28,7 @@ private:
 };
 
 class GTR1Distrib:
-	public MicrofacetDistrib
+	public NormalDistrib
 {
 public:
 	GTR1Distrib(float roughness) : alpha(roughness * roughness) {}
@@ -41,3 +40,16 @@ public:
 private:
 	float alpha;
 };
+
+float schlickG(float cosTheta, float alpha);
+float smithG(float cosThetaO, float cosThetaI, float alpha);
+float smithG(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, float alpha);
+
+float ggx(float cosTheta, float alpha);
+float ggx(float cosTheta, float sinPhi, const glm::vec2 &alph);
+float gtr1(float cosTheta, float alpha);
+
+float schlickW(float cosTheta);
+float schlickF(float cosTheta);
+Vec3f schlickF(float cosTheta, const Vec3f &F0);
+Vec3f schlickF(float cosTheta, const Vec3f &F0, float roughness);
