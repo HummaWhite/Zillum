@@ -27,25 +27,27 @@ private:
 	void saveImage();
 
 private:
-	std::string name;
-	int windowWidth;
-	int windowHeight;
+	std::string mName;
+	int mWindowWidth;
+	int mWindowHeight;
 
-	HINSTANCE instance;
-	HWND window;
-	HDC memdc;
-	HBITMAP bitmap;
+	HINSTANCE mInstance;
+	HWND mWindow;
+	HDC mMemdc;
+	HBITMAP mBitmap;
 
-	bool keyPressing[256];
-	bool F1Pressed = false;
-	bool cursorDisabled = true;
-	int lastCursorX;
-	int lastCursorY;
-	bool firstCursorMove = true;
+	bool mKeyPressing[256];
+	bool mF1Pressed = false;
+	bool mCursorDisabled = true;
+	int mLastCursorX;
+	int mLastCursorY;
+	bool mFirstCursorMove = true;
 
-	int toneMappingMethod = 2;
+	int mToneMappingMethod = 2;
 
-	FrameBufferDouble<RGB24> colorBuffer;
-	IntegratorPtr integrator;
-	ScenePtr scene;
+	FrameBufferDouble<RGB24> mColorBuffer;
+	IntegratorPtr mIntegrator;
+	ScenePtr mScene;
+
+	float mResultScale = 1.0f;
 };

@@ -1,5 +1,6 @@
 target = Zillum.exe
-flags = -std=c++17 -g -lgdi32 -O3
+compFlags = -std=c++17 -O3 -g
+linkFlags = -lgdi32
 CC = g++
 
 src = $(wildcard ./src/*.cpp ./src/Accelerator/*.cpp ./src/Integrator/*.cpp \
@@ -13,10 +14,10 @@ inc = $(patsubst %.cpp, %.h, $(src))
 all : $(target)
 
 $(target) : $(obj)
-	$(CC) $(obj) -o $(target) $(flags)
+	$(CC) $(obj) -o $(target) $(linkFlags)
 
 %.o : %.cpp
-	$(CC) -c $< -o $@ $(flags)
+	$(CC) -c $< -o $@ $(compFlags)
 
 %.cpp : %.h
 

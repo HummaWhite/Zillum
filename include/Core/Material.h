@@ -21,7 +21,7 @@ enum class TransportMode
 
 struct BSDFSample
 {
-	BSDFSample(const Vec3f &dir, float pdf, int type, const Vec3f &bsdf, float eta = 1.0f):
+	BSDFSample(const Vec3f &dir, float pdf, BXDF type, const Vec3f &bsdf, float eta = 1.0f):
 		dir(dir), pdf(pdf), type(type), bsdf(bsdf), eta(eta) {}
 
 	Vec3f dir;
@@ -213,8 +213,9 @@ public:
 		float sheen = 0.0f,
 		float sheenTint = 0.0f,
 		float clearcoat = 0.0f,
-		float clearcoatTint = 0.0f,
+		float clearcoatGloss = 0.0f,
 		float transmission = 0.0f,
+		float transmissionRoughness = 0.013f,
 		float ior = 1.5f
 	);
 

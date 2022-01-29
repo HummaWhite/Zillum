@@ -98,7 +98,8 @@ class LightPathIntegrator :
     public Integrator
 {
 public:
-    LightPathIntegrator(ScenePtr scene, int pathsOnePass);
+    LightPathIntegrator(ScenePtr scene, int pathsOnePass) :
+    	pathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::LightPath) {}
     void renderOnePass();
     void reset();
 
@@ -108,11 +109,11 @@ private:
 
 public:
     int maxDepth = 5;
+	float *resultScale;
 
 private:
     int pathsOnePass;
-    Buffer2D<uint64_t> pixelCount;
-    uint64_t pathCount = 0;
+	uint64_t pathCount = 0;
 };
 
 class AdjointPathIntegrator :

@@ -18,9 +18,9 @@ Ray PanoramaCamera::generateRay(Vec2f uv, SamplerPtr sampler)
     return {pos, dir};
 }
 
-CameraIiSample PanoramaCamera::sampleIi(Vec3f ref, Vec2f u)
+std::optional<CameraIiSample> PanoramaCamera::sampleIi(Vec3f ref, Vec2f u)
 {
-    return {};
+    return std::nullopt;
 }
 
 std::pair<float, float> PanoramaCamera::pdfIe(Ray ray)

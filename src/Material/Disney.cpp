@@ -70,8 +70,7 @@ std::optional<BSDFSample> DisneyMetal::sample(const Vec3f &N, const Vec3f &Wo, f
     Vec3f H = distrib.sampleWm(N, Wo, u2);
     Vec3f Wi = glm::reflect(-Wo, H);
 
-    float NoWi = glm::dot(N, Wi);
-    if (NoWi < 0.0f)
+    if (glm::dot(N, Wi) < 0.0f)
         return std::nullopt;
     return BSDFSample(Wi, pdf(N, Wo, Wi, mode), BXDF::GlosRefl, bsdf(N, Wo, Wi, mode));
 }
@@ -133,6 +132,7 @@ std::optional<BSDFSample> DisneySheen::sample(const Vec3f &N, const Vec3f &Wo, f
     return BSDFSample(Wi, pdf, BXDF::Diffuse, bsdf(N, Wo, Wi, mode));
 }
 
+// TODO: this implementation is not correct
 DisneyBSDF::DisneyBSDF(
     const Vec3f &baseColor,
     float subsurface,
@@ -143,26 +143,29 @@ DisneyBSDF::DisneyBSDF(
     float sheen,
     float sheenTint,
     float clearcoat,
-    float clearcoatTint,
+    float clearcoatGloss,
     float transmission,
+	float transmissionRoughness,
     float ior
 ) :
     diffuse(baseColor, roughness, subsurface),
     metal(baseColor, roughness),
-    clearcoat(clearcoat),
+    clearcoat(clearcoatGloss),
     sheen(baseColor, sheenTint),
-    dielectric(baseColor, roughness, ior),
+    dielectric(baseColor, transmissionRoughness, ior),
     Material(BXDF::Diffuse | BXDF::GlosRefl | BXDF::GlosTrans)
 {
     weights[0] = (1.0f - metallic) * (1.0f - transmission);
     weights[1] = (1.0f - transmission * (1.0f - metallic));
     weights[2] = 0.25f * clearcoat;
     weights[3] = (1.0f - metallic) * transmission;
+    weights[4] = (1.0f - metallic) * sheen;
 
     components[0] = &diffuse;
     components[1] = &metal;
     components[2] = &this->clearcoat;
     components[3] = &dielectric;
+    components[4] = &this->sheen;
 
     std::vector<float> w(4);
     std::copy(weights, weights + 4, w.data());
@@ -172,7 +175,7 @@ DisneyBSDF::DisneyBSDF(
 Vec3f DisneyBSDF::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     Vec3f r(0.0f);
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
         r += components[i]->bsdf(N, Wo, Wi, mode) * weights[i];
     return r;
 }
@@ -188,6 +191,7 @@ float DisneyBSDF::pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, Transpor
 
 std::optional<BSDFSample> DisneyBSDF::sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)
 {
+    // TODO: here needs two extra samples, causing sampling of each path not aligned
     int comp = piecewiseSampler.sample({ uniformFloat(), uniformFloat() });
     return components[comp]->sample(N, Wo, u1, u2, mode);
 }

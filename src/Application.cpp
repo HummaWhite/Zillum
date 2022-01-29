@@ -2,14 +2,14 @@
 
 void Application::init(const std::string &name, HINSTANCE instance, int width, int height, int spp)
 {
-    this->instance = instance;
-    this->windowWidth = width;
-    this->windowHeight = height;
+    this->mInstance = instance;
+    this->mWindowWidth = width;
+    this->mWindowHeight = height;
 
-    lastCursorX = width / 2;
-    lastCursorY = height / 2;
+    mLastCursorX = width / 2;
+    mLastCursorY = height / 2;
 
-    window = CreateWindowA(
+    mWindow = CreateWindowA(
         name.c_str(), name.c_str(),
         WS_OVERLAPPEDWINDOW & ~WS_MINIMIZEBOX & ~WS_SIZEBOX,
         CW_USEDEFAULT, CW_USEDEFAULT,
@@ -19,12 +19,12 @@ void Application::init(const std::string &name, HINSTANCE instance, int width, i
         0,
         nullptr);
 
-    SetWindowPos(window, HWND_TOP, 0, 0, width, height, SWP_NOMOVE);
-    ShowWindow(window, 1);
-    UpdateWindow(window);
-    SetWindowPos(window, HWND_TOP, 0, 0, width + 5, height + 25, SWP_NOMOVE);
+    SetWindowPos(mWindow, HWND_TOP, 0, 0, width, height, SWP_NOMOVE);
+    ShowWindow(mWindow, 1);
+    UpdateWindow(mWindow);
+    SetWindowPos(mWindow, HWND_TOP, 0, 0, width + 5, height + 25, SWP_NOMOVE);
 
-    colorBuffer.init(width, height);
+    mColorBuffer.init(width, height);
     initScene(spp);
 }
 
@@ -38,14 +38,14 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
         auto metricY = GetSystemMetrics(SM_CYSCREEN);
 
         HDC hdc = GetDC(hWnd);
-        bitmap = CreateCompatibleBitmap(hdc, metricX, metricY);
+        mBitmap = CreateCompatibleBitmap(hdc, metricX, metricY);
 
-        memdc = CreateCompatibleDC(hdc);
-        SelectObject(memdc, bitmap);
+        mMemdc = CreateCompatibleDC(hdc);
+        SelectObject(mMemdc, mBitmap);
 
-        BitBlt(memdc, 0, 0, metricX, metricY, memdc, 0, 0, WHITENESS);
+        BitBlt(mMemdc, 0, 0, metricX, metricY, mMemdc, 0, 0, WHITENESS);
 
-        DeleteDC(memdc);
+        DeleteDC(mMemdc);
         ReleaseDC(hWnd, hdc);
 
         break;
@@ -58,14 +58,14 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
         RECT rect;
 
         hdc = BeginPaint(hWnd, &ps);
-        memdc = CreateCompatibleDC(hdc);
-        SelectObject(memdc, bitmap);
+        mMemdc = CreateCompatibleDC(hdc);
+        SelectObject(mMemdc, mBitmap);
         GetClientRect(hWnd, &rect);
 
-        BitBlt(hdc, 0, 0, rect.right - rect.left, rect.bottom - rect.top, memdc, 0, 0, SRCCOPY);
+        BitBlt(hdc, 0, 0, rect.right - rect.left, rect.bottom - rect.top, mMemdc, 0, 0, SRCCOPY);
 
-        DeleteDC(memdc);
-        memdc = 0;
+        DeleteDC(mMemdc);
+        mMemdc = 0;
         EndPaint(hWnd, &ps);
 
         break;
@@ -73,44 +73,44 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 
     case WM_KEYDOWN:
     {
-        keyPressing[(int)wParam] = true;
+        mKeyPressing[(int)wParam] = true;
         if ((int)wParam == VK_F1)
         {
-            cursorDisabled ^= 1;
-            firstCursorMove = true;
+            mCursorDisabled ^= 1;
+            mFirstCursorMove = true;
         }
         else if ((int)wParam == 'T')
-            toneMappingMethod = (toneMappingMethod + 1) % 4;
+            mToneMappingMethod = (mToneMappingMethod + 1) % 4;
         else if ((int)wParam == 'O')
             saveImage();
         break;
     }
 
     case WM_KEYUP:
-        keyPressing[(int)wParam] = false;
+        mKeyPressing[(int)wParam] = false;
         break;
 
     case WM_MOUSEMOVE:
     {
-        if (cursorDisabled)
+        if (mCursorDisabled)
             break;
-        integrator->reset();
+        mIntegrator->reset();
 
-        if (firstCursorMove)
+        if (mFirstCursorMove)
         {
-            lastCursorX = (int)LOWORD(lParam);
-            lastCursorY = (int)HIWORD(lParam);
-            firstCursorMove = false;
+            mLastCursorX = (int)LOWORD(lParam);
+            mLastCursorY = (int)HIWORD(lParam);
+            mFirstCursorMove = false;
         }
 
-        float offsetX = ((int)LOWORD(lParam) - lastCursorX) * CameraRotateSensitivity;
-        float offsetY = ((int)HIWORD(lParam) - lastCursorY) * CameraRotateSensitivity;
+        float offsetX = ((int)LOWORD(lParam) - mLastCursorX) * CameraRotateSensitivity;
+        float offsetY = ((int)HIWORD(lParam) - mLastCursorY) * CameraRotateSensitivity;
 
         Vec3f offset(-offsetX, -offsetY, 0.0f);
-        scene->camera->rotate(offset);
+        mScene->camera->rotate(offset);
 
-        lastCursorX = (int)LOWORD(lParam);
-        lastCursorY = (int)HIWORD(lParam);
+        mLastCursorX = (int)LOWORD(lParam);
+        mLastCursorY = (int)HIWORD(lParam);
         break;
     }
 
@@ -124,7 +124,7 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		*/
 
     case WM_DESTROY:
-        DeleteObject(bitmap);
+        DeleteObject(mBitmap);
         PostQuitMessage(0);
         break;
 
@@ -138,16 +138,16 @@ void Application::render()
 {
     processKey();
 
-    if (!integrator->isFinished())
+    if (!mIntegrator->isFinished())
     {
-        integrator->renderOnePass();
+        mIntegrator->renderOnePass();
         writeBuffer();
     }
     flushScreen();
 
-    if (integrator->isFinished())
+    if (mIntegrator->isFinished())
         return;
-    colorBuffer.swap();
+    mColorBuffer.swap();
 }
 
 void Application::initScene(int spp)
@@ -242,27 +242,12 @@ void Application::initScene(int spp)
     sc->addHittable(
         std::make_shared<Object>(
             std::make_shared<Sphere>(Vec3f(1.0f, 3.0f, 0.0f), 1.0f, true),
+            std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 1.5f)
             //std::make_shared<Clearcoat>(0.01f, 1.0f)
             //std::make_shared<MetalWorkflow>(Vec3f(1.0f, 0.5f, 0.2f), 0.0f, 1.0f)
             //std::make_shared<Lambertian>(Vec3f(1.0f, 0.5f, 0.2f))
             //std::make_shared<DisneyDiffuse>(Vec3f(1.0f, 0.5f, 0.2f), 1.0f, 1.0f)
-            //std::make_shared<DisneyMetal>(Vec3f(1.0f, 0.5f, 0.2f), 0.1f)
-            //std::make_shared<DisneyClearcoat>(0.0f)
-            //std::make_shared<DisneySheen>(Vec3f(1.0f, 0.5f, 0.2f), 0.0f)
-            std::make_shared<DisneyBSDF>(
-                Vec3f(1.0f, 0.5f, 0.2f),
-                1.0f,
-                0.0f,
-                1.0f,
-                1.0f,
-                1.0f,
-                0.0f,
-                0.0f,
-                1.0f,
-                1.0f,
-                0.0f,
-                1.5f)
-            ));
+        ));
 
     glm::mat4 model(1.0f);
     model = glm::translate(model, Vec3f(1.0f, 2.0f, -2.1f));
@@ -294,56 +279,46 @@ void Application::initScene(int spp)
                 Vec3f(-0.75f, 2.25f, 2.999f)),
             Vec3f(100.0f), false));
 
-    //camera->setPos({ 2.4f, -3.0f, 1.75f });
-    //camera->setFOV(80.0f);
-    //camera->lookAt(Vec3f(0.4f, 0.0f, 1.0f));
-
-    //camera->setPos({ 2.4f, -3.6f, /*2.75f*/ 3.75f });
     auto camera = std::make_shared<ThinLensCamera>(40.0f);
-    //auto camera = std::make_shared<PanoramaCamera>();
-    camera->initFilm(windowWidth, windowHeight);
+    camera->initFilm(mWindowWidth, mWindowHeight);
     camera->setPos({0.0f, -8.0f, 0.0f});
     camera->lookAt(Vec3f(0.0f));
-    //camera->lookAt(Vec3f(0.4f, 0.0f, 0.5f));
 
     //sc->env = std::make_shared<EnvSphereMapHDR>("res/texture/076.hdr");
+    sc->env = std::make_shared<EnvSingleColor>(Vec3f(0.0f));
     sc->lightAndEnvStrategy = LightSampleStrategy::ByPower;
     sc->lightAndEnvStrategy = LightSampleStrategy::ByPower;
     sc->camera = camera;
     sc->buildScene();
-    scene = sc;
+    mScene = sc;
     
-    auto integ = std::make_shared<PathIntegrator>(sc, spp);
-    integ->limitSpp = (spp != 0);
-    integ->tracingDepth = 5;
-    integ->sampleDirectLight = true;
-    integ->enableMIS = true;
-    // auto integ = std::make_shared<LightPathIntegrator>(sc, 20000);
-    // integ->maxDepth = 1;
-    // auto integ = std::make_shared<AdjointPathIntegrator>(sc, spp);
-    // integ->maxCameraDepth = 1;
-    // integ->maxLightDepth = 1;
-    //integ->mSampler = std::make_shared<IndependentSampler>();
-    //integ->mSampler = std::make_shared<SimpleSobolSampler>(windowWidth, windowHeight);
-    integrator = integ;
+    // auto integ = std::make_shared<PathIntegrator>(sc, spp);
+    // integ->limitSpp = (spp != 0);
+    // integ->tracingDepth = 5;
+    // integ->sampleDirectLight = true;
+    // integ->enableMIS = true;
+    auto integ = std::make_shared<LightPathIntegrator>(sc, spp);
+    integ->maxDepth = 5;
+    integ->resultScale = &mResultScale;
+    mIntegrator = integ;
 }
 
 void Application::writeBuffer()
 {
-    auto resultBuffer = integrator->result();
+    auto resultBuffer = mIntegrator->result();
     using namespace ToneMapping;
 
     Vec3f (*toneMapping[4])(const Vec3f &) = {reinhard, CE, filmic, ACES};
 
-    for (int i = 0; i < windowWidth; i++)
+    for (int i = 0; i < mWindowWidth; i++)
     {
-        for (int j = 0; j < windowHeight; j++)
+        for (int j = 0; j < mWindowHeight; j++)
         {
-            auto result = resultBuffer(i, j);
+            auto result = resultBuffer(i, j) * mResultScale;
             result = glm::clamp(result, Vec3f(0.0f), Vec3f(1e8f));
-            result = toneMapping[toneMappingMethod](result);
+            result = toneMapping[mToneMappingMethod](result);
             result = glm::pow(result, Vec3f(1.0f / 2.2f));
-            colorBuffer(i, j) = RGB24::swapRB(RGB24(result));
+            mColorBuffer(i, j) = RGB24::swapRB(RGB24(result));
         }
     }
 }
@@ -356,31 +331,31 @@ void Application::flushScreen()
     auto &header = bInfo.bmiHeader;
     header.biBitCount = 24;
     header.biCompression = BI_RGB;
-    header.biWidth = windowWidth;
-    header.biHeight = -windowHeight;
+    header.biWidth = mWindowWidth;
+    header.biHeight = -mWindowHeight;
     header.biPlanes = 1;
     header.biSizeImage = 0;
     header.biSize = sizeof(BITMAPINFOHEADER);
 
-    HDC dc = GetDC(window);
+    HDC dc = GetDC(mWindow);
     HDC compatibleDC = CreateCompatibleDC(dc);
-    HBITMAP compatibleBitmap = CreateCompatibleBitmap(dc, windowWidth, windowHeight);
+    HBITMAP compatibleBitmap = CreateCompatibleBitmap(dc, mWindowWidth, mWindowHeight);
     HBITMAP oldBitmap = (HBITMAP)SelectObject(compatibleDC, compatibleBitmap);
 
     SetDIBits(
         dc,
         compatibleBitmap,
         0,
-        windowHeight,
-        (BYTE *)colorBuffer.getCurrentBuffer().bufPtr(),
+        mWindowHeight,
+        (BYTE *)mColorBuffer.getCurrentBuffer().bufPtr(),
         &bInfo,
         DIB_RGB_COLORS);
-    BitBlt(dc, -1, -1, windowWidth, windowHeight, compatibleDC, 0, 0, SRCCOPY);
+    BitBlt(dc, -1, -1, mWindowWidth, mWindowHeight, compatibleDC, 0, 0, SRCCOPY);
 
     DeleteDC(compatibleDC);
     DeleteObject(oldBitmap);
     DeleteObject(compatibleBitmap);
-    UpdateWindow(window);
+    UpdateWindow(mWindow);
 }
 
 void Application::processKey()
@@ -389,21 +364,21 @@ void Application::processKey()
 
     for (int i = 0; i < 9; i++)
     {
-        if (keyPressing[keyList[i]])
+        if (mKeyPressing[keyList[i]])
         {
-            scene->camera->move(keyList[i]);
-            integrator->reset();
+            mScene->camera->move(keyList[i]);
+            mIntegrator->reset();
         }
     }
 }
 
 void Application::saveImage()
 {
-    int w = colorBuffer.width(), h = colorBuffer.height();
+    int w = mColorBuffer.width(), h = mColorBuffer.height();
     int size = w * h;
     RGB24 *data = new RGB24[size];
     for (int i = 0; i < size; i++)
-        data[i] = RGB24::swapRB(colorBuffer[i]);
+        data[i] = RGB24::swapRB(mColorBuffer[i]);
     std::string file = "screenshot/saves/save" + std::to_string((int)time(0)) + ".png";
     stbi_write_png(file.c_str(), w, h, 3, data, w * 3);
     delete[] data;

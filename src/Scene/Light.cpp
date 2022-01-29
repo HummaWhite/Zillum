@@ -45,11 +45,3 @@ LightLeSample Light::sampleLe(const std::array<float, 6> &u)
 
     return { ray, Le(ray), pdfPos, pdfDir };
 }
-
-Ray Light::getRandomRay()
-{
-    Vec3f ori = uniformSample({});
-    Vec3f N = normalGeom(ori);
-    Vec3f dir = Transform::normalToWorld(N, {});
-    return {ori + dir * 1e-4f, dir};
-}

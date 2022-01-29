@@ -53,7 +53,7 @@ float ThinLensCamera::pdfIi(Vec3f ref, Vec3f y)
     return Math::distSquare(ref, y) / (lensArea * cosTheta);
 }
 
-CameraIiSample ThinLensCamera::sampleIi(Vec3f ref, Vec2f u)
+std::optional<CameraIiSample> ThinLensCamera::sampleIi(Vec3f ref, Vec2f u)
 {
     Vec3f pLens(Transform::toConcentricDisk(u) * lensRadius, 0.0f);
     Vec3f y = pos + tbnMat * pLens;
@@ -62,13 +62,13 @@ CameraIiSample ThinLensCamera::sampleIi(Vec3f ref, Vec2f u)
     Vec3f Wi = glm::normalize(y - ref);
     float cosTheta = Math::satDot(front, -Wi);
     if (cosTheta < 1e-6f)
-        return InvalidCamIiSample;
+        return std::nullopt;
 
     Ray ray(y, -Wi);
     Vec2f uv = getRasterPos(ray);
     float pdf = dist * dist / (cosTheta * (approxPinhole ? 1.0f : lensArea));
 
-    return {Wi, Ie(ray), dist, uv, pdf};
+    return CameraIiSample{ Wi, Ie(ray), dist, uv, pdf };
 }
 
 std::pair<float, float> ThinLensCamera::pdfIe(Ray ray)
@@ -83,20 +83,21 @@ std::pair<float, float> ThinLensCamera::pdfIe(Ray ray)
         return {0.0f, 0.0f};
 
     float pdfPos = approxPinhole ? 1.0f : 1.0f / lensArea;
-    float pdfDir = 1.0f / Math::qpow(cosTheta, 3);
-    return {pdfPos, pdfDir};
+    float pdfDir = 1.0f / (cosTheta * cosTheta * cosTheta);
+    return { pdfPos, pdfDir };
 }
 
 Vec3f ThinLensCamera::Ie(Ray ray)
 {
+    return Vec3f(1.0f);
     float cosTheta = glm::dot(ray.dir, front);
     if (cosTheta < 1e-6f)
         return Vec3f(0.0f);
-
     Vec2f pRaster = getRasterPos(ray);
-
     if (!inFilmBound(pRaster))
         return Vec3f(0.0f);
+    
+    float cos2Theta = cosTheta * cosTheta;
 
-    return Vec3f(1.0f / Math::qpow(cosTheta, 4)) / (approxPinhole ? 1.0f : lensArea);
+    return Vec3f(1.0f) / ((approxPinhole ? 1.0f : lensArea) * cos2Theta * cos2Theta);
 }

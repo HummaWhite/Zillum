@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <memory>
 
 #include "../Utils/Buffer2D.h"
@@ -18,7 +19,7 @@ using Film = Buffer2D<Vec3f>;
 
 enum class CameraType
 {
-	ThinLens, Ortho, Panorama
+	Pinhole, ThinLens, Ortho, Panorama
 };
 
 struct CameraIiSample
@@ -37,8 +38,6 @@ struct CameraIeSample
 	float pdfPos;
 	float pdfDir;
 };
-
-const CameraIiSample InvalidCamIiSample = { Vec3f(), Vec3f(), 0.0f, Vec2f(), 0.0f };
 
 class Camera
 {
@@ -64,7 +63,7 @@ public:
 	Vec3f r() const { return right; }
 	Vec3f u() const { return up; }
 
-	void initFilm(int w, int h) { film.init(w, h); }
+	virtual void initFilm(int w, int h) { film.init(w, h); }
 
 	virtual Vec2f getRasterPos(Ray ray) = 0;
 
@@ -72,10 +71,8 @@ public:
 	virtual Ray generateRay(Vec2f uv, SamplerPtr sampler) = 0;
 
 	virtual float pdfIi(Vec3f ref, Vec3f y) = 0;
-	virtual CameraIiSample sampleIi(Vec3f ref, Vec2f u) = 0;
-	// [pdfPos, pdfDir]
+	virtual std::optional<CameraIiSample> sampleIi(Vec3f ref, Vec2f u) = 0;
 	virtual std::pair<float, float> pdfIe(Ray ray) = 0;
-	// This is really tough to implement, fortunately it's not likely to be used
 	virtual Vec3f Ie(Ray ray) = 0;
 
 	virtual bool deltaArea() const = 0;
@@ -123,7 +120,7 @@ public:
 	Ray generateRay(Vec2f uv, SamplerPtr sampler);
 
 	float pdfIi(Vec3f ref, Vec3f y);
-	CameraIiSample sampleIi(Vec3f ref, Vec2f u);
+	std::optional<CameraIiSample> sampleIi(Vec3f ref, Vec2f u);
 	std::pair<float, float> pdfIe(Ray ray);
 	Vec3f Ie(Ray ray);
 
@@ -150,7 +147,7 @@ public:
 	Ray generateRay(Vec2f uv, SamplerPtr sampler);
 
 	float pdfIi(Vec3f ref, Vec3f y) { return 0.0f; }
-	CameraIiSample sampleIi(Vec3f ref, Vec2f u);
+	std::optional<CameraIiSample> sampleIi(Vec3f ref, Vec2f u);
 	std::pair<float, float> pdfIe(Ray ray);
 	Vec3f Ie(Ray ray);
 

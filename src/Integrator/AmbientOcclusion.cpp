@@ -18,8 +18,8 @@ Vec3f AOIntegrator::trace(Ray ray, Vec3f N, SamplerPtr sampler)
     for (int i = 0; i < samples; i++)
     {
         auto Wi = Math::sampleHemisphereCosine(N, sampler->get2D()).first;
-        Ray newRay(ray.ori + Wi * 1e-4f, Wi);
-        if (scene->quickIntersect(newRay, radius))
+        auto occRay = Ray(ray.ori, Wi).offset();
+        if (scene->quickIntersect(occRay, radius))
             ao += Vec3f(1.0f);
     }
 

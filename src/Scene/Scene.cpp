@@ -64,7 +64,7 @@ LiSample Scene::sampleLiOneLight(const Vec3f &x, const Vec2f &u1, const Vec2f &u
 
     auto [Wi, weight, dist, pdf] = liSample.value();
 
-    Ray lightRay(x + Wi * 1e-4f, Wi);
+    auto lightRay = Ray(x, Wi).offset();
     float testDist = dist - 1e-4f - 1e-6f;
 
     if (bvh->testIntersec(lightRay, testDist) || pdf < 1e-8f)
@@ -77,12 +77,9 @@ LiSample Scene::sampleLiOneLight(const Vec3f &x, const Vec2f &u1, const Vec2f &u
 LiSample Scene::sampleLiEnv(const Vec3f &x, const Vec2f &u1, const Vec2f &u2)
 {
     auto [Wi, weight, pdf] = env->sampleLi(u1, u2);
-
-    Ray ray(x + Wi * 1e-4f, Wi);
-    float tmp = 1e6;
-    if (quickIntersect(ray, tmp))
+    auto ray = Ray(x, Wi).offset();
+    if (quickIntersect(ray, 1e30f))
         return InvalidLiSample;
-
     return { Wi, weight / pdf, pdf };
 }
 
@@ -132,9 +129,12 @@ float Scene::pdfSampleEnv()
 
 IiSample Scene::sampleIiCamera(Vec3f x, Vec2f u)
 {
-    auto [Wi, imp, dist, uv, pdf] = camera->sampleIi(x, u);
+    auto sample = camera->sampleIi(x, u);
+    if (!sample)
+        return InvalidIiSample;
+    auto [Wi, imp, dist, uv, pdf] = sample.value();
 
-    Ray camRay(x + Wi * 1e-4f, Wi);
+    auto camRay = Ray(x, Wi).offset();
     float testDist = dist - 1e-4f - 1e-6f;
 
     if (bvh->testIntersec(camRay, testDist) || pdf < 1e-8f)

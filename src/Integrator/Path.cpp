@@ -63,7 +63,7 @@ Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             break;
         beta *= bsdf * NoWi / bsdfPdf;
 
-        Ray newRay(P + Wi * 1e-4f, Wi);
+        auto newRay = Ray(P, Wi).offset();
         auto [dist, obj] = scene->closestHit(newRay);
 
         if (obj == nullptr)

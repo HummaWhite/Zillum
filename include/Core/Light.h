@@ -52,8 +52,6 @@ public:
 	Vec3f Le(Ray ray);
 	LightLeSample sampleLe(const std::array<float, 6> &u);
 
-	Ray getRandomRay();
-
 protected:
 	HittablePtr shape;
 	Vec3f power;
