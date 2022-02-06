@@ -18,20 +18,20 @@ Vec2f ThinLensCamera::getRasterPos(Ray ray)
 
 Ray ThinLensCamera::generateRay(SamplerPtr sampler)
 {
-    return generateRay(sampler->get2D(), sampler);
+    return generateRay(sampler->get2(), sampler);
 }
 
 Ray ThinLensCamera::generateRay(Vec2f uv, SamplerPtr sampler)
 {
     Vec2f filmSize(film.width, film.height);
     auto texelSize = Vec2f(1.0f) / filmSize;
-    auto biased = uv + texelSize * sampler->get2D();
+    auto biased = uv + texelSize * sampler->get2();
     auto ndc = biased;
 
     float aspect = filmSize.x / filmSize.y;
     float tanFOV = glm::tan(glm::radians(FOV * 0.5f));
 
-    Vec3f pLens(Transform::toConcentricDisk(sampler->get2D()) * lensRadius, 0.0f);
+    Vec3f pLens(Transform::toConcentricDisk(sampler->get2()) * lensRadius, 0.0f);
     Vec3f pFocusPlane(ndc * Vec2f(aspect, 1.0f) * focalDist * tanFOV, focalDist);
 
     auto dir = pFocusPlane - pLens;

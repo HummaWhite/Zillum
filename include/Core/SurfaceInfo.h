@@ -11,15 +11,15 @@ using MaterialPtr = std::shared_ptr<Material>;
 struct SurfaceInfo
 {
 	SurfaceInfo(const Vec2f &uv, const Vec3f &Ns, MaterialPtr mat) :
-		uv(uv), Ns(Ns), mat(mat) {}
+		uv(uv), NShad(Ns), material(mat) {}
 
 	SurfaceInfo(const Vec2f &uv, const Vec3f &Ns, const Vec3f &Ng, MaterialPtr mat) :
-		uv(uv), Ns(Ns), Ng(Ng), mat(mat) {}
+		uv(uv), NShad(Ns), NGeom(Ng), material(mat) {}
 
 	Vec2f uv;
-	Vec3f Ns;
-	Vec3f Ng;
-	MaterialPtr mat;
+	Vec3f NShad;
+	Vec3f NGeom;
+	MaterialPtr material;
 };
 
 struct SurfaceInteraction

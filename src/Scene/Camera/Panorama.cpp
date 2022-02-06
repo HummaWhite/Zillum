@@ -7,7 +7,7 @@ Vec2f PanoramaCamera::getRasterPos(Ray ray)
 
 Ray PanoramaCamera::generateRay(SamplerPtr sampler)
 {
-    return generateRay(sampler->get2D(), sampler);
+    return generateRay(sampler->get2(), sampler);
 }
 
 Ray PanoramaCamera::generateRay(Vec2f uv, SamplerPtr sampler)

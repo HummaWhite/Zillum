@@ -1,35 +1,35 @@
 #include "../../include/Core/Scene.h"
 
 Scene::Scene(const std::vector<HittablePtr> &hittables, EnvPtr environment, CameraPtr camera) :
-    hittables(hittables), env(environment), camera(camera)
+    mHittables(hittables), mEnv(environment), mCamera(camera)
 {
     for (const auto &i : hittables)
     {
         if (i->getType() == HittableType::Light)
-            lights.push_back(std::shared_ptr<Light>(dynamic_cast<Light*>(i.get())));
+            mLights.push_back(std::shared_ptr<Light>(dynamic_cast<Light*>(i.get())));
     }
 }
 
 void Scene::setupLightSampleTable()
 {
     std::vector<float> lightPdf;
-    for (const auto &lt : lights)
+    for (const auto &lt : mLights)
     {
         float pdf = lt->getRgbPower();
         lightPdf.push_back(pdf);
     }
-    lightDistrib = Piecewise1D(lightPdf);
+    mLightDistrib = Piecewise1D(lightPdf);
 }
 
 std::optional<LightSample> Scene::sampleOneLight(Vec2f u)
 {
-    if (lights.size() == 0)
+    if (mLights.size() == 0)
         return std::nullopt;
-    bool sampleByPower = lightSampleStrategy == LightSampleStrategy::ByPower;
-    int index = sampleByPower ? lightDistrib.sample(u) : static_cast<int>(lights.size() * u.x);
+    bool sampleByPower = mLightSampleStrategy == LightSampleStrategy::ByPower;
+    int index = sampleByPower ? mLightDistrib.sample(u) : static_cast<int>(mLights.size() * u.x);
 
-    auto lt = lights[index];
-    float pdf = sampleByPower ? lt->getRgbPower() / lightDistrib.sum() : 1.0f / lights.size();
+    auto lt = mLights[index];
+    float pdf = sampleByPower ? lt->getRgbPower() / mLightDistrib.sum() : 1.0f / mLights.size();
     return LightSample{ lt, pdf };
 }
 
@@ -37,22 +37,22 @@ LightEnvSample Scene::sampleLightAndEnv(Vec2f u1, float u2)
 {
     auto lightSample = sampleOneLight(u1);
     if (!lightSample)
-        return { env, 1.0f };
+        return { mEnv, 1.0f };
 
-    float pdfSampleLight = lightAndEnvStrategy == LightSampleStrategy::ByPower ?
-            lightDistrib.sum() / powerlightAndEnv() :
+    float pdfSampleLight = mLightAndEnvStrategy == LightSampleStrategy::ByPower ?
+            mLightDistrib.sum() / powerlightAndEnv() :
             0.5f;
     auto [lt, pdfLight] = lightSample.value();
 
     if (u2 > pdfSampleLight)
-        return { env, 1.0f - pdfSampleLight };
+        return { mEnv, 1.0f - pdfSampleLight };
     else
         return { lt, pdfLight * pdfSampleLight };
 }
 
 LiSample Scene::sampleLiOneLight(const Vec3f &x, const Vec2f &u1, const Vec2f &u2)
 {
-    if (lights.size() == 0)
+    if (mLights.size() == 0)
         return InvalidLiSample;
     
     auto lightSample = sampleOneLight(u1);
@@ -67,7 +67,7 @@ LiSample Scene::sampleLiOneLight(const Vec3f &x, const Vec2f &u1, const Vec2f &u
     auto lightRay = Ray(x, Wi).offset();
     float testDist = dist - 1e-4f - 1e-6f;
 
-    if (bvh->testIntersec(lightRay, testDist) || pdf < 1e-8f)
+    if (mBvh->testIntersec(lightRay, testDist) || pdf < 1e-8f)
         return InvalidLiSample;
 
     pdf *= pdfSample;
@@ -76,7 +76,7 @@ LiSample Scene::sampleLiOneLight(const Vec3f &x, const Vec2f &u1, const Vec2f &u
 
 LiSample Scene::sampleLiEnv(const Vec3f &x, const Vec2f &u1, const Vec2f &u2)
 {
-    auto [Wi, weight, pdf] = env->sampleLi(u1, u2);
+    auto [Wi, weight, pdf] = mEnv->sampleLi(u1, u2);
     auto ray = Ray(x, Wi).offset();
     if (quickIntersect(ray, 1e30f))
         return InvalidLiSample;
@@ -87,10 +87,10 @@ LiSample Scene::sampleLiLightAndEnv(const Vec3f &x, const std::array<float, 5> &
 {
     float pdfSampleLight = 0.0f;
 
-    if (lights.size() > 0)
+    if (mLights.size() > 0)
     {
-        pdfSampleLight = lightAndEnvStrategy == LightSampleStrategy::ByPower ?
-            lightDistrib.sum() / powerlightAndEnv() :
+        pdfSampleLight = mLightAndEnvStrategy == LightSampleStrategy::ByPower ?
+            mLightDistrib.sum() / powerlightAndEnv() :
             0.5f;
     }
 
@@ -104,17 +104,50 @@ LiSample Scene::sampleLiLightAndEnv(const Vec3f &x, const std::array<float, 5> &
     return {Wi, coef / pdfSelect, pdf * pdfSelect};
 }
 
+LeSample Scene::sampleLeOneLight(const std::array<float, 6> &sample)
+{
+    auto lightSample = sampleOneLight({ sample[0], sample[1] });
+    auto [light, pdfLight] = lightSample.value();
+    auto [ray, Le, pdfPos, pdfDir] = light->sampleLe(*reinterpret_cast<const std::array<float, 4>*>(&sample[2]));
+    Vec3f Nl = light->normalGeom(ray.ori);
+    return { ray, Le * Math::satDot(Nl, ray.dir), pdfLight * pdfPos * pdfDir };
+}
+
+LeSample Scene::sampleLeEnv(const std::array<float, 6> &sample)
+{
+    auto [ray, Le, pdfPos, pdfDir] = mEnv->sampleLe(mBoundRadius, sample);
+    ray.ori += mBound.centroid();
+    return { ray, Le, pdfPos * pdfDir };
+}
+
+LeSample Scene::sampleLeLightAndEnv(const std::array<float, 7> &sample)
+{
+    float pdfSelectLight = 0.0f;
+    if (mLights.size() > 0)
+    {
+        pdfSelectLight = mLightAndEnvStrategy == LightSampleStrategy::ByPower ?
+            mLightDistrib.sum() / powerlightAndEnv() :
+            0.5f;
+    }
+    bool selectLight = sample[0] < pdfSelectLight;
+    float pdfSelect = selectLight ? pdfSelectLight : 1.0f - pdfSelectLight;
+
+    return selectLight ?
+        sampleLeOneLight(*reinterpret_cast<const std::array<float, 6>*>(&sample[1])) :
+        sampleLeEnv(*reinterpret_cast<const std::array<float, 6>*>(&sample[1]));
+}
+
 float Scene::pdfSampleLight(Light *lt)
 {
-    if (lights.size() == 0)
+    if (mLights.size() == 0)
         return 0.0f;
 
-    float fstPdf = lightSampleStrategy == LightSampleStrategy::ByPower ?
-        lt->getRgbPower() / lightDistrib.sum() :
-        1.0f / lights.size();
+    float fstPdf = mLightSampleStrategy == LightSampleStrategy::ByPower ?
+        lt->getRgbPower() / mLightDistrib.sum() :
+        1.0f / mLights.size();
 
-    float sndPdf = lightAndEnvStrategy == LightSampleStrategy::ByPower ?
-        lightDistrib.sum() / powerlightAndEnv() :
+    float sndPdf = mLightAndEnvStrategy == LightSampleStrategy::ByPower ?
+        mLightDistrib.sum() / powerlightAndEnv() :
         0.5f;
 
     return fstPdf * sndPdf;
@@ -122,14 +155,14 @@ float Scene::pdfSampleLight(Light *lt)
 
 float Scene::pdfSampleEnv()
 {
-    return lightAndEnvStrategy == LightSampleStrategy::ByPower ?
-        env->power() / (lightDistrib.sum() + env->power()) :
+    return mLightAndEnvStrategy == LightSampleStrategy::ByPower ?
+        mEnv->power() / (mLightDistrib.sum() + mEnv->power()) :
         0.5f;
 }
 
 IiSample Scene::sampleIiCamera(Vec3f x, Vec2f u)
 {
-    auto sample = camera->sampleIi(x, u);
+    auto sample = mCamera->sampleIi(x, u);
     if (!sample)
         return InvalidIiSample;
     auto [Wi, imp, dist, uv, pdf] = sample.value();
@@ -137,25 +170,23 @@ IiSample Scene::sampleIiCamera(Vec3f x, Vec2f u)
     auto camRay = Ray(x, Wi).offset();
     float testDist = dist - 1e-4f - 1e-6f;
 
-    if (bvh->testIntersec(camRay, testDist) || pdf < 1e-8f)
+    if (mBvh->testIntersec(camRay, testDist) || pdf < 1e-8f)
         return InvalidIiSample;
     return { Wi, imp / pdf, pdf };
 }
 
 void Scene::buildScene()
 {
-    bvh = std::make_shared<BVH>(hittables);
-    //auto [maxDepth, avgDepth] = bvh->dfsDetailed();
-    //std::cout << "[BVH] TreeSize: " << bvh->size() << "  MaxDepth: " << maxDepth << "  AvgDepth: " << avgDepth << "\n";
+    mBvh = std::make_shared<BVH>(mHittables);
     setupLightSampleTable();
-    box = bvh->box();
-    boundRadius = glm::distance(box.pMin, box.pMax) * 0.5f;
+    mBound = mBvh->box();
+    mBoundRadius = glm::distance(mBound.pMin, mBound.pMax) * 0.5f;
 }
 
 void Scene::addLight(LightPtr light)
 {
-    lights.push_back(light);
-    hittables.push_back(light);
+    mLights.push_back(light);
+    mHittables.push_back(light);
 }
 
 void Scene::addObjectMesh(const char *path, TransformPtr transform, MaterialPtr material)
@@ -170,7 +201,7 @@ void Scene::addObjectMesh(const char *path, TransformPtr transform, MaterialPtr 
 
         auto tr = std::make_shared<MeshTriangle>(v, t, n);
         tr->setTransform(transform);
-        hittables.push_back(std::make_shared<Object>(tr, material));
+        mHittables.push_back(std::make_shared<Object>(tr, material));
     }
 }
 
@@ -187,8 +218,8 @@ void Scene::addLightMesh(const char *path, TransformPtr transform, const Vec3f &
         auto tr = std::make_shared<Light>(std::make_shared<MeshTriangle>(v, t, n), power, false);
 
         tr->setTransform(transform);
-        hittables.push_back(tr);
-        lights.push_back(tr);
+        mHittables.push_back(tr);
+        mLights.push_back(tr);
     }
 }
 
@@ -197,7 +228,7 @@ bool Scene::visible(Vec3f x, Vec3f y)
     float dist = glm::distance(x, y) - 2e-5f;
     Vec3f Wi = glm::normalize(y - x);
     Ray ray(x + Wi * 1e-5f, Wi);
-    return !bvh->testIntersec(ray, dist);
+    return !mBvh->testIntersec(ray, dist);
 }
 
 float Scene::v(Vec3f x, Vec3f y)

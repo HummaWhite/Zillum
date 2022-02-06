@@ -37,6 +37,13 @@ struct LiSample
 	float pdf;
 };
 
+struct LeSample
+{
+	Ray emiRay;
+	Vec3f weight;
+	float pdf;
+};
+
 struct IiSample
 {
 	Vec3f Wi;
@@ -61,18 +68,22 @@ public:
 	LiSample sampleLiEnv(const Vec3f &x, const Vec2f &u1, const Vec2f &u2);
 	LiSample sampleLiLightAndEnv(const Vec3f &x, const std::array<float, 5> &sample);
 
+	LeSample sampleLeOneLight(const std::array<float, 6> &sample);
+	LeSample sampleLeEnv(const std::array<float, 6> &sample);
+	LeSample sampleLeLightAndEnv(const std::array<float, 7> &sample);
+
 	float pdfSampleLight(Light *lt);
 	float pdfSampleEnv();
-	float powerlightAndEnv() { return lightDistrib.sum() + env->power(); }
+	float powerlightAndEnv() { return mLightDistrib.sum() + mEnv->power(); }
 
 	IiSample sampleIiCamera(Vec3f x, Vec2f u);
 
 	void buildScene();
 
-	std::pair<float, HittablePtr> closestHit(const Ray &ray) { return bvh->closestHit(ray); }
-	bool quickIntersect(const Ray &ray, float dist) { return bvh->testIntersec(ray, dist); }
+	std::pair<float, HittablePtr> closestHit(const Ray &ray) { return mBvh->closestHit(ray); }
+	bool quickIntersect(const Ray &ray, float dist) { return mBvh->testIntersec(ray, dist); }
 
-	void addHittable(HittablePtr hittable) { hittables.push_back(hittable); }
+	void addHittable(HittablePtr hittable) { mHittables.push_back(hittable); }
 	void addLight(LightPtr light);
 	void addObjectMesh(const char *path, TransformPtr transform, MaterialPtr material);
 	void addLightMesh(const char *path, TransformPtr transform, const Vec3f &power);
@@ -82,18 +93,18 @@ public:
 	float g(Vec3f x, Vec3f y, Vec3f Nx, Vec3f Ny);
 
 public:
-	std::vector<HittablePtr> hittables;
-	std::vector<LightPtr> lights;
-	EnvPtr env = std::make_shared<EnvSingleColor>(Vec3f(0.0f));
-	CameraPtr camera;
+	std::vector<HittablePtr> mHittables;
+	std::vector<LightPtr> mLights;
+	EnvPtr mEnv = std::make_shared<EnvSingleColor>(Vec3f(0.0f));
+	CameraPtr mCamera;
 
-	std::shared_ptr<BVH> bvh;
-	Piecewise1D lightDistrib;
-	LightSampleStrategy lightSampleStrategy = LightSampleStrategy::ByPower;
-	LightSampleStrategy lightAndEnvStrategy = LightSampleStrategy::Uniform;
+	std::shared_ptr<BVH> mBvh;
+	Piecewise1D mLightDistrib;
+	LightSampleStrategy mLightSampleStrategy = LightSampleStrategy::ByPower;
+	LightSampleStrategy mLightAndEnvStrategy = LightSampleStrategy::Uniform;
 
-	AABB box;
-	float boundRadius;
+	AABB mBound;
+	float mBoundRadius;
 };
 
 using ScenePtr = std::shared_ptr<Scene>;

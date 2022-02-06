@@ -21,19 +21,24 @@ const int MaxThreads = std::thread::hardware_concurrency();
 
 enum class IntegratorType
 {
-	AO, LightPath, Path, AdjointPath, Bidirectional, MLT, PM
+	AO,
+	LightPath,
+	Path,
+	AdjointPath,
+	Bidirectional,
+	MLT,
+	PM
 };
 
 class Integrator
 {
 public:
-	Integrator(ScenePtr scene, IntegratorType type) :
-		scene(scene), type(type) {}
+	Integrator(ScenePtr scene, IntegratorType type) : mScene(scene), mType(type) {}
 	virtual void renderOnePass() = 0;
 
-	bool isFinished() const { return finished; }
-	Film& result() { return scene->camera->getFilm(); }
-	IntegratorType getType() const { return type; }
+	bool isFinished() const { return mFinished; }
+	Film &result() { return mScene->mCamera->getFilm(); }
+	IntegratorType getType() const { return mType; }
 
 	void setModified();
 	virtual void reset() = 0;
@@ -42,16 +47,15 @@ public:
 	SamplerPtr mSampler = std::make_shared<IndependentSampler>();
 
 protected:
-	IntegratorType type;
-	ScenePtr scene;
-	bool modified = true;
-	bool finished = false;
+	IntegratorType mType;
+	ScenePtr mScene;
+	bool mModified = true;
+	bool mFinished = false;
 };
 
 using IntegratorPtr = std::shared_ptr<Integrator>;
 
-class PixelIndependentIntegrator :
-	public Integrator
+class PixelIndependentIntegrator : public Integrator
 {
 public:
 	PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type);
@@ -64,96 +68,87 @@ private:
 	void doTracing(int start, int end, SamplerPtr sampler);
 
 public:
-	bool limitSpp = false;
+	bool mLimitSpp = false;
 
 protected:
-	const int maxSpp;
-	int curSpp = 0;
-
-	int width, height;
+	const int mMaxSpp;
+	int mCurspp = 0;
+	int mWidth, mHeight;
 };
 
-class PathIntegrator : 
-	public PixelIndependentIntegrator
+class PathIntegrator : public PixelIndependentIntegrator
 {
 public:
 	PathIntegrator(ScenePtr scene, int maxSpp) : PixelIndependentIntegrator(scene, maxSpp, IntegratorType::Path) {}
 	Vec3f tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
-	Vec3f trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler);
+	Vec3f trace(Ray ray, SurfaceInfo surf, SamplerPtr sampler);
 
 public:
-	bool roulette = true;
-	float rouletteProb = 0.6f;
-	int tracingDepth = 5;
-	int directLightSample = 1;
-	float indirectClamp = 20.0f;
-	float envStrength = 1.0f;
-	bool sampleDirectLight = false;
-	bool enableMIS = true;
+	bool mRussianRoulette = true;
+	int mRRStartDepth = 3;
+	int mMaxDepth = 5;
+	bool mSampleLi = false;
+	bool mUseMIS = true;
 };
 
-class LightPathIntegrator :
-    public Integrator
+class LightPathIntegrator : public Integrator
 {
 public:
-    LightPathIntegrator(ScenePtr scene, int pathsOnePass) :
-    	pathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::LightPath) {}
-    void renderOnePass();
-    void reset();
+	LightPathIntegrator(ScenePtr scene, int pathsOnePass) : mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::LightPath) {}
+	void renderOnePass();
+	void reset();
 
 private:
-    void trace();
-    void addToFilm(Vec2f uv, Vec3f val);
+	void trace();
+	void addToFilm(Vec2f uv, Vec3f val);
 
 public:
-    int maxDepth = 5;
-	float *resultScale;
+	bool mRussianRoulette = true;
+	int mMaxDepth = 5;
+	float *mResultScale;
 
 private:
-    int pathsOnePass;
-	uint64_t pathCount = 0;
+	int mPathsOnePass;
+	uint64_t mPathCount = 0;
+	int mRRStartDepth = 3;
 };
 
-class AdjointPathIntegrator :
-    public PixelIndependentIntegrator
+struct PathVertex;
+
+class AdjointPathIntegrator : public PixelIndependentIntegrator
 {
 public:
-    AdjointPathIntegrator(ScenePtr scene, int maxSpp) :
-        PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AdjointPath) {}
-    Vec3f tracePixel(Ray ray, SamplerPtr sampler);
-
-    struct Vertex
-    {
-        Vec3f P;
-        Vec3f N;
-        Vec3f Wo;
-        MaterialPtr mat;
-        Vec3f beta;
-    };
+	AdjointPathIntegrator(ScenePtr scene, int maxSpp) : PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AdjointPath) {}
+	Vec3f tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
-    std::optional<Vertex> findNonSpecularHit(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler);
-    Vec3f trace(Vertex v, SamplerPtr sampler);
+	std::optional<PathVertex> traceLight(SamplerPtr sampler);
+	std::optional<PathVertex> traceCamera(Ray ray, SurfaceInfo surf, SamplerPtr sampler);
+	Vec3f connect(const PathVertex &vLight, const PathVertex &vCamera);
+
+	bool russianRouletteLight(float continueProb, int bounce, SamplerPtr sampler, Vec3f &throughput);
+	bool russianRouletteCamera(float continueProb, int bounce, SamplerPtr sampler, Vec3f &throughput);
 
 public:
-    int maxCameraDepth = 5;
-    int maxLightDepth = 5;
+	bool mRussianRoulette = true;
+	int mRRCameraStartDepth = 3;
+	int mRRLightStartDepth = 3;
+	int mMaxCameraDepth = 5;
+	int mMaxLightDepth = 5;
 };
 
-class AOIntegrator:
-	public PixelIndependentIntegrator
+class AOIntegrator : public PixelIndependentIntegrator
 {
 public:
-	AOIntegrator(ScenePtr scene, int maxSpp):
-		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AO) {}
+	AOIntegrator(ScenePtr scene, int maxSpp) : PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AO) {}
 	Vec3f tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
 	Vec3f trace(Ray ray, Vec3f N, SamplerPtr sampler);
 
 public:
-	float radius = 0.5f;
-	int samples = 1;
+	float mRadius = 0.5f;
+	int mSamplesOneTime = 1;
 };

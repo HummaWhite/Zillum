@@ -12,16 +12,16 @@ uint32_t sobolSample(uint64_t index, int dim, uint32_t scramble = 0)
     return r;
 }
 
-float SimpleSobolSampler::get1D()
+float SimpleSobolSampler::get1()
 {
     float r = static_cast<float>(sobolSample(index, dim++, scramble)) * 0x1p-32f;
     scramble = rng();
     return std::min(r, Math::OneMinusEpsilon);
 }
 
-Vec2f SimpleSobolSampler::get2D()
+Vec2f SimpleSobolSampler::get2()
 {
-    return Vec2f(get1D(), get1D());
+    return Vec2f(get1(), get1());
 }
 
 void SimpleSobolSampler::setPixel(int x, int y)

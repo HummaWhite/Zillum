@@ -5,6 +5,7 @@
 
 #include "../../ext/stbIncluder.h"
 #include "../Utils/Buffer2D.h"
+//#include "../Utils/File.h"
 #include "Color.h"
 #include "Transform.h"
 
@@ -120,6 +121,16 @@ public:
 		Vec2f planeUV = Transform::sphereToPlane(glm::normalize(uv));
 		return get(planeUV.x, planeUV.y);
 	}
+
+	// void write(const File::path &path)
+	// {
+    // 	int size = width * height;
+    // 	RGB24 *data = new RGB24[size];
+    // 	for (int i = 0; i < size; i++)
+    //    	 	data[i] = RGB24::swapRB(RGB24((*this)[i]));
+    // 	stbi_write_png(path.generic_string().c_str(), width, height, 3, data, width * 3);
+    // 	delete[] data;
+	// }
 
 	void setFilterType(FilterType type) { filterType = type; }
 

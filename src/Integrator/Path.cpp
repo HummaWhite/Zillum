@@ -2,10 +2,10 @@
 
 Vec3f PathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 {
-    auto [dist, obj] = scene->closestHit(ray);
+    auto [dist, obj] = mScene->closestHit(ray);
 
     if (obj == nullptr)
-        return scene->env->getRadiance(ray.dir);
+        return mScene->mEnv->getRadiance(ray.dir);
 
     if (obj->getType() == HittableType::Light)
     {
@@ -26,37 +26,43 @@ Vec3f PathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
     return Vec3f(0.0f);
 }
 
-Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
+Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo surf, SamplerPtr sampler)
 {
     Vec3f result(0.0f);
     Vec3f beta(1.0f);
     float etaScale = 1.0f;
 
-    for (int bounce = 1; bounce <= tracingDepth; bounce++)
+    for (int bounce = 1; ; bounce++)
     {
         Vec3f P = ray.ori;
         Vec3f Wo = -ray.dir;
-        Vec3f N = sInfo.Ns;
-        auto &mat = sInfo.mat;
+        Vec3f N = surf.NShad;
+        MaterialPtr mat = surf.material;
 
-        bool deltaBsdf = sInfo.mat->bxdf().isDelta();
-
-        auto directIllumSample = sampler->get<5>();
-        if (!deltaBsdf && sampleDirectLight)
+        if (glm::dot(N, Wo) < 0)
         {
-            auto [Wi, coef, samplePdf] = scene->sampleLiLightAndEnv(P, directIllumSample);
-            if (samplePdf != 0.0f)
+            auto bxdf = mat->bxdf();
+            if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
+                N = -N;
+        }
+        bool deltaBsdf = mat->bxdf().isDelta();
+
+        auto lightSample = sampler->get<5>();
+        if (!deltaBsdf && mSampleLi)
+        {
+            auto [Wi, coef, lightPdf] = mScene->sampleLiLightAndEnv(P, lightSample);
+            if (lightPdf != 0.0f)
             {
                 float bsdfPdf = mat->pdf(N, Wo, Wi);
-                float weight = enableMIS ? Math::biHeuristic(samplePdf, bsdfPdf) : 0.5f;
+                float weight = mUseMIS ? Math::biHeuristic(lightPdf, bsdfPdf) : 0.5f;
                 result += mat->bsdf(N, Wo, Wi, TransportMode::Radiance) * beta * Math::satDot(N, Wi) * coef * weight;
             }
         }
 
-        auto sampled = sInfo.mat->sample(N, Wo, sampler->get1D(), sampler->get2D());
-        if (!sampled)
+        auto bsdfSample = surf.material->sample(N, Wo, sampler->get1(), sampler->get2());
+        if (!bsdfSample)
             break;
-        auto [Wi, bsdfPdf, type, eta, bsdf] = sampled.value();
+        auto [Wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
 
         float NoWi = type.isDelta() ? 1.0f : Math::absDot(N, Wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
@@ -64,18 +70,18 @@ Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
         beta *= bsdf * NoWi / bsdfPdf;
 
         auto newRay = Ray(P, Wi).offset();
-        auto [dist, obj] = scene->closestHit(newRay);
+        auto [dist, obj] = mScene->closestHit(newRay);
 
         if (obj == nullptr)
         {
             float weight = 1.0f;
-            if (!deltaBsdf && sampleDirectLight)
+            if (!deltaBsdf && mSampleLi)
             {
-                float envPdf = scene->env->pdfLi(Wi) * scene->pdfSampleEnv();
+                float envPdf = mScene->mEnv->pdfLi(Wi) * mScene->pdfSampleEnv();
                 weight = (envPdf <= 0.0f) ? 0.0f :
-                    enableMIS ? Math::biHeuristic(bsdfPdf, envPdf) : 0.5f;
+                    mUseMIS ? Math::biHeuristic(bsdfPdf, envPdf) : 0.5f;
             }
-            result += scene->env->getRadiance(Wi) * envStrength * beta * weight;
+            result += mScene->mEnv->getRadiance(Wi) * beta * weight;
             break;
         }
 
@@ -84,11 +90,11 @@ Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
             float weight = 1.0f;
             auto lt = dynamic_cast<Light *>(obj.get());
             auto hitPoint = newRay.get(dist);
-            if (!deltaBsdf && sampleDirectLight)
+            if (!deltaBsdf && mSampleLi)
             {
-                float lightPdf = lt->pdfLi(P, hitPoint) * scene->pdfSampleLight(lt);
+                float lightPdf = lt->pdfLi(P, hitPoint) * mScene->pdfSampleLight(lt);
                 weight = (lightPdf <= 0.0f) ? 0.0f :
-                    enableMIS ? Math::biHeuristic(bsdfPdf, lightPdf) : 0.5f;
+                    mUseMIS ? Math::biHeuristic(bsdfPdf, lightPdf) : 0.5f;
             }
             result += lt->Le({ hitPoint, -Wi }) * beta * weight;
             break;
@@ -97,17 +103,19 @@ Vec3f PathIntegrator::trace(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
         if (type.isTransmission())
             etaScale *= Math::square(eta);
 
-        float rr = rouletteProb * etaScale;
-        if (roulette && rr < 1.0f)
+        if (bounce >= mRRStartDepth && mRussianRoulette)
         {
-            if (sampler->get1D() > rr)
+            float continueProb = glm::min<float>(0.9f, Math::maxComponent(bsdf / bsdfPdf) * etaScale);
+            if (sampler->get1() > continueProb)
                 break;
-            beta /= rr;
+            beta /= continueProb;
         }
+        if (bounce >= mMaxDepth && !mRussianRoulette)
+            break;
 
         Vec3f nextP = newRay.get(dist);
         auto ob = dynamic_cast<Object *>(obj.get());
-        sInfo = ob->surfaceInfo(nextP);
+        surf = ob->surfaceInfo(nextP);
         newRay.ori = nextP;
         ray = newRay;
     }

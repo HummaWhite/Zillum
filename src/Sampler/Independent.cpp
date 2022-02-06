@@ -6,14 +6,14 @@ IndependentSampler::IndependentSampler() :
     rng.seed(globalRandomEngine());
 }
 
-float IndependentSampler::get1D()
+float IndependentSampler::get1()
 {
     return std::uniform_real_distribution<float>(0.0f, Math::OneMinusEpsilon)(rng);
 }
 
-Vec2f IndependentSampler::get2D()
+Vec2f IndependentSampler::get2()
 {
-    return Vec2f(get1D(), get1D());
+    return Vec2f(get1(), get1());
 }
 
 SamplerPtr IndependentSampler::copy()

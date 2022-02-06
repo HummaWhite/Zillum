@@ -1,107 +1,205 @@
 #include "../../include/Core/Integrator.h"
 
+struct PathVertex
+{
+	PathVertex() = default;
+
+    PathVertex(const Vec3f &P, const Vec3f &N, const Vec3f &throughput) :
+        P(P), N(N), material(nullptr), throughput(throughput) {}
+
+	PathVertex(const Vec3f &P, const Vec3f &N, const Vec3f &Wo, MaterialPtr material, const Vec3f &throughput) :
+		P(P), N(N), Wo(Wo), material(material), throughput(throughput) {}
+
+	bool isEndPoint() const { return material == nullptr; }
+
+	Vec3f P;
+	Vec3f N;
+	Vec3f Wo;
+	MaterialPtr material;
+	Vec3f throughput;
+};
+
 Vec3f AdjointPathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 {
-    auto [dist, hit] = scene->closestHit(ray);
-    if (hit == nullptr)
-        return scene->env->getRadiance(ray.dir);
+    auto [dist, obj] = mScene->closestHit(ray);
 
-    if (hit->getType() == HittableType::Light)
+    if (obj == nullptr)
+        return mScene->mEnv->getRadiance(ray.dir);
+
+    if (obj->getType() == HittableType::Light)
     {
-        auto lt = dynamic_cast<Light*>(hit.get());
-        return lt->Le({ ray.get(dist), -ray.dir });
+        auto lt = dynamic_cast<Light *>(obj.get());
+        auto y = ray.get(dist);
+        return lt->Le({y, -ray.dir});
     }
+    else if (obj->getType() == HittableType::Object)
+    {
+        Vec3f p = ray.get(dist);
+        auto tmp = obj.get();
+        auto ob = dynamic_cast<Object *>(obj.get());
+        auto surf = ob->surfaceInfo(p);
+        ray.ori = p;
 
-    auto obj = dynamic_cast<Object*>(hit.get());
-    Vec3f P = ray.get(dist);
-    ray = { P, -ray.dir };
-    auto camVertex = findNonSpecularHit(ray, obj->surfaceInfo(P), sampler);
-    if (!camVertex)
-        return Vec3f(0.0f);
-    return trace(camVertex.value(), sampler);
+        auto vLight = traceLight(sampler);
+        auto vCamera = traceCamera(ray, surf, sampler);
+
+        if (!vLight || !vCamera)
+            return Vec3f(0.0f);
+        return connect(vLight.value(), vCamera.value());
+    }
+    Error::impossiblePath();
+    return Vec3f(0.0f);
 }
 
-std::optional<AdjointPathIntegrator::Vertex> AdjointPathIntegrator::findNonSpecularHit(Ray ray, SurfaceInfo sInfo, SamplerPtr sampler)
+std::optional<PathVertex> AdjointPathIntegrator::traceLight(SamplerPtr sampler)
 {
-    Vec3f beta(1.0f);
-    for (int bounce = 1; bounce <= maxCameraDepth; bounce++)
-    {
-        bool deltaBsdf = sInfo.mat->bxdf().isDelta();
-        if (!deltaBsdf)
-            return Vertex{ray.ori, sInfo.Ns, ray.dir, sInfo.mat, Vec3f(1.0f)};
+    auto [lightSource, pdfSource] = mScene->sampleLightAndEnv(sampler->get2(), sampler->get1());
+    if (lightSource.index() != 0)
+        return std::nullopt;
+    auto lt = std::get<0>(lightSource);
 
-        auto sample = sInfo.mat->sample(sInfo.Ns, ray.dir, sampler->get1D(), sampler->get2D());
+    auto leSamp = lt->sampleLe(sampler->get<4>());
+    Vec3f Nl = lt->normalGeom(leSamp.ray.ori);
+    Vec3f Wo = -leSamp.ray.dir;
+    Ray ray = leSamp.ray.offset();
+    Vec3f throughput = leSamp.Le * Math::absDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
+
+    for (int bounce = 1;; bounce++)
+    {
+        auto [distObj, hit] = mScene->closestHit(ray);
+        if (!hit)
+            break;
+        if (hit->getType() != HittableType::Object)
+            break;
+        auto obj = dynamic_cast<Object *>(hit.get());
+
+        Vec3f pShading = ray.get(distObj);
+        auto surf = obj->surfaceInfo(pShading);
+
+        if (glm::dot(surf.NShad, Wo) < 0)
+        {
+            auto bxdf = surf.material->bxdf();
+            if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
+                surf.NShad = -surf.NShad;
+        }
+        bool deltaBsdf = surf.material->bxdf().isDelta();
+
+        auto sample = surf.material->sample(surf.NShad, Wo, sampler->get1(), sampler->get2(), TransportMode::Importance);
         if (!sample)
-            return std::nullopt;
-        auto [Wi, pdf, type, eta, bsdf] = sample.value();
-        
-        Ray newRay(ray.ori + Wi * 1e-4f, Wi);
-        auto [dist, hit] = scene->closestHit(newRay);
-        if (hit == nullptr)
-            return std::nullopt;
-        if (hit->getType() == HittableType::Light)
-            return std::nullopt;
-        
-        auto obj = dynamic_cast<Object*>(hit.get());
-        float NoWi = deltaBsdf ? 1.0f : Math::satDot(sInfo.Ns, Wi);
-        beta *= sInfo.mat->bsdf(sInfo.Ns, ray.dir, Wi, TransportMode::Importance) * NoWi / pdf;
-        Vec3f y = newRay.get(dist);
-        sInfo = obj->surfaceInfo(y);
-        ray = { y, -Wi };
+            break;
+        auto [Wi, bsdfPdf, type, eta, bsdf] = sample.value();
+
+        PathVertex lightVertex(pShading, surf.NShad, Wo, surf.material, throughput);
+        if (!russianRouletteLight(glm::min<float>(1.0f, Math::maxComponent(bsdf / bsdfPdf)), bounce, sampler, throughput))
+            return lightVertex;
+
+        float NoWi = deltaBsdf ? 1.0f : Math::satDot(surf.NShad, Wi);
+        if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
+            break;
+        throughput *= bsdf * NoWi / bsdfPdf;
+        ray = Ray(pShading, Wi).offset();
+        Wo = -Wi;
     }
     return std::nullopt;
 }
 
-Vec3f AdjointPathIntegrator::trace(Vertex v, SamplerPtr sampler)
+std::optional<PathVertex> AdjointPathIntegrator::traceCamera(Ray ray, SurfaceInfo surf, SamplerPtr sampler)
 {
-    auto [light, pdfLt] = scene->sampleLightAndEnv(sampler->get2D(), sampler->get1D());
-    if (light.index() == 1)
-        return Vec3f(0.0f);
-
-    Vec3f res(0.0f);
-    auto lt = std::get<0>(light);
-
-    // auto Pd = lt->uniformSample(sampler->get2D());
-    // float pdfD = 1.0f / lt->surfaceArea();
-    // Vec3f Wd = glm::normalize(Pd - v.P);
-    // res += lt->Le({ Pd, -Wd }) * v.mat->bsdf({ v.Wo, Wd, v.N }) *
-    //     scene->g(Pd, v.P, lt->surfaceNormal(Pd), v.N) * v.beta / (pdfD * pdfLt);
-    // return res;
-
-    auto leSamp = lt->sampleLe(sampler->get<6>());
-    Vec3f beta = leSamp.Le / (leSamp.pdfPos * leSamp.pdfDir * pdfLt);
-    auto ray = leSamp.ray;
-    for (int bounce = 1; bounce <= maxLightDepth; bounce++)
+    Vec3f throughput(1.0f);
+    float etaScale = 1.0f;
+    for (int bounce = 1;; bounce++)
     {
-        auto [dist, hit] = scene->closestHit(ray);
-        if (hit == nullptr)
-            break;
-        if (hit->getType() != HittableType::Object)
-            break;
-        
-        auto obj = dynamic_cast<Object*>(hit.get());
-        Vec3f P = ray.get(dist);
-        auto sInfo = obj->surfaceInfo(P);
-        bool deltaBsdf = sInfo.mat->bxdf().isDelta();
+        Vec3f P = ray.ori;
+        Vec3f Wo = -ray.dir;
+        Vec3f N = surf.NShad;
+        MaterialPtr material = surf.material;
 
-        if (!deltaBsdf)
+        if (glm::dot(N, Wo) < 0)
         {
-            Vec3f Wi = glm::normalize(v.P - P);
-            res += v.beta * v.mat->bsdf(v.N, -Wi, v.Wo, TransportMode::Importance) *
-                scene->g(v.P, P, v.N, sInfo.Ns) * sInfo.mat->bsdf(sInfo.Ns, -ray.dir, Wi, TransportMode::Importance) *
-                beta;
+            auto bxdf = material->bxdf();
+            if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
+                N = -N;
         }
-        break;
-        
-        auto sample = sInfo.mat->sample(sInfo.Ns, -ray.dir, sampler->get1D(), sampler->get2D(),
-            TransportMode::Importance);
+        bool deltaBsdf = material->bxdf().isDelta();
+
+        auto sample = surf.material->sample(N, Wo, sampler->get1(), sampler->get2());
         if (!sample)
             break;
-        auto [Wi, pdf, type, eta, bsdf] = sample.value();
-        float NoWi = deltaBsdf ? 1.0f : Math::satDot(sInfo.Ns, Wi);
-        beta *= bsdf * NoWi / pdf;
+        auto [Wi, bsdfPdf, type, eta, bsdf] = sample.value();
 
-        ray = { P, Wi };
+        float NoWi = type.isDelta() ? 1.0f : Math::absDot(N, Wi);
+        if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
+            break;
+        throughput *= bsdf * NoWi / bsdfPdf;
+
+        auto newRay = Ray(P, Wi).offset();
+        auto [dist, obj] = mScene->closestHit(newRay);
+
+        if (obj == nullptr)
+            break;
+        if (obj->getType() == HittableType::Light)
+            break;
+
+        if (type.isTransmission())
+            etaScale *= Math::square(eta);
+
+        PathVertex cameraVertex(P, N, Wo, material, throughput);
+        if (!russianRouletteCamera(glm::min<float>(0.9f, Math::maxComponent(bsdf / bsdfPdf) * etaScale), bounce, sampler, throughput))
+            return cameraVertex;
+
+        Vec3f nextP = newRay.get(dist);
+        auto ob = dynamic_cast<Object *>(obj.get());
+        surf = ob->surfaceInfo(nextP);
+        newRay.ori = nextP;
+        ray = newRay;
     }
-    return res;
+    return std::nullopt;
+}
+
+Vec3f AdjointPathIntegrator::connect(const PathVertex &vLight, const PathVertex &vCamera)
+{
+    if (vLight.material->bxdf().isDelta() || vCamera.material->bxdf().isDelta())
+        return Vec3f(0.0f);
+
+    Vec3f camToLight = glm::normalize(vLight.P - vCamera.P);
+    float g = mScene->g(vCamera.P, vLight.P, vCamera.N, vLight.N);
+    
+    if (vLight.isEndPoint() && vCamera.isEndPoint())
+    {
+    }
+    if (vLight.isEndPoint())
+    {
+    }
+    if (vCamera.isEndPoint())
+    {
+    }
+    Vec3f bsdfCamera = vCamera.material->bsdf(vCamera.N, vCamera.Wo, camToLight, TransportMode::Radiance);
+    Vec3f bsdfLight = vLight.material->bsdf(vLight.N, vLight.Wo, -camToLight, TransportMode::Importance);
+    return vCamera.throughput * bsdfCamera * vLight.throughput * bsdfLight * g;
+}
+
+bool AdjointPathIntegrator::russianRouletteLight(float continueProb, int bounce, SamplerPtr sampler, Vec3f &throughput)
+{
+    if (bounce >= mRRLightStartDepth && mRussianRoulette)
+    {
+        if (sampler->get1() > continueProb)
+            return false;
+        throughput /= continueProb;
+    }
+    if (bounce >= mMaxLightDepth && !mRussianRoulette)
+        return false;
+    return true;
+}
+
+bool AdjointPathIntegrator::russianRouletteCamera(float continueProb, int bounce, SamplerPtr sampler, Vec3f &throughput)
+{
+    if (bounce >= mRRCameraStartDepth && mRussianRoulette)
+    {
+        if (sampler->get1() > continueProb)
+            return false;
+        throughput /= continueProb;
+    }
+    if (bounce >= mMaxCameraDepth && !mRussianRoulette)
+        return false;
+    return true;
 }

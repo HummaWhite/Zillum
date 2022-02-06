@@ -50,7 +50,7 @@ public:
 	std::optional<LightLiSample> sampleLi(Vec3f ref, Vec2f u);
 	float pdfLi(const Vec3f &ref, const Vec3f &y);
 	Vec3f Le(Ray ray);
-	LightLeSample sampleLe(const std::array<float, 6> &u);
+	LightLeSample sampleLe(const std::array<float, 4> &u);
 
 protected:
 	HittablePtr shape;

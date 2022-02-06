@@ -2,39 +2,39 @@
 
 void Integrator::setModified()
 {
-    modified = true;
-    finished = false;
+    mModified = true;
+    mFinished = false;
 }
 
 PixelIndependentIntegrator::PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type) :
-    maxSpp(maxSpp), Integrator(scene, type)
+    mMaxSpp(maxSpp), Integrator(scene, type)
 {
-    auto film = scene->camera->getFilm();
-    width = film.width;
-    height = film.height;
+    auto film = scene->mCamera->getFilm();
+    mWidth = film.width;
+    mHeight = film.height;
 }
 
 void PixelIndependentIntegrator::renderOnePass()
 {
-    if (modified)
+    if (mModified)
     {
-        scene->camera->getFilm().fill(Vec3f(0.0f));
-        curSpp = 0;
-        modified = false;
+        mScene->mCamera->getFilm().fill(Vec3f(0.0f));
+        mCurspp = 0;
+        mModified = false;
     }
-    if (limitSpp && curSpp >= maxSpp)
+    if (mLimitSpp && mCurspp >= mMaxSpp)
     {
-        finished = true;
+        mFinished = true;
         return;
     }
 
     std::thread threads[MaxThreads];
     for (int i = 0; i < MaxThreads; i++)
     {
-        int start = (width / MaxThreads) * i;
-        int end = std::min(width, (width / MaxThreads) * (i + 1));
+        int start = (mWidth / MaxThreads) * i;
+        int end = std::min(mWidth, (mWidth / MaxThreads) * (i + 1));
         if (i == MaxThreads - 1)
-            end = width;
+            end = mWidth;
 
         auto threadSampler = (i == 0) ? mSampler : mSampler->copy();
         threads[i] = std::thread(doTracing, this, start, end, threadSampler);
@@ -44,26 +44,26 @@ void PixelIndependentIntegrator::renderOnePass()
     for (auto &t : threads)
         t.join();
 
-    curSpp++;
-    std::cout << "\r" << std::setw(4) << curSpp << "/" << maxSpp << " spp  ";
+    mCurspp++;
+    std::cout << "\r" << std::setw(4) << mCurspp << "/" << mMaxSpp << " spp  ";
 
-    float perc = (float)curSpp / (float)maxSpp * 100.0f;
+    float perc = (float)mCurspp / (float)mMaxSpp * 100.0f;
     std::cout << "  " << std::fixed << std::setprecision(2) << perc << "%";
 }
 
 void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sampler)
 {
-    float invW = 1.0f / width;
-    float invH = 1.0f / height;
+    float invW = 1.0f / mWidth;
+    float invH = 1.0f / mHeight;
     for (int x = start; x < end; x++)
     {
-        for (int y = 0; y < height; y++)
+        for (int y = 0; y < mHeight; y++)
         {
             sampler->setPixel(x, y);
             float sx = 2.0f * (x + 0.5f) * invW - 1.0f;
             float sy = 1.0f - 2.0f * (y + 0.5f) * invH;
 
-            Ray ray = scene->camera->generateRay({sx, sy}, sampler);
+            Ray ray = mScene->mCamera->generateRay({sx, sy}, sampler);
             Vec3f result = tracePixel(ray, sampler);
 
             if (Math::isNan(result.x) || Math::isNan(result.y) || Math::isNan(result.z))
@@ -73,8 +73,8 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
             }
 
             result = glm::clamp(result, Vec3f(0.0f), Vec3f(1e8f));
-            auto resultBuffer = scene->camera->getFilm();
-            resultBuffer(x, y) = resultBuffer(x, y) * ((float)(curSpp) / (float)(curSpp + 1)) + result / (float)(curSpp + 1);
+            auto resultBuffer = mScene->mCamera->getFilm();
+            resultBuffer(x, y) = resultBuffer(x, y) * ((float)(mCurspp) / (float)(mCurspp + 1)) + result / (float)(mCurspp + 1);
         }
     }
 }

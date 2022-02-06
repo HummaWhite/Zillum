@@ -2,7 +2,7 @@
 
 Vec3f AOIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 {
-    auto [dist, obj] = scene->closestHit(ray);
+    auto [dist, obj] = mScene->closestHit(ray);
     if (obj == nullptr)
         return Vec3f(1.0f);
 
@@ -15,13 +15,13 @@ Vec3f AOIntegrator::trace(Ray ray, Vec3f N, SamplerPtr sampler)
 {
     Vec3f ao(0.0f);
 
-    for (int i = 0; i < samples; i++)
+    for (int i = 0; i < mSamplesOneTime; i++)
     {
-        auto Wi = Math::sampleHemisphereCosine(N, sampler->get2D()).first;
+        auto Wi = Math::sampleHemisphereCosine(N, sampler->get2()).first;
         auto occRay = Ray(ray.ori, Wi).offset();
-        if (scene->quickIntersect(occRay, radius))
+        if (mScene->quickIntersect(occRay, mRadius))
             ao += Vec3f(1.0f);
     }
 
-    return Vec3f(1.0f) - ao / (float)samples;
+    return Vec3f(1.0f) - ao / (float)mSamplesOneTime;
 }

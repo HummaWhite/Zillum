@@ -14,7 +14,6 @@ EnvSphereMapHDR::EnvSphereMapHDR(const char *filePath)
             pdf[j * w + i] = Math::luminance(sphereMap(i, j)) * glm::sin((float)(j + 0.5f) / h * Math::Pi);
         }
     }
-
     distrib = PiecewiseIndependent2D(pdf, w, h);
     delete[] pdf;
 }
@@ -52,6 +51,5 @@ LightLeSample EnvSphereMapHDR::sampleLe(float radius, const std::array<float, 6>
     auto ori = Vec3f(Transform::toConcentricDisk({ u[4], u[5] }), 1.0f) * radius;
     ori = Transform::normalToWorld(Wi, ori);
 
-    float pdf = pdfDir * Math::PiInv * Math::square(1.0f / radius);
-    return { { ori, -Wi }, radiance, pdf };
+    return { { ori, -Wi }, radiance, Math::PiInv / (radius * radius), pdfDir };
 }

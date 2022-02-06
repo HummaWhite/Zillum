@@ -21,14 +21,14 @@ class Sampler
 public:
 	Sampler(SamplerType type) : type(type) {}
 
-	virtual float get1D() = 0;
-	virtual Vec2f get2D() = 0;
+	virtual float get1() = 0;
+	virtual Vec2f get2() = 0;
 
 	template<int N>
 	std::array<float, N> get()
 	{
 		auto ret = std::array<float, N>();
-		for (int i = 0; i < N; i++) ret[i] = get1D();
+		for (int i = 0; i < N; i++) ret[i] = get1();
 		return ret;
 	}
 
@@ -49,8 +49,8 @@ class IndependentSampler :
 public:
     IndependentSampler();
 
-    float get1D();
-    Vec2f get2D();
+    float get1();
+    Vec2f get2();
 
     void setPixel(int x, int y) {}
     void nextSample() {}
@@ -70,8 +70,8 @@ public:
     SimpleSobolSampler(int xPixels, int yPixels) :
 		xPixels(xPixels), yPixels(yPixels), Sampler(SamplerType::SimpleSobol) {}
 
-    float get1D();
-    Vec2f get2D();
+    float get1();
+    Vec2f get2();
 
     void setPixel(int x, int y);
     void nextSample() { index++; }

@@ -34,7 +34,7 @@ Vec3f Light::Le(Ray ray)
     return power / (2.0f * Math::Pi * surfaceArea());
 }
 
-LightLeSample Light::sampleLe(const std::array<float, 6> &u)
+LightLeSample Light::sampleLe(const std::array<float, 4> &u)
 {
     auto ori = uniformSample({ u[0], u[1] });
     float pdfPos = 1.0f / surfaceArea();
