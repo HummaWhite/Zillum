@@ -3,6 +3,7 @@
 #include <iostream>
 #include <optional>
 #include <memory>
+#include <mutex>
 
 #include "../Utils/Buffer2D.h"
 #include "Ray.h"
@@ -17,6 +18,7 @@ const float CameraFOVSensitivity = 150.0f;
 const float CameraPitchSensitivity = 88.0f;
 
 using Film = Buffer2D<Spectrum>;
+using FilmLocker = Buffer2D<std::mutex>;
 
 enum class CameraType
 {
@@ -58,14 +60,14 @@ public:
 	Vec3f pos() const { return mPos; }
 	Vec3f angle() const { return mAngle; }
 	Film& film() { return mFilm; }
+	FilmLocker& filmLocker() { return mFilmLocker; }
 	CameraType type() const { return mType; }
 
 	Vec3f f() const { return mFront; }
 	Vec3f r() const { return mRight; }
 	Vec3f u() const { return mUp; }
 
-	virtual void initFilm(int w, int h) { mFilm.init(w, h); }
-
+	virtual void initFilm(int width, int height);
 	virtual Vec2f rasterPos(Ray ray) = 0;
 
 	virtual Ray generateRay(SamplerPtr sampler) = 0;
@@ -86,6 +88,7 @@ protected:
 protected:
 	CameraType mType;
 	Film mFilm;
+	FilmLocker mFilmLocker;
 
 	Vec3f mPos = Vec3f(0.0f);
 	Vec3f mAngle = { 90.0f, 0.0f, 0.0f };

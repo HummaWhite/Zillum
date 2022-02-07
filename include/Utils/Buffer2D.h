@@ -45,6 +45,11 @@ struct Buffer2D:
 		return this->data[iv * width + iu];
 	}
 
+	std::tuple<int, int> convertUV(float u, float v)
+	{
+		return { u * width, v * height };
+	}
+
 	int width = 0;
 	int height = 0;
 };

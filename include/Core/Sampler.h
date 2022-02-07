@@ -34,6 +34,7 @@ public:
 
 	virtual void setPixel(int x, int y) = 0;
 	virtual void nextSample() = 0;
+    virtual void nextSamples(size_t samples) {}
 	virtual bool isProgressive() const = 0;
 	virtual std::shared_ptr<Sampler> copy() = 0;
 
@@ -67,14 +68,15 @@ class SimpleSobolSampler :
     public Sampler
 {
 public:
-    SimpleSobolSampler(int xPixels, int yPixels) :
-		xPixels(xPixels), yPixels(yPixels), Sampler(SamplerType::SimpleSobol) {}
+    SimpleSobolSampler(int xPixels, int yPixels, bool enableScrambling) :
+		xPixels(xPixels), yPixels(yPixels), enableScrambling(enableScrambling), Sampler(SamplerType::SimpleSobol) {}
 
     float get1();
     Vec2f get2();
 
     void setPixel(int x, int y);
-    void nextSample() { index++; }
+    void nextSample();
+    void nextSamples(size_t samples) override;
     bool isProgressive() const { return true; }
     SamplerPtr copy();
 
@@ -82,6 +84,7 @@ private:
     const int xPixels, yPixels;
     uint64_t index = 0;
     int dim = 0;
-    uint32_t scramble;
+    bool enableScrambling;
+    uint32_t scramble = 0;
     std::mt19937 rng;
 };

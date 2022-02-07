@@ -18,6 +18,7 @@
 #include "Sampler.h"
 
 const int MaxThreads = std::thread::hardware_concurrency();
+const int TracingDepthLimit = 64;
 
 enum class IntegratorType
 {
@@ -103,7 +104,8 @@ public:
 	void reset();
 
 private:
-	void trace();
+	void trace(SamplerPtr sampler);
+	void traceOnePath(SamplerPtr sampler);
 	void addToFilm(Vec2f uv, Spectrum val);
 
 public:

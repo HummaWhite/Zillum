@@ -2,12 +2,19 @@
 
 void LightPathIntegrator::renderOnePass()
 {
-    for (int i = 0; i < mPathsOnePass; i++)
+    std::thread *threads = new std::thread[MaxThreads];
+    for (int i = 0; i < MaxThreads; i++)
     {
-        trace();
-        //mSampler->nextSample();
+        auto threadSampler = mSampler->copy();
+        threadSampler->nextSamples(mPathsOnePass * i);
+        threads[i] = std::thread(trace, this, threadSampler);
     }
-    mPathCount += mPathsOnePass;
+    for (int i = 0; i < MaxThreads; i++)
+        threads[i].join();
+    delete[] threads;
+
+    mSampler->nextSamples(mPathsOnePass * MaxThreads);
+    mPathCount += mPathsOnePass * MaxThreads;
     auto &film = mScene->mCamera->film();
     *mResultScale = static_cast<float>(film.width) * film.height / mPathCount;
     std::cout << "\r[LightPathIntegrator paths: " << mPathCount << ", spp: " << 1.0f / *mResultScale << "]";
@@ -19,16 +26,25 @@ void LightPathIntegrator::reset()
     mPathCount = 0;
 }
 
-void LightPathIntegrator::trace()
+void LightPathIntegrator::trace(SamplerPtr sampler)
 {
-    auto [lightSource, pdfSource] = mScene->sampleLightAndEnv(mSampler->get2(), mSampler->get1());
+    for (int i = 0; i < mPathsOnePass; i++)
+    {
+        traceOnePath(sampler);
+        sampler->nextSample();
+    }
+}
+
+void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
+{
+    auto [lightSource, pdfSource] = mScene->sampleLightAndEnv(sampler->get2(), sampler->get1());
 
     if (lightSource.index() != 0)
         return;
     auto lt = std::get<0>(lightSource);
 
-    Vec3f Pd = lt->uniformSample(mSampler->get2());
-    auto ciSamp = mScene->mCamera->sampleIi(Pd, mSampler->get2());
+    Vec3f Pd = lt->uniformSample(sampler->get2());
+    auto ciSamp = mScene->mCamera->sampleIi(Pd, sampler->get2());
     if (ciSamp)
     {
         auto [Wi, Ii, dist, uvRaster, pdf] = ciSamp.value();
@@ -43,13 +59,13 @@ void LightPathIntegrator::trace()
         }
     }
 
-    auto leSamp = lt->sampleLe(mSampler->get<4>());
+    auto leSamp = lt->sampleLe(sampler->get<4>());
     Vec3f Nl = lt->normalGeom(leSamp.ray.ori);
     Vec3f Wo = -leSamp.ray.dir;
     Ray ray = leSamp.ray.offset();
     Vec3f beta = leSamp.Le * Math::absDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
 
-    for (int bounce = 1; ; bounce++)
+    for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
     {
         auto [distObj, hit] = mScene->closestHit(ray);
         if (!hit)
@@ -71,7 +87,7 @@ void LightPathIntegrator::trace()
 
         if (!deltaBsdf)
         {
-            auto directSample = mScene->mCamera->sampleIi(pShading, mSampler->get2());
+            auto directSample = mScene->mCamera->sampleIi(pShading, sampler->get2());
             if (directSample)
             {
                 auto [Wi, Ii, dist, uvRaster, pdf] = directSample.value();
@@ -85,7 +101,7 @@ void LightPathIntegrator::trace()
             }
         }
 
-        auto sample = surf.material->sample(surf.NShad, Wo, mSampler->get1(), mSampler->get2(), TransportMode::Importance);
+        auto sample = surf.material->sample(surf.NShad, Wo, sampler->get1(), sampler->get2(), TransportMode::Importance);
         if (!sample)
             break;
         auto [Wi, bsdfPdf, type, eta, bsdf] = sample.value();
@@ -93,7 +109,7 @@ void LightPathIntegrator::trace()
         if (bounce >= mRRStartDepth && mRussianRoulette)
         {
             float continueProb = glm::min<float>(1.0f, Math::maxComponent(bsdf / bsdfPdf));
-            float rr = mSampler->get1();
+            float rr = sampler->get1();
             if (rr > continueProb)
                 break;
             beta /= continueProb;
@@ -115,5 +131,8 @@ void LightPathIntegrator::addToFilm(Vec2f uv, Spectrum val)
     if (!Camera::inFilmBound(uv))
         return;
     auto &film = mScene->mCamera->film();
+    auto &filmLocker = mScene->mCamera->filmLocker()(uv.x, uv.y);
+    filmLocker.lock();
     film(uv.x, uv.y) += val;
+    filmLocker.unlock();
 }

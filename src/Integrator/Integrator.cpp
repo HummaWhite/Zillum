@@ -1,5 +1,7 @@
 #include "../../include/Core/Integrator.h"
 
+#include <array>
+
 void Integrator::setModified()
 {
     mModified = true;
@@ -28,7 +30,7 @@ void PixelIndependentIntegrator::renderOnePass()
         return;
     }
 
-    std::thread threads[MaxThreads];
+    std::thread *threads = new std::thread[MaxThreads];
     for (int i = 0; i < MaxThreads; i++)
     {
         int start = (mWidth / MaxThreads) * i;
@@ -41,8 +43,9 @@ void PixelIndependentIntegrator::renderOnePass()
     }
     mSampler->nextSample();
 
-    for (auto &t : threads)
-        t.join();
+    for (int i = 0; i < MaxThreads; i++)
+        threads[i].join();
+    delete[] threads;
 
     mCurspp++;
     std::cout << "\r" << std::setw(4) << mCurspp << "/" << mMaxSpp << " spp  ";

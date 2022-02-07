@@ -228,7 +228,7 @@ void Application::initScene(int spp)
 
     scene->addHittable(
         std::make_shared<Object>(
-            std::make_shared<Sphere>(Spectrum(1.0f, 3.0f, 0.0f), 1.0f, true),
+            std::make_shared<Sphere>(Spectrum(0.0f, 3.0f, 0.0f), 1.0f, true),
             std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
         ));
 
@@ -247,7 +247,7 @@ void Application::initScene(int spp)
     model = glm::scale(model, Vec3f(1.8f));
     std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
 
-    scene->addObjectMesh("res/model/box.obj", trBoxSmall,
+    scene->addObjectMesh("res/model/cube.obj", trBoxSmall,
                          std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.6f)
                          // std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
     );
@@ -259,7 +259,7 @@ void Application::initScene(int spp)
     std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
 
     scene->addObjectMesh("res/model/cube.obj", trBoxLarge,
-                         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
+                         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
                          //std::make_shared<Lambertian>(Spectrum(1.0f))
     );
 
@@ -316,7 +316,7 @@ void Application::initScene(int spp)
     // integ->mMaxCameraDepth = 3;
     // integ->mMaxLightDepth = 3;
 
-    integ->mSampler = std::make_shared<SimpleSobolSampler>(mWindowWidth, mWindowHeight);
+    integ->mSampler = std::make_shared<SimpleSobolSampler>(mWindowWidth, mWindowHeight, false);
     mIntegrator = integ;
 }
 

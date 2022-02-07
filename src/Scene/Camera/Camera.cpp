@@ -96,3 +96,9 @@ void Camera::update()
     mTBNMat = Mat3f(mRight, mUp, mFront);
     mTBNInv = glm::inverse(mTBNMat);
 }
+
+void Camera::initFilm(int width, int height)
+{
+    mFilm.init(width, height);
+    mFilmLocker.init(width, height);
+}

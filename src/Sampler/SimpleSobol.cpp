@@ -15,7 +15,7 @@ uint32_t sobolSample(uint64_t index, int dim, uint32_t scramble = 0)
 float SimpleSobolSampler::get1()
 {
     float r = static_cast<float>(sobolSample(index, dim++, scramble)) * 0x1p-32f;
-    scramble = rng();
+    scramble = enableScrambling ? rng() : 0;
     return std::min(r, Math::OneMinusEpsilon);
 }
 
@@ -29,6 +29,18 @@ void SimpleSobolSampler::setPixel(int x, int y)
     dim = 0;
     rng.seed(y * xPixels + x);
     scramble = rng();
+}
+
+void SimpleSobolSampler::nextSample()
+{
+    index++;
+    dim = 0;
+}
+
+void SimpleSobolSampler::nextSamples(size_t samples)
+{
+    index += samples;
+    dim = 0;
 }
 
 SamplerPtr SimpleSobolSampler::copy()

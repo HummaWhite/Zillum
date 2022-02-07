@@ -32,7 +32,7 @@ Spectrum PathIntegrator::trace(Ray ray, SurfaceInfo surf, SamplerPtr sampler)
     Spectrum throughput(1.0f);
     float etaScale = 1.0f;
 
-    for (int bounce = 1; ; bounce++)
+    for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
     {
         Vec3f P = ray.ori;
         Vec3f Wo = -ray.dir;
