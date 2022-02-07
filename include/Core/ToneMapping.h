@@ -5,6 +5,7 @@
 
 #include "../../ext/glmIncluder.h"
 #include "../Utils/NamespaceDecl.h"
+#include "Spectrum.h"
 
 NAMESPACE_BEGIN(ToneMapping)
 

@@ -1,8 +1,8 @@
 #include "../../include/Core/Material.h"
 
-Vec3f ThinDielectric::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum ThinDielectric::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
-    return Vec3f(0.0f);
+    return Spectrum(0.0f);
 }
 
 std::optional<BSDFSample> ThinDielectric::sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)
@@ -15,6 +15,6 @@ std::optional<BSDFSample> ThinDielectric::sample(const Vec3f &N, const Vec3f &Wo
         trans = 1.0f - refl;
     }
     return (u1 < refl) ?
-        BSDFSample(glm::reflect(-Wo, N), 1.0f, BXDF::SpecRefl, tint) :
-        BSDFSample(-Wo, 1.0f, BXDF::SpecTrans, tint);
+        BSDFSample(glm::reflect(-Wo, N), 1.0f, BXDF::SpecRefl, baseColor) :
+        BSDFSample(-Wo, 1.0f, BXDF::SpecTrans, baseColor);
 }

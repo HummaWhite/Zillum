@@ -33,14 +33,14 @@ struct LightEnvSample
 struct LiSample
 {
 	Vec3f Wi;
-	Vec3f weight;
+	Spectrum weight;
 	float pdf;
 };
 
 struct LeSample
 {
 	Ray emiRay;
-	Vec3f weight;
+	Spectrum weight;
 	float pdf;
 };
 
@@ -51,8 +51,8 @@ struct IiSample
 	float pdf;
 };
 
-const LiSample InvalidLiSample = {Vec3f(0.0f), Vec3f(0.0f), 0.0f};
-const IiSample InvalidIiSample = {Vec3f(0.0f), Vec3f(0.0f), 0.0f};
+const LiSample InvalidLiSample = { Vec3f(0.0f), Spectrum(0.0f), 0.0f };
+const IiSample InvalidIiSample = { Vec3f(0.0f), Spectrum(0.0f), 0.0f };
 
 class Scene
 {
@@ -86,7 +86,7 @@ public:
 	void addHittable(HittablePtr hittable) { mHittables.push_back(hittable); }
 	void addLight(LightPtr light);
 	void addObjectMesh(const char *path, TransformPtr transform, MaterialPtr material);
-	void addLightMesh(const char *path, TransformPtr transform, const Vec3f &power);
+	void addLightMesh(const char *path, TransformPtr transform, const Spectrum &power);
 
 	bool visible(Vec3f x, Vec3f y);
 	float v(Vec3f x, Vec3f y);
@@ -95,7 +95,7 @@ public:
 public:
 	std::vector<HittablePtr> mHittables;
 	std::vector<LightPtr> mLights;
-	EnvPtr mEnv = std::make_shared<EnvSingleColor>(Vec3f(0.0f));
+	EnvPtr mEnv = std::make_shared<EnvSingleColor>(Spectrum(0.0f));
 	CameraPtr mCamera;
 
 	std::shared_ptr<BVH> mBvh;

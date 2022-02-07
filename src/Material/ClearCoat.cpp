@@ -1,6 +1,6 @@
 #include "../../include/Core/Material.h"
 
-Vec3f Clearcoat::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum Clearcoat::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     auto H = glm::normalize(Wo + Wi);
 
@@ -13,7 +13,7 @@ Vec3f Clearcoat::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, Transpor
 
     float denom = 4.0f * NoWo * NoWi;
     if (denom < 1e-7f)
-        return Vec3f(0.0f);
+        return Spectrum(0.0f);
 
     return F * D * G * weight / denom;
 }

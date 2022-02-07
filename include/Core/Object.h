@@ -51,7 +51,7 @@ public:
 
 	void setTransform(TransformPtr trans) override
 	{
-		transform = trans;
+		mTransform = trans;
 		shape->setTransform(trans);
 	}
 

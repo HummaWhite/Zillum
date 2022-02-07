@@ -5,7 +5,7 @@ Scene::Scene(const std::vector<HittablePtr> &hittables, EnvPtr environment, Came
 {
     for (const auto &i : hittables)
     {
-        if (i->getType() == HittableType::Light)
+        if (i->type() == HittableType::Light)
             mLights.push_back(std::shared_ptr<Light>(dynamic_cast<Light*>(i.get())));
     }
 }
@@ -15,7 +15,7 @@ void Scene::setupLightSampleTable()
     std::vector<float> lightPdf;
     for (const auto &lt : mLights)
     {
-        float pdf = lt->getRgbPower();
+        float pdf = lt->luminance();
         lightPdf.push_back(pdf);
     }
     mLightDistrib = Piecewise1D(lightPdf);
@@ -29,7 +29,7 @@ std::optional<LightSample> Scene::sampleOneLight(Vec2f u)
     int index = sampleByPower ? mLightDistrib.sample(u) : static_cast<int>(mLights.size() * u.x);
 
     auto lt = mLights[index];
-    float pdf = sampleByPower ? lt->getRgbPower() / mLightDistrib.sum() : 1.0f / mLights.size();
+    float pdf = sampleByPower ? lt->luminance() / mLightDistrib.sum() : 1.0f / mLights.size();
     return LightSample{ lt, pdf };
 }
 
@@ -143,7 +143,7 @@ float Scene::pdfSampleLight(Light *lt)
         return 0.0f;
 
     float fstPdf = mLightSampleStrategy == LightSampleStrategy::ByPower ?
-        lt->getRgbPower() / mLightDistrib.sum() :
+        lt->luminance() / mLightDistrib.sum() :
         1.0f / mLights.size();
 
     float sndPdf = mLightAndEnvStrategy == LightSampleStrategy::ByPower ?
@@ -205,7 +205,7 @@ void Scene::addObjectMesh(const char *path, TransformPtr transform, MaterialPtr 
     }
 }
 
-void Scene::addLightMesh(const char *path, TransformPtr transform, const Vec3f &power)
+void Scene::addLightMesh(const char *path, TransformPtr transform, const Spectrum &power)
 {
     auto [vertices, texcoords, normals] = ObjReader::readFile(path);
     int faceCount = vertices.size() / 3;

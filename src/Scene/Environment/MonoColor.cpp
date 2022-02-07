@@ -3,7 +3,7 @@
 EnvLiSample EnvSingleColor::sampleLi(const Vec2f &u1, const Vec2f &u2)
 {
     auto Wi = Transform::planeToSphere(u1);
-    return {Wi, radiance, Math::PiInv * 0.25f};
+    return { Wi, mRadiance, Math::PiInv * 0.25f };
 }
 
 float EnvSingleColor::pdfLi(const Vec3f &Wi)
@@ -18,5 +18,5 @@ LightLeSample EnvSingleColor::sampleLe(float radius, const std::array<float, 6> 
     ori = Transform::normalToWorld(Wi, ori);
 
     float pdf = Math::PiInv * 0.25f * Math::PiInv * Math::square(1.0f / radius);
-    return {{ori, -Wi}, radiance, pdf};
+    return {{ori, -Wi}, mRadiance, pdf};
 }

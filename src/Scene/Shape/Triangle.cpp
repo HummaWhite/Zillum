@@ -7,8 +7,8 @@ std::optional<float> Triangle::closestHit(const Ray &ray)
     Vec3f ab = vb - va;
     Vec3f ac = vc - va;
 
-    Vec3f o = transform->getInversed(ray.ori);
-    Vec3f d = transform->getInversed(ray.ori + ray.dir) - o;
+    Vec3f o = mTransform->getInversed(ray.ori);
+    Vec3f d = mTransform->getInversed(ray.ori + ray.dir) - o;
 
     Vec3f p = glm::cross(d, ac);
 
@@ -45,13 +45,13 @@ Vec3f Triangle::uniformSample(const Vec2f &u)
     float b = u.x * r;
 
     Vec3f p = va * (1.0f - a - b) + vb * a + vc * b;
-    return transform->get(p);
+    return mTransform->get(p);
 }
 
 Vec3f Triangle::normalGeom(const Vec3f &p)
 {
     Vec3f N = glm::normalize(glm::cross(vb - va, vc - va));
-    return glm::normalize(transform->getInversedNormal(N));
+    return glm::normalize(mTransform->getInversedNormal(N));
 }
 
 float Triangle::surfaceArea()
@@ -61,7 +61,7 @@ float Triangle::surfaceArea()
 
 Vec2f Triangle::surfaceUV(const Vec3f &p)
 {
-    Vec3f oriP = transform->getInversed(p);
+    Vec3f oriP = mTransform->getInversed(p);
 
     float areaInv = 1.0f / glm::length(glm::cross(vb - va, vc - va));
     float u = glm::length(glm::cross(vb - oriP, vc - oriP)) * areaInv;
@@ -71,5 +71,5 @@ Vec2f Triangle::surfaceUV(const Vec3f &p)
 
 AABB Triangle::bound()
 {
-    return AABB(transform->get(va), transform->get(vb), transform->get(vc));
+    return AABB(mTransform->get(va), mTransform->get(vb), mTransform->get(vc));
 }

@@ -7,20 +7,20 @@ void Camera::move(int key)
     switch (key)
     {
     case 'W':
-        pos.x += CameraMoveSensitivity * cos(glm::radians(angle.x));
-        pos.y += CameraMoveSensitivity * sin(glm::radians(angle.x));
+        mPos.x += CameraMoveSensitivity * cos(glm::radians(mAngle.x));
+        mPos.y += CameraMoveSensitivity * sin(glm::radians(mAngle.x));
         break;
     case 'S':
-        pos.x -= CameraMoveSensitivity * cos(glm::radians(angle.x));
-        pos.y -= CameraMoveSensitivity * sin(glm::radians(angle.x));
+        mPos.x -= CameraMoveSensitivity * cos(glm::radians(mAngle.x));
+        mPos.y -= CameraMoveSensitivity * sin(glm::radians(mAngle.x));
         break;
     case 'A':
-        pos.y += CameraMoveSensitivity * cos(glm::radians(angle.x));
-        pos.x -= CameraMoveSensitivity * sin(glm::radians(angle.x));
+        mPos.y += CameraMoveSensitivity * cos(glm::radians(mAngle.x));
+        mPos.x -= CameraMoveSensitivity * sin(glm::radians(mAngle.x));
         break;
     case 'D':
-        pos.y -= CameraMoveSensitivity * cos(glm::radians(angle.x));
-        pos.x += CameraMoveSensitivity * sin(glm::radians(angle.x));
+        mPos.y -= CameraMoveSensitivity * cos(glm::radians(mAngle.x));
+        mPos.x += CameraMoveSensitivity * sin(glm::radians(mAngle.x));
         break;
     case 'Q':
         roll(-CameraRollSensitivity);
@@ -29,13 +29,13 @@ void Camera::move(int key)
         roll(CameraRollSensitivity);
         break;
     case 'R':
-        up = Vec3f(0.0f, 0.0f, 1.0f);
+        mUp = Vec3f(0.0f, 0.0f, 1.0f);
         break;
     case VK_SPACE:
-        pos.z += CameraMoveSensitivity;
+        mPos.z += CameraMoveSensitivity;
         break;
     case VK_SHIFT:
-        pos.z -= CameraMoveSensitivity;
+        mPos.z -= CameraMoveSensitivity;
         break;
     }
     update();
@@ -44,37 +44,37 @@ void Camera::move(int key)
 void Camera::roll(float rolAngle)
 {
     glm::mat4 mul(1.0f);
-    mul = glm::rotate(mul, glm::radians(rolAngle), front);
-    glm::vec4 tmp(up.x, up.y, up.z, 1.0f);
+    mul = glm::rotate(mul, glm::radians(rolAngle), mFront);
+    glm::vec4 tmp(mUp.x, mUp.y, mUp.z, 1.0f);
     tmp = mul * tmp;
-    up = Vec3f(tmp);
+    mUp = Vec3f(tmp);
     update();
 }
 
 void Camera::rotate(Vec3f rotAngle)
 {
-    angle += rotAngle * CameraRotateSensitivity;
-    if (angle.y > CameraPitchSensitivity)
-        angle.y = CameraPitchSensitivity;
-    if (angle.y < -CameraPitchSensitivity)
-        angle.y = -CameraPitchSensitivity;
+    mAngle += rotAngle * CameraRotateSensitivity;
+    if (mAngle.y > CameraPitchSensitivity)
+        mAngle.y = CameraPitchSensitivity;
+    if (mAngle.y < -CameraPitchSensitivity)
+        mAngle.y = -CameraPitchSensitivity;
     update();
 }
 
 void Camera::setDir(Vec3f dir)
 {
     dir = glm::normalize(dir);
-    angle.y = glm::degrees(asin(dir.z / length(dir)));
+    mAngle.y = glm::degrees(asin(dir.z / length(dir)));
     Vec2f dxy(dir);
-    angle.x = glm::degrees(asin(dir.y / length(dxy)));
+    mAngle.x = glm::degrees(asin(dir.y / length(dxy)));
     if (dir.x < 0)
-        angle.x = 180.0f - angle.x;
+        mAngle.x = 180.0f - mAngle.x;
     update();
 }
 
 void Camera::setAngle(Vec3f ang)
 {
-    angle = ang;
+    mAngle = ang;
     update();
 }
 
@@ -85,14 +85,14 @@ bool Camera::inFilmBound(Vec2f p)
 
 void Camera::update()
 {
-    float aX = cos(glm::radians(angle.y)) * cos(glm::radians(angle.x));
-    float aY = cos(glm::radians(angle.y)) * sin(glm::radians(angle.x));
-    float aZ = sin(glm::radians(angle.y));
+    float aX = cos(glm::radians(mAngle.y)) * cos(glm::radians(mAngle.x));
+    float aY = cos(glm::radians(mAngle.y)) * sin(glm::radians(mAngle.x));
+    float aZ = sin(glm::radians(mAngle.y));
 
-    front = glm::normalize(Vec3f(aX, aY, aZ));
-    right = glm::normalize(glm::cross(front, Vec3f(0.0f, 0.0f, 1.0f)));
-    up = glm::normalize(glm::cross(right, front));
+    mFront = glm::normalize(Vec3f(aX, aY, aZ));
+    mRight = glm::normalize(glm::cross(mFront, Vec3f(0.0f, 0.0f, 1.0f)));
+    mUp = glm::normalize(glm::cross(mRight, mFront));
     
-    tbnMat = Mat3f(right, up, front);
-    tbnInv = glm::inverse(tbnMat);
+    mTBNMat = Mat3f(mRight, mUp, mFront);
+    mTBNInv = glm::inverse(mTBNMat);
 }

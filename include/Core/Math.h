@@ -9,7 +9,7 @@
 #include "../../ext/glmIncluder.h"
 #include "../Utils/NamespaceDecl.h"
 #include "../Utils/RandomGenerator.h"
-#include "ToneMapping.h"
+#include "Spectrum.h"
 
 NAMESPACE_BEGIN(Math)
 
@@ -17,8 +17,6 @@ const float Pi = glm::pi<float>();
 const float PiInv = 1.0f / glm::pi<float>();
 
 const float OneMinusEpsilon = 0x1.fffffep-1;
-
-const Vec3f BRIGHTNESS = Vec3f(0.299f, 0.587f, 0.114f);
 
 template<typename T>
 T pow5(const T &v)
@@ -93,7 +91,7 @@ float qpow(float x, int n);
 float heuristic(int nf, float pf, int ng, float pg, int pow);
 float biHeuristic(float pf, float pg);
 
-float luminance(const Vec3f &c);
+float luminance(const Spectrum &c);
 
 float diskArea(float radius);
 

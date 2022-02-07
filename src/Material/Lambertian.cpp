@@ -1,6 +1,6 @@
 #include "../../include/Core/Material.h"
 
-Vec3f Lambertian::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum Lambertian::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     return albedo * Math::PiInv;
 }

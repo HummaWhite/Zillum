@@ -8,14 +8,14 @@ void LightPathIntegrator::renderOnePass()
         //mSampler->nextSample();
     }
     mPathCount += mPathsOnePass;
-    auto &film = mScene->mCamera->getFilm();
-    *mResultScale = 2.0f * film.width * film.height / mPathCount;
-    std::cout << "\r[LightPathIntegrator paths: " << mPathCount << ", spp: " << 0.5f / *mResultScale << "]";
+    auto &film = mScene->mCamera->film();
+    *mResultScale = static_cast<float>(film.width) * film.height / mPathCount;
+    std::cout << "\r[LightPathIntegrator paths: " << mPathCount << ", spp: " << 1.0f / *mResultScale << "]";
 }
 
 void LightPathIntegrator::reset()
 {
-    mScene->mCamera->getFilm().fill(Vec3f(0.0f));
+    mScene->mCamera->film().fill(Spectrum(0.0f));
     mPathCount = 0;
 }
 
@@ -54,7 +54,7 @@ void LightPathIntegrator::trace()
         auto [distObj, hit] = mScene->closestHit(ray);
         if (!hit)
             break;
-        if (hit->getType() != HittableType::Object)
+        if (hit->type() != HittableType::Object)
             break;
         auto obj = dynamic_cast<Object*>(hit.get());
 
@@ -78,7 +78,7 @@ void LightPathIntegrator::trace()
                 Vec3f pCam = pShading + Wi * dist;
                 if (mScene->visible(pShading, pCam))
                 {
-                    Vec3f res = Ii * surf.material->bsdf(surf.NShad, Wo, Wi, TransportMode::Importance) *
+                    Spectrum res = Ii * surf.material->bsdf(surf.NShad, Wo, Wi, TransportMode::Importance) *
                         beta * Math::satDot(surf.NShad, Wi) / pdf;
                     addToFilm(uvRaster, res);
                 }
@@ -110,11 +110,10 @@ void LightPathIntegrator::trace()
     }
 }
 
-void LightPathIntegrator::addToFilm(Vec2f uv, Vec3f val)
+void LightPathIntegrator::addToFilm(Vec2f uv, Spectrum val)
 {
     if (!Camera::inFilmBound(uv))
         return;
-    auto &film = mScene->mCamera->getFilm();
-    int spp = mPathCount / (film.width * film.height);
+    auto &film = mScene->mCamera->film();
     film(uv.x, uv.y) += val;
 }

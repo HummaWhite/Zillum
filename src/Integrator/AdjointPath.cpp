@@ -16,23 +16,23 @@ struct PathVertex
 	Vec3f N;
 	Vec3f Wo;
 	MaterialPtr material;
-	Vec3f throughput;
+	Spectrum throughput;
 };
 
-Vec3f AdjointPathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
+Spectrum AdjointPathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 {
     auto [dist, obj] = mScene->closestHit(ray);
 
     if (obj == nullptr)
-        return mScene->mEnv->getRadiance(ray.dir);
+        return mScene->mEnv->radiance(ray.dir);
 
-    if (obj->getType() == HittableType::Light)
+    if (obj->type() == HittableType::Light)
     {
         auto lt = dynamic_cast<Light *>(obj.get());
         auto y = ray.get(dist);
         return lt->Le({y, -ray.dir});
     }
-    else if (obj->getType() == HittableType::Object)
+    else if (obj->type() == HittableType::Object)
     {
         Vec3f p = ray.get(dist);
         auto tmp = obj.get();
@@ -44,11 +44,11 @@ Vec3f AdjointPathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
         auto vCamera = traceCamera(ray, surf, sampler);
 
         if (!vLight || !vCamera)
-            return Vec3f(0.0f);
+            return Spectrum(0.0f);
         return connect(vLight.value(), vCamera.value());
     }
     Error::impossiblePath();
-    return Vec3f(0.0f);
+    return Spectrum(0.0f);
 }
 
 std::optional<PathVertex> AdjointPathIntegrator::traceLight(SamplerPtr sampler)
@@ -62,14 +62,14 @@ std::optional<PathVertex> AdjointPathIntegrator::traceLight(SamplerPtr sampler)
     Vec3f Nl = lt->normalGeom(leSamp.ray.ori);
     Vec3f Wo = -leSamp.ray.dir;
     Ray ray = leSamp.ray.offset();
-    Vec3f throughput = leSamp.Le * Math::absDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
+    Spectrum throughput = leSamp.Le * Math::absDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
 
     for (int bounce = 1;; bounce++)
     {
         auto [distObj, hit] = mScene->closestHit(ray);
         if (!hit)
             break;
-        if (hit->getType() != HittableType::Object)
+        if (hit->type() != HittableType::Object)
             break;
         auto obj = dynamic_cast<Object *>(hit.get());
 
@@ -105,7 +105,7 @@ std::optional<PathVertex> AdjointPathIntegrator::traceLight(SamplerPtr sampler)
 
 std::optional<PathVertex> AdjointPathIntegrator::traceCamera(Ray ray, SurfaceInfo surf, SamplerPtr sampler)
 {
-    Vec3f throughput(1.0f);
+    Spectrum throughput(1.0f);
     float etaScale = 1.0f;
     for (int bounce = 1;; bounce++)
     {
@@ -137,7 +137,7 @@ std::optional<PathVertex> AdjointPathIntegrator::traceCamera(Ray ray, SurfaceInf
 
         if (obj == nullptr)
             break;
-        if (obj->getType() == HittableType::Light)
+        if (obj->type() == HittableType::Light)
             break;
 
         if (type.isTransmission())
@@ -156,10 +156,10 @@ std::optional<PathVertex> AdjointPathIntegrator::traceCamera(Ray ray, SurfaceInf
     return std::nullopt;
 }
 
-Vec3f AdjointPathIntegrator::connect(const PathVertex &vLight, const PathVertex &vCamera)
+Spectrum AdjointPathIntegrator::connect(const PathVertex &vLight, const PathVertex &vCamera)
 {
     if (vLight.material->bxdf().isDelta() || vCamera.material->bxdf().isDelta())
-        return Vec3f(0.0f);
+        return Spectrum(0.0f);
 
     Vec3f camToLight = glm::normalize(vLight.P - vCamera.P);
     float g = mScene->g(vCamera.P, vLight.P, vCamera.N, vLight.N);
@@ -173,12 +173,12 @@ Vec3f AdjointPathIntegrator::connect(const PathVertex &vLight, const PathVertex 
     if (vCamera.isEndPoint())
     {
     }
-    Vec3f bsdfCamera = vCamera.material->bsdf(vCamera.N, vCamera.Wo, camToLight, TransportMode::Radiance);
-    Vec3f bsdfLight = vLight.material->bsdf(vLight.N, vLight.Wo, -camToLight, TransportMode::Importance);
+    Spectrum bsdfCamera = vCamera.material->bsdf(vCamera.N, vCamera.Wo, camToLight, TransportMode::Radiance);
+    Spectrum bsdfLight = vLight.material->bsdf(vLight.N, vLight.Wo, -camToLight, TransportMode::Importance);
     return vCamera.throughput * bsdfCamera * vLight.throughput * bsdfLight * g;
 }
 
-bool AdjointPathIntegrator::russianRouletteLight(float continueProb, int bounce, SamplerPtr sampler, Vec3f &throughput)
+bool AdjointPathIntegrator::russianRouletteLight(float continueProb, int bounce, SamplerPtr sampler, Spectrum &throughput)
 {
     if (bounce >= mRRLightStartDepth && mRussianRoulette)
     {
@@ -191,7 +191,7 @@ bool AdjointPathIntegrator::russianRouletteLight(float continueProb, int bounce,
     return true;
 }
 
-bool AdjointPathIntegrator::russianRouletteCamera(float continueProb, int bounce, SamplerPtr sampler, Vec3f &throughput)
+bool AdjointPathIntegrator::russianRouletteCamera(float continueProb, int bounce, SamplerPtr sampler, Spectrum &throughput)
 {
     if (bounce >= mRRCameraStartDepth && mRussianRoulette)
     {

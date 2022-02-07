@@ -25,7 +25,7 @@ enum class IntegratorType
 	LightPath,
 	Path,
 	AdjointPath,
-	Bidirectional,
+	BDPT,
 	MLT,
 	PM
 };
@@ -37,7 +37,7 @@ public:
 	virtual void renderOnePass() = 0;
 
 	bool isFinished() const { return mFinished; }
-	Film &result() { return mScene->mCamera->getFilm(); }
+	Film &result() { return mScene->mCamera->film(); }
 	IntegratorType getType() const { return mType; }
 
 	void setModified();
@@ -60,7 +60,7 @@ class PixelIndependentIntegrator : public Integrator
 public:
 	PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type);
 	void renderOnePass();
-	virtual Vec3f tracePixel(Ray ray, SamplerPtr sampler) = 0;
+	virtual Spectrum tracePixel(Ray ray, SamplerPtr sampler) = 0;
 
 	void reset() { setModified(); }
 
@@ -79,11 +79,12 @@ protected:
 class PathIntegrator : public PixelIndependentIntegrator
 {
 public:
-	PathIntegrator(ScenePtr scene, int maxSpp) : PixelIndependentIntegrator(scene, maxSpp, IntegratorType::Path) {}
-	Vec3f tracePixel(Ray ray, SamplerPtr sampler);
+	PathIntegrator(ScenePtr scene, int maxSpp) :
+		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::Path) {}
+	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
-	Vec3f trace(Ray ray, SurfaceInfo surf, SamplerPtr sampler);
+	Spectrum trace(Ray ray, SurfaceInfo surf, SamplerPtr sampler);
 
 public:
 	bool mRussianRoulette = true;
@@ -96,13 +97,14 @@ public:
 class LightPathIntegrator : public Integrator
 {
 public:
-	LightPathIntegrator(ScenePtr scene, int pathsOnePass) : mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::LightPath) {}
+	LightPathIntegrator(ScenePtr scene, int pathsOnePass) :
+		mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::LightPath) {}
 	void renderOnePass();
 	void reset();
 
 private:
 	void trace();
-	void addToFilm(Vec2f uv, Vec3f val);
+	void addToFilm(Vec2f uv, Spectrum val);
 
 public:
 	bool mRussianRoulette = true;
@@ -120,16 +122,17 @@ struct PathVertex;
 class AdjointPathIntegrator : public PixelIndependentIntegrator
 {
 public:
-	AdjointPathIntegrator(ScenePtr scene, int maxSpp) : PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AdjointPath) {}
-	Vec3f tracePixel(Ray ray, SamplerPtr sampler);
+	AdjointPathIntegrator(ScenePtr scene, int maxSpp) :
+		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AdjointPath) {}
+	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
 	std::optional<PathVertex> traceLight(SamplerPtr sampler);
 	std::optional<PathVertex> traceCamera(Ray ray, SurfaceInfo surf, SamplerPtr sampler);
-	Vec3f connect(const PathVertex &vLight, const PathVertex &vCamera);
+	Spectrum connect(const PathVertex &vLight, const PathVertex &vCamera);
 
-	bool russianRouletteLight(float continueProb, int bounce, SamplerPtr sampler, Vec3f &throughput);
-	bool russianRouletteCamera(float continueProb, int bounce, SamplerPtr sampler, Vec3f &throughput);
+	bool russianRouletteLight(float continueProb, int bounce, SamplerPtr sampler, Spectrum &throughput);
+	bool russianRouletteCamera(float continueProb, int bounce, SamplerPtr sampler, Spectrum &throughput);
 
 public:
 	bool mRussianRoulette = true;
@@ -142,13 +145,40 @@ public:
 class AOIntegrator : public PixelIndependentIntegrator
 {
 public:
-	AOIntegrator(ScenePtr scene, int maxSpp) : PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AO) {}
-	Vec3f tracePixel(Ray ray, SamplerPtr sampler);
+	AOIntegrator(ScenePtr scene, int maxSpp) :
+		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AO) {}
+	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
-	Vec3f trace(Ray ray, Vec3f N, SamplerPtr sampler);
+	Spectrum trace(Ray ray, Vec3f N, SamplerPtr sampler);
 
 public:
 	float mRadius = 0.5f;
 	int mSamplesOneTime = 1;
+};
+
+struct BDPTVertex;
+
+class BDPTIntegrator : public PixelIndependentIntegrator
+{
+public:
+	BDPTIntegrator(ScenePtr scene, int maxSpp) :
+		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::BDPT) {};
+	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
+
+private:
+	std::vector<BDPTVertex> createLightPath(SamplerPtr sampler);
+	std::vector<BDPTVertex> createCameraPath(const Ray &ray, SamplerPtr sampler);
+
+	float connect(const std::vector<BDPTVertex> &lightPath, const std::vector<BDPTVertex> &cameraPath);
+	Spectrum eval(const std::vector<BDPTVertex> &lightPath, const std::vector<BDPTVertex> &cameraPath);
+
+public:
+	bool mRussianRoulette = true;
+	int mRRLightStartDepth = 3;
+	int mRRCameraStartDepth = 3;
+	int mMaxLightDepth = 5;
+	int mMaxCameraDepth = 5;
+
+private:
 };

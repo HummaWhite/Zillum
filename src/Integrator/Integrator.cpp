@@ -9,7 +9,7 @@ void Integrator::setModified()
 PixelIndependentIntegrator::PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type) :
     mMaxSpp(maxSpp), Integrator(scene, type)
 {
-    auto film = scene->mCamera->getFilm();
+    auto film = scene->mCamera->film();
     mWidth = film.width;
     mHeight = film.height;
 }
@@ -18,7 +18,7 @@ void PixelIndependentIntegrator::renderOnePass()
 {
     if (mModified)
     {
-        mScene->mCamera->getFilm().fill(Vec3f(0.0f));
+        mScene->mCamera->film().fill(Vec3f(0.0f));
         mCurspp = 0;
         mModified = false;
     }
@@ -64,16 +64,16 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
             float sy = 1.0f - 2.0f * (y + 0.5f) * invH;
 
             Ray ray = mScene->mCamera->generateRay({sx, sy}, sampler);
-            Vec3f result = tracePixel(ray, sampler);
+            Spectrum result = tracePixel(ray, sampler);
 
             if (Math::isNan(result.x) || Math::isNan(result.y) || Math::isNan(result.z))
             {
                 Error::bracketLine<0>("nan discovered");
-                result = Vec3f(0.0f);
+                result = Spectrum(0.0f);
             }
 
-            result = glm::clamp(result, Vec3f(0.0f), Vec3f(1e8f));
-            auto resultBuffer = mScene->mCamera->getFilm();
+            result = glm::clamp(result, Spectrum(0.0f), Spectrum(1e8f));
+            auto resultBuffer = mScene->mCamera->film();
             resultBuffer(x, y) = resultBuffer(x, y) * ((float)(mCurspp) / (float)(mCurspp + 1)) + result / (float)(mCurspp + 1);
         }
     }

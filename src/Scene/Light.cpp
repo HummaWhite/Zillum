@@ -27,11 +27,11 @@ float Light::pdfLi(const Vec3f &ref, const Vec3f &y)
     return Math::distSquare(ref, y) / (surfaceArea() * cosTheta);
 }
 
-Vec3f Light::Le(Ray ray)
+Spectrum Light::Le(Ray ray)
 {
     if (glm::dot(normalGeom(ray.ori), ray.dir) <= 0.0f)
-        return Vec3f(0.0f);
-    return power / (2.0f * Math::Pi * surfaceArea());
+        return Spectrum(0.0f);
+    return mPower / (2.0f * Math::Pi * surfaceArea());
 }
 
 LightLeSample Light::sampleLe(const std::array<float, 4> &u)

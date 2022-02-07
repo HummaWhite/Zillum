@@ -9,7 +9,7 @@
 #include "Color.h"
 #include "Transform.h"
 
-class Texture : public Buffer2D<glm::vec3>
+class Texture : public Buffer2D<Vec3f>
 {
 public:
 	enum FilterType

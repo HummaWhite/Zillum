@@ -10,7 +10,7 @@
 struct LightLiSample
 {
 	Vec3f Wi;
-	Vec3f Li;
+	Spectrum Li;
 	float dist;
 	float pdf;
 };
@@ -18,7 +18,7 @@ struct LightLiSample
 struct LightLeSample
 {
 	Ray ray;
-	Vec3f Le;
+	Spectrum Le;
 	float pdfPos;
 	float pdfDir;
 };
@@ -27,8 +27,8 @@ class Light:
 	public Hittable
 {
 public:
-	Light(HittablePtr shape, const Vec3f &power, bool delta):
-		shape(shape), power(power), Hittable(HittableType::Light) {}
+	Light(HittablePtr shape, const Spectrum &power, bool delta):
+		shape(shape), mPower(power), Hittable(HittableType::Light) {}
 
 	std::optional<float> closestHit(const Ray &ray) { return shape->closestHit(ray); }
 
@@ -40,21 +40,21 @@ public:
 
 	void setTransform(TransformPtr trans) override
 	{
-		transform = trans;
+		mTransform = trans;
 		shape->setTransform(trans);
 	}
 
-	Vec3f getPower(){ return power; }
-	float getRgbPower() { return Math::luminance(power); }
+	Spectrum getPower(){ return mPower; }
+	float luminance() { return Math::luminance(mPower); }
 	
 	std::optional<LightLiSample> sampleLi(Vec3f ref, Vec2f u);
 	float pdfLi(const Vec3f &ref, const Vec3f &y);
-	Vec3f Le(Ray ray);
+	Spectrum Le(Ray ray);
 	LightLeSample sampleLe(const std::array<float, 4> &u);
 
 protected:
 	HittablePtr shape;
-	Vec3f power;
+	Vec3f mPower;
 };
 
 using LightPtr = std::shared_ptr<Light>;

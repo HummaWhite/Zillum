@@ -27,6 +27,6 @@ Vec2f MeshTriangle::surfaceUV(const Vec3f &p)
 
 void MeshTriangle::setTransform(TransformPtr trans)
 {
-    transform = trans;
+    mTransform = trans;
     triangle.setTransform(trans);
 }

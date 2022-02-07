@@ -5,7 +5,7 @@ bool refract(Vec3f &Wt, const Vec3f &Wi, const Vec3f &N, float eta)
     float cosTi = glm::dot(N, Wi);
     if (cosTi < 0)
         eta = 1.0f / eta;
-    float sin2Ti = glm::max(0.0f, 1.0f - cosTi * cosTi);
+    float sin2Ti = glm::max<float>(0.0f, 1.0f - cosTi * cosTi);
     float sin2Tt = sin2Ti / (eta * eta);
 
     if (sin2Tt >= 1.0f)
@@ -39,10 +39,10 @@ float fresnelDielectric(float cosTi, float eta)
     return (rPa * rPa + rPe * rPe) * 0.5f;
 }
 
-Vec3f Dielectric::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum Dielectric::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     if (approxDelta)
-        return Vec3f(0.0f);
+        return Spectrum(0.0f);
 
     auto H = glm::normalize(Wo + Wi);
     float HoWo = Math::absDot(H, Wo);
@@ -51,7 +51,7 @@ Vec3f Dielectric::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, Transpo
     if (Math::sameHemisphere(N, Wo, Wi))
     {
         float refl = fresnelDielectric(Math::absDot(H, Wi), ior);
-        return (HoWo * HoWi < 1e-7f) ? Vec3f(0.0f) : tint * distrib.d(N, H) * distrib.g(N, Wo, Wi) / (4.0f * HoWo * HoWi) * refl;
+        return (HoWo * HoWi < 1e-7f) ? Spectrum(0.0f) : baseColor * distrib.d(N, H) * distrib.g(N, Wo, Wi) / (4.0f * HoWo * HoWi) * refl;
     }
     else
     {
@@ -65,8 +65,8 @@ Vec3f Dielectric::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, Transpo
         float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
 
         return (denom < 1e-7f) ?
-            Vec3f(0.0f) :
-            tint * glm::abs(distrib.d(N, H) * distrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * (1.0f - refl) * factor;
+            Spectrum(0.0f) :
+            baseColor * glm::abs(distrib.d(N, H) * distrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * (1.0f - refl) * factor;
     }
 }
 
@@ -106,7 +106,7 @@ std::optional<BSDFSample> Dielectric::sample(const Vec3f &N, const Vec3f &Wo, fl
         if (u1 < refl)
         {
             Vec3f Wi = -glm::reflect(Wo, N);
-            return BSDFSample(Wi, 1.0f, BXDF::SpecRefl, tint);
+            return BSDFSample(Wi, 1.0f, BXDF::SpecRefl, baseColor);
         }
         else
         {
@@ -117,7 +117,7 @@ std::optional<BSDFSample> Dielectric::sample(const Vec3f &N, const Vec3f &Wo, fl
                 return std::nullopt;
 
             float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
-            return BSDFSample(Wi, 1.0f, BXDF::SpecTrans, tint * factor, eta);
+            return BSDFSample(Wi, 1.0f, BXDF::SpecTrans, baseColor * factor, eta);
         }
     }
     else
@@ -138,9 +138,9 @@ std::optional<BSDFSample> Dielectric::sample(const Vec3f &N, const Vec3f &Wo, fl
             float HoWo = Math::absDot(H, Wo);
             float HoWi = Math::absDot(H, Wi);
 
-            Vec3f r = (HoWo * HoWi < 1e-7f) ?
-                Vec3f(0.0f) :
-                tint * distrib.d(N, H) * distrib.g(N, Wo, Wi) / (4.0f * HoWo * HoWi);
+            Spectrum r = (HoWo * HoWi < 1e-7f) ?
+                Spectrum(0.0f) :
+                baseColor * distrib.d(N, H) * distrib.g(N, Wo, Wi) / (4.0f * HoWo * HoWi);
 
             if (Math::isNan(p))
                 p = 0.0f;
@@ -165,9 +165,9 @@ std::optional<BSDFSample> Dielectric::sample(const Vec3f &N, const Vec3f &Wo, fl
 
             denom *= Math::absDot(N, Wi) * Math::absDot(N, Wo);
 
-            Vec3f r = (denom < 1e-7f) ?
-                Vec3f(0.0f) :
-                tint * glm::abs(distrib.d(N, H) * distrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * factor;
+            Spectrum r = (denom < 1e-7f) ?
+                Spectrum(0.0f) :
+                baseColor * glm::abs(distrib.d(N, H) * distrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * factor;
 
             float p = distrib.pdf(N, H, Wo) * dHdWi;
 

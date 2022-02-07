@@ -14,7 +14,7 @@ const int BVHLeafMark = 0x80000000;
 
 struct BVHNode
 {
-	AABB box;
+	AABB bound;
 	HittablePtr hittable;
 	int size;
 };
@@ -41,8 +41,8 @@ public:
 	bool testIntersec(const Ray &ray, float dist);
 	std::pair<float, HittablePtr> closestHit(const Ray &ray);
 
-	int size() const { return treeSize; }
-	AABB box() const { return tree[0].box; }
+	int size() const { return mTreeSize; }
+	AABB box() const { return mTree[0].bound; }
 
 private:
 	void quickBuild(std::vector<HittableInfo> &primInfo, const AABB &rootExtent);
@@ -50,9 +50,9 @@ private:
 	void buildHitTable();
 	
 private:
-	int treeSize = 0;
-	BVHSplitMethod splitMethod;
+	int mTreeSize = 0;
+	BVHSplitMethod mSplitMethod;
 
-	std::vector<BVHNode> tree;
-	std::vector<BVHTableElement> hitTables[6];
+	std::vector<BVHNode> mTree;
+	std::vector<BVHTableElement> mHitTables[6];
 };

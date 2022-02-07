@@ -114,7 +114,7 @@ HittableInfo* partition(HittableInfo* a, int size, float axisMin, float axisMax,
 }
 
 BVH::BVH(const std::vector<HittablePtr> &hittables, BVHSplitMethod method) :
-    splitMethod(method)
+    mSplitMethod(method)
 {
     if (hittables.size() == 0)
         return;
@@ -128,8 +128,8 @@ BVH::BVH(const std::vector<HittablePtr> &hittables, BVHSplitMethod method) :
 		rootCentExtent.expand(box.centroid());
 		hittableInfo.push_back({ box, box.centroid(), hittable });
 	}
-    treeSize = hittables.size() * 2 - 1;
-	tree.resize(treeSize);
+    mTreeSize = hittables.size() * 2 - 1;
+	mTree.resize(mTreeSize);
 	//standardBuild(hittableInfo, rootBox);
 	quickBuild(hittableInfo, rootCentExtent);
     buildHitTable();
@@ -137,14 +137,14 @@ BVH::BVH(const std::vector<HittablePtr> &hittables, BVHSplitMethod method) :
 
 bool BVH::testIntersec(const Ray &ray, float dist)
 {
-    if (treeSize == 0)
+    if (mTreeSize == 0)
         return false;
-    auto &table = hitTables[Math::cubeMapFace(-ray.dir)];
+    auto &table = mHitTables[Math::cubeMapFace(-ray.dir)];
 
     int k = 0;
-    while (k != treeSize)
+    while (k != mTreeSize)
     {
-        auto [box, hittable, size] = tree[table[k].nodeIndex];
+        auto [box, hittable, size] = mTree[table[k].nodeIndex];
         auto [boxHit, tMin, tMax] = box.hit(ray);
 
         if (!boxHit || (boxHit && tMin > dist))
@@ -169,16 +169,16 @@ bool BVH::testIntersec(const Ray &ray, float dist)
 
 std::pair<float, HittablePtr> BVH::closestHit(const Ray &ray)
 {
-    if (treeSize == 0)
+    if (mTreeSize == 0)
         return {0.0f, nullptr};
     float dist = 1e8f;
     std::shared_ptr<Hittable> hit;
-    auto &table = hitTables[Math::cubeMapFace(-ray.dir)];
+    auto &table = mHitTables[Math::cubeMapFace(-ray.dir)];
 
     int k = 0;
-    while (k != treeSize)
+    while (k != mTreeSize)
     {
-        auto [box, hittable, size] = tree[table[k].nodeIndex];
+        auto [box, hittable, size] = mTree[table[k].nodeIndex];
         auto [boxHit, tMin, tMax] = box.hit(ray);
 
         if (!boxHit || (boxHit && tMin > dist))
@@ -216,19 +216,19 @@ void BVH::quickBuild(std::vector<HittableInfo> &primInfo, const AABB &rootExtent
 		auto [offset, nodeExtent, splitDim, l, r] = stack.top();
 		stack.pop();
 		int size = (r - l) * 2 + 1;
-		auto &node = tree[offset];
+		auto &node = mTree[offset];
         node.size = size;
         node.hittable = (size == 1) ? primInfo[l].hittable : nullptr;
 
 		if (l == r)
 		{
-			node.box = primInfo[l].bound;
+			node.bound = primInfo[l].bound;
 			continue;
 		}
 		int nBoxes = r - l + 1;
 		if (nBoxes == 2)
 		{
-			node.box = AABB(primInfo[l].bound, primInfo[r].bound);
+			node.bound = AABB(primInfo[l].bound, primInfo[r].bound);
 			if (primInfo[l].centroid[splitDim] > primInfo[r].centroid[splitDim])
 				std::swap(primInfo[l], primInfo[r]);
 			stack.push({ offset + 2, primInfo[r].centroid, 0, r, r });
@@ -258,7 +258,7 @@ void BVH::quickBuild(std::vector<HittableInfo> &primInfo, const AABB &rootExtent
 			prefix[i] = Bucket(prefix[i - 1], buckets[i]);
 			suffix[NumBuckets - 1 - i] = Bucket(suffix[NumBuckets - i], buckets[NumBuckets - i - 1]);
 		}
-		node.box = prefix[NumBuckets - 1].box;
+		node.bound = prefix[NumBuckets - 1].box;
 
 		int splitPoint = 0;
 		float minCost = prefix[0].count * prefix[0].box.surfaceArea() +
@@ -301,20 +301,20 @@ void BVH::standardBuild(std::vector<HittableInfo> &primInfo, const AABB &rootExt
 		auto [offset, nodeExtent, splitDim, l, r] = stack.top();
 		stack.pop();
 		int size = (r - l) * 2 + 1;
-        auto &node = tree[offset];
+        auto &node = mTree[offset];
         node.size = size;
         node.hittable = (size == 1) ? primInfo[l].hittable : nullptr;
 
 		if (l == r)
 		{
-            node.box = primInfo[l].bound;
+            node.bound = primInfo[l].bound;
 			continue;
 		}
 		int nBoxes = r - l + 1;
 		radixSort16(primInfo.data() + l, nBoxes, splitDim);
 		if (nBoxes == 2)
 		{
-			node.box = AABB(primInfo[l].bound, primInfo[r].bound);
+			node.bound = AABB(primInfo[l].bound, primInfo[r].bound);
 			stack.push({ offset + 2, primInfo[r].bound, 0, r, r });
 			stack.push({ offset + 1, primInfo[l].bound, 0, l, l });
 			continue;
@@ -332,7 +332,7 @@ void BVH::standardBuild(std::vector<HittableInfo> &primInfo, const AABB &rootExt
 			suffix[nBoxes - i - 1] = { AABB(suffix[nBoxes - i].vertBox, primInfo[r - i].bound),
 				AABB(suffix[nBoxes - i].centExtent, primInfo[r - i].centroid) };
 		}
-		node.box = prefix[nBoxes - 1].vertBox;
+		node.bound = prefix[nBoxes - 1].vertBox;
 
 		auto getCost = [&](int i) -> float
 		{
@@ -373,11 +373,11 @@ void BVH::buildHitTable()
 		[](const glm::vec3& a, const glm::vec3& b) { return a.z < b.z; }	// Z-
 	};
 
-	auto stack = new int[treeSize];
+	auto stack = new int[mTreeSize];
 	for (int i = 0; i < 6; i++)
 	{
-		auto &table = hitTables[i];
-		table.resize(treeSize);
+		auto &table = mHitTables[i];
+		table.resize(mTreeSize);
 		size_t top = 0;
 		int index = 0;
 		stack[top++] = 0;
@@ -385,18 +385,18 @@ void BVH::buildHitTable()
 		while (top)
 		{
 			int nodeIndex = stack[--top];
-			auto nodeSize = tree[nodeIndex].size;
+			auto nodeSize = mTree[nodeIndex].size;
 			table[index] = { index + nodeSize, nodeIndex };
 			index++;
 
 			if (nodeSize == 1)
 				continue;
 
-			int lSize = tree[nodeIndex + 1].size;
+			int lSize = mTree[nodeIndex + 1].size;
 			int lch = nodeIndex + 1;
 			int rch = nodeIndex + 1 + lSize;
 
-			if (!cmpFuncs[i](tree[lch].box.centroid(), tree[rch].box.centroid()))
+			if (!cmpFuncs[i](mTree[lch].bound.centroid(), mTree[rch].bound.centroid()))
 				std::swap(lch, rch);
 			stack[top++] = rch;
 			stack[top++] = lch;

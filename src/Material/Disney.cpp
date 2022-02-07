@@ -1,6 +1,6 @@
 #include "../../include/Core/Material.h"
 
-Vec3f DisneyDiffuse::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum DisneyDiffuse::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     float NoWo = Math::satDot(N, Wo);
     float NoWi = Math::satDot(N, Wi);
@@ -9,21 +9,20 @@ Vec3f DisneyDiffuse::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, Tran
     float HoWi2 = HoWi * HoWi;
 
     if (NoWo < 1e-10f || NoWi < 1e-10f)
-        return Vec3f(0.0f);
+        return Spectrum(0.0f);
 
     float Fi = schlickW(NoWi);
     float Fo = schlickW(NoWo);
-    Vec3f Fd90(0.5f + 2.0f * roughness * HoWi2);
-    Vec3f Fd = glm::mix(Vec3f(1.0f), Fd90, Fi) * glm::mix(Vec3f(1.0f), Fd90, Fo);
-    Vec3f baseDiffuse = baseColor * Fd * Math::PiInv;
+    Spectrum Fd90(0.5f + 2.0f * roughness * HoWi2);
+    Spectrum Fd = Math::lerp(Spectrum(1.0f), Fd90, Fi) * Math::lerp(Spectrum(1.0f), Fd90, Fo);
+    Spectrum baseDiffuse = baseColor * Fd * Math::PiInv;
 
-    Vec3f Fss90(roughness * HoWi2);
-    Vec3f Fss = glm::mix(Vec3f(1.0f), Fss90, Fi) * glm::mix(Vec3f(1.0f), Fss90, Fo);
-    Vec3f ss = baseColor * Math::PiInv * 1.25f *
+    Spectrum Fss90(roughness * HoWi2);
+    Spectrum Fss = Math::lerp(Spectrum(1.0f), Fss90, Fi) * Math::lerp(Spectrum(1.0f), Fss90, Fo);
+    Spectrum ss = baseColor * Math::PiInv * 1.25f *
                (Fss * (1.0f / (NoWi + NoWo) - 0.5f) + 0.5f);
 
-    Vec3f diffuse = glm::mix(baseDiffuse, ss, subsurface);
-
+    Spectrum diffuse = Math::lerp(baseDiffuse, ss, subsurface);
     return diffuse;
 }
 
@@ -38,23 +37,22 @@ std::optional<BSDFSample> DisneyDiffuse::sample(const Vec3f &N, const Vec3f &Wo,
     return BSDFSample(Wi, pdf, BXDF::Diffuse, baseColor * Math::PiInv);
 }
 
-Vec3f DisneyMetal::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum DisneyMetal::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     float NoWo = Math::satDot(N, Wo);
     float NoWi = Math::satDot(N, Wi);
     Vec3f H = glm::normalize(Wo + Wi);
 
     if (NoWo < 1e-10f || NoWi < 1e-10f)
-        return Vec3f(0.0f);
+        return Spectrum(0.0f);
 
-    Vec3f F = schlickF(Math::absDot(H, Wo), baseColor);
+    Spectrum F = schlickF(Math::absDot(H, Wo), baseColor);
     float D = distrib.d(N, H);
     float G = distrib.g(N, Wo, Wi);
 
     float denom = 4.0f * NoWi * NoWo;
     if (denom < 1e-7f)
-        return Vec3f(0.0f);
-
+        return Spectrum(0.0f);
     return F * D * G / denom;
 }
 
@@ -69,30 +67,28 @@ std::optional<BSDFSample> DisneyMetal::sample(const Vec3f &N, const Vec3f &Wo, f
 {
     Vec3f H = distrib.sampleWm(N, Wo, u2);
     Vec3f Wi = glm::reflect(-Wo, H);
-
     if (glm::dot(N, Wi) < 0.0f)
         return std::nullopt;
     return BSDFSample(Wi, pdf(N, Wo, Wi, mode), BXDF::GlosRefl, bsdf(N, Wo, Wi, mode));
 }
 
-Vec3f DisneyClearcoat::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum DisneyClearcoat::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     auto H = glm::normalize(Wo + Wi);
     float NoWo = Math::satDot(N, Wo);
     float NoWi = Math::satDot(N, Wi);
 
     if (NoWo < 1e-6f || NoWi < 1e-6f)
-        return Vec3f(0.0f);
+        return Spectrum(0.0f);
 
-    const Vec3f R0(0.04f);
-    Vec3f F = schlickF(Math::absDot(H, Wo), R0);
+    Spectrum R0(0.04f);
+    Spectrum F = schlickF(Math::absDot(H, Wo), R0);
     float D = distrib.d(N, H);
     float G = schlickG(NoWi, alpha) * schlickG(NoWi, alpha);
 
     float denom = 4.0f * NoWo * NoWi;
     if (denom < 1e-7f)
-        return Vec3f(0.0f);
-
+        return Spectrum(0.0f);
     return F * D * G / denom;
 }
 
@@ -112,12 +108,12 @@ std::optional<BSDFSample> DisneyClearcoat::sample(const Vec3f &N, const Vec3f &W
     return BSDFSample(Wi, pdf(N, Wo, Wi, mode), BXDF::GlosRefl, bsdf(N, Wo, Wi, mode));
 }
 
-Vec3f DisneySheen::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum DisneySheen::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     Vec3f H = glm::normalize(Wi + Wo);
     float lum = Math::luminance(baseColor);
-    Vec3f tintColor = lum > 0 ? baseColor / lum : Vec3f(1.0f);
-    Vec3f sheenColor = glm::mix(Vec3f(1.0f), tintColor, tint);
+    Spectrum tintColor = lum > 0 ? baseColor / lum : Spectrum(1.0f);
+    Spectrum sheenColor = Math::lerp(Spectrum(1.0f), tintColor, tint);
     return sheenColor * schlickW(Math::absDot(H, Wo));
 }
 
@@ -134,7 +130,7 @@ std::optional<BSDFSample> DisneySheen::sample(const Vec3f &N, const Vec3f &Wo, f
 
 // TODO: this implementation is not correct
 DisneyBSDF::DisneyBSDF(
-    const Vec3f &baseColor,
+    const Spectrum &baseColor,
     float subsurface,
     float metallic,
     float roughness,
@@ -172,9 +168,9 @@ DisneyBSDF::DisneyBSDF(
     piecewiseSampler = Piecewise1D(w);
 }
 
-Vec3f DisneyBSDF::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum DisneyBSDF::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
-    Vec3f r(0.0f);
+    Spectrum r(0.0f);
     for (int i = 0; i < 5; i++)
         r += components[i]->bsdf(N, Wo, Wi, mode) * weights[i];
     return r;

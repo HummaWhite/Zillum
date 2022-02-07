@@ -1,32 +1,30 @@
 #include "../../include/Core/Material.h"
 
-Vec3f MetalWorkflow::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum MetalWorkflow::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
     Vec3f H = glm::normalize(Wi + Wo);
     float alpha = roughness * roughness;
 
     if (dot(N, Wi) < 1e-10f || dot(N, Wo) < 1e-10f)
-        return Vec3f(0.0f);
+        return Spectrum(0.0f);
 
     float NoL = Math::satDot(N, Wi);
     float NoV = Math::satDot(N, Wo);
 
-    Vec3f F0 = glm::mix(Vec3f(0.04f), albedo, metallic);
+    Spectrum F0 = Math::lerp(Spectrum(0.04f), albedo, metallic);
 
-    Vec3f F = schlickF(Math::satDot(H, Wo), F0, roughness);
+    Spectrum F = schlickF(Math::satDot(H, Wo), F0, roughness);
     float D = distrib.d(N, H);
     float G = distrib.g(N, Wo, Wi);
 
-    Vec3f ks = F;
-    Vec3f kd = Vec3f(1.0f) - ks;
+    Spectrum ks = F;
+    Spectrum kd = Vec3f(1.0f) - ks;
     kd *= 1.0f - metallic;
 
-    Vec3f FDG = F * D * G;
     float denom = 4.0f * NoV * NoL;
     if (denom < 1e-7f)
         return Vec3f(0.0f);
-
-    Vec3f glossy = FDG / denom;
+    Vec3f glossy = F * D * G / denom;
 
     return kd * albedo * Math::PiInv + glossy;
 }

@@ -71,7 +71,7 @@ float radicalInverse(uint32_t bits)
 
 float satDot(const Vec3f &a, const Vec3f &b)
 {
-    return glm::max(glm::dot(a, b), 0.0f);
+    return glm::max<float>(glm::dot(a, b), 0.0f);
 }
 
 float absDot(const Vec3f &a, const Vec3f &b)
@@ -91,12 +91,12 @@ bool sameHemisphere(const Vec3f &N, const Vec3f &A, const Vec3f &B)
 
 float maxComponent(const Vec3f &v)
 {
-    return glm::max(glm::max(v.x, v.y), v.z);
+    return glm::max<float>(glm::max<float>(v.x, v.y), v.z);
 }
 
 float minComponent(const Vec3f &v)
 {
-    return glm::min(glm::min(v.x, v.y), v.z);
+    return glm::min<float>(glm::min<float>(v.x, v.y), v.z);
 }
 
 int maxExtent(const Vec3f &v)
@@ -136,9 +136,9 @@ float biHeuristic(float pf, float pg)
     return heuristic(1, pf, 1, pg, 2);
 }
 
-float luminance(const Vec3f &c)
+float luminance(const Spectrum &c)
 {
-    return glm::dot(BRIGHTNESS, c);
+    return glm::dot(Spectrum(0.299f, 0.587f, 0.114f), c);
 }
 
 float diskArea(float radius)

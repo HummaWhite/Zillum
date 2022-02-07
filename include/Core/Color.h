@@ -6,8 +6,6 @@
 
 #include "../../ext/glmIncluder.h"
 
-using Spectrum = Vec3f;
-
 struct RGB24
 {
 	RGB24() = default;

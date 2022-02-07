@@ -8,6 +8,7 @@
 #include "Ray.h"
 #include "Sampler.h"
 #include "Transform.h"
+#include "Spectrum.h"
 
 const float CameraRotateSensitivity = 0.5f;
 const float CameraMoveSensitivity = 0.1f;
@@ -15,7 +16,7 @@ const float CameraRollSensitivity = 0.05f;
 const float CameraFOVSensitivity = 150.0f;
 const float CameraPitchSensitivity = 88.0f;
 
-using Film = Buffer2D<Vec3f>;
+using Film = Buffer2D<Spectrum>;
 
 enum class CameraType
 {
@@ -25,7 +26,7 @@ enum class CameraType
 struct CameraIiSample
 {
 	Vec3f Wi;
-	Vec3f Ii;
+	Spectrum Ii;
 	float dist;
 	Vec2f uv;
 	float pdf;
@@ -34,7 +35,7 @@ struct CameraIiSample
 struct CameraIeSample
 {
 	Ray ray;
-	Vec3f Ie;
+	Spectrum Ie;
 	float pdfPos;
 	float pdfDir;
 };
@@ -42,30 +43,30 @@ struct CameraIeSample
 class Camera
 {
 public:
-	Camera(CameraType type) : type(type) {}
+	Camera(CameraType type) : mType(type) {}
 
-	void move(Vec3f vect) { pos += vect; }
+	void move(Vec3f vect) { mPos += vect; }
 	void move(int key);
 	void roll(float rolAngle);
 	void rotate(Vec3f rotAngle);
 	
-	void lookAt(Vec3f focus) { setDir(focus - pos); }
+	void lookAt(Vec3f focus) { setDir(focus - mPos); }
 	void setDir(Vec3f dir);
-	void setPos(Vec3f p) { pos = p; }
+	void setPos(Vec3f p) { mPos = p; }
 	void setAngle(Vec3f ang);
 
-	Vec3f getPos() const { return pos; }
-	Vec3f getAngle() const { return angle; }
-	Film& getFilm() { return film; }
-	CameraType getType() const { return type; }
+	Vec3f pos() const { return mPos; }
+	Vec3f angle() const { return mAngle; }
+	Film& film() { return mFilm; }
+	CameraType type() const { return mType; }
 
-	Vec3f f() const { return front; }
-	Vec3f r() const { return right; }
-	Vec3f u() const { return up; }
+	Vec3f f() const { return mFront; }
+	Vec3f r() const { return mRight; }
+	Vec3f u() const { return mUp; }
 
-	virtual void initFilm(int w, int h) { film.init(w, h); }
+	virtual void initFilm(int w, int h) { mFilm.init(w, h); }
 
-	virtual Vec2f getRasterPos(Ray ray) = 0;
+	virtual Vec2f rasterPos(Ray ray) = 0;
 
 	virtual Ray generateRay(SamplerPtr sampler) = 0;
 	virtual Ray generateRay(Vec2f uv, SamplerPtr sampler) = 0;
@@ -73,7 +74,7 @@ public:
 	virtual float pdfIi(Vec3f ref, Vec3f y) = 0;
 	virtual std::optional<CameraIiSample> sampleIi(Vec3f ref, Vec2f u) = 0;
 	virtual std::pair<float, float> pdfIe(Ray ray) = 0;
-	virtual Vec3f Ie(Ray ray) = 0;
+	virtual Spectrum Ie(Ray ray) = 0;
 
 	virtual bool deltaArea() const = 0;
 
@@ -83,17 +84,17 @@ protected:
 	void update();
 
 protected:
-	CameraType type;
-	Film film;
+	CameraType mType;
+	Film mFilm;
 
-	Vec3f pos = Vec3f(0.0f);
-	Vec3f angle = { 90.0f, 0.0f, 0.0f };
-	Vec3f front = { 0.0f, 1.0f, 0.0f };
-	Vec3f right = { 1.0f, 0.0f, 0.0f };
-	Vec3f up = { 0.0f, 0.0f, 1.0f };
+	Vec3f mPos = Vec3f(0.0f);
+	Vec3f mAngle = { 90.0f, 0.0f, 0.0f };
+	Vec3f mFront = { 0.0f, 1.0f, 0.0f };
+	Vec3f mRight = { 1.0f, 0.0f, 0.0f };
+	Vec3f mUp = { 0.0f, 0.0f, 1.0f };
 
-	Mat3f tbnMat;
-	Mat3f tbnInv;
+	Mat3f mTBNMat;
+	Mat3f mTBNInv;
 };
 
 using CameraPtr = std::shared_ptr<Camera>;
@@ -103,18 +104,18 @@ class ThinLensCamera :
 {
 public:
 	ThinLensCamera(float FOV, float lensRadius = 0.0f, float focalDist = 1.0f) :
-		FOV(FOV), lensRadius(lensRadius), focalDist(focalDist), lensArea(Math::diskArea(lensRadius)),
-		approxPinhole(lensRadius < 1e-6f), Camera(CameraType::ThinLens) {}
+		mFOV(FOV), mLensRadius(lensRadius), mFocalDist(focalDist), mLensArea(Math::diskArea(lensRadius)),
+		mIsDelta(lensRadius < 1e-6f), Camera(CameraType::ThinLens) {}
 
-	void setFOV(float fov) { FOV = fov; }
-	void setLensRadius(float radius) { lensRadius = radius; }
-	void setFocalDist(float dist) { focalDist = dist; }
+	void setFOV(float fov) { mFOV = fov; }
+	void setLensRadius(float radius) { mLensRadius = radius; }
+	void setFocalDist(float dist) { mFocalDist = dist; }
 
-	float getFOV() const { return FOV; }
-	float getLensRadius() const { return lensRadius; }
-	float getFocalDist() const { return focalDist; }
+	float FOV() const { return mFOV; }
+	float lensRadius() const { return mLensRadius; }
+	float focalDist() const { return mFocalDist; }
 
-	Vec2f getRasterPos(Ray ray);
+	Vec2f rasterPos(Ray ray);
 
 	Ray generateRay(SamplerPtr sampler);
 	Ray generateRay(Vec2f uv, SamplerPtr sampler);
@@ -122,17 +123,17 @@ public:
 	float pdfIi(Vec3f ref, Vec3f y);
 	std::optional<CameraIiSample> sampleIi(Vec3f ref, Vec2f u);
 	std::pair<float, float> pdfIe(Ray ray);
-	Vec3f Ie(Ray ray);
+	Spectrum Ie(Ray ray);
 
-	bool deltaArea() const { return approxPinhole; }
+	bool deltaArea() const { return mIsDelta; }
 
 private:
-	float FOV = 45.0f;
-	float lensRadius;
-	float focalDist;
+	float mFOV = 45.0f;
+	float mLensRadius;
+	float mFocalDist;
 
-	float lensArea;
-	bool approxPinhole;
+	float mLensArea;
+	bool mIsDelta;
 };
 
 class PanoramaCamera :
@@ -141,7 +142,7 @@ class PanoramaCamera :
 public:
 	PanoramaCamera() : Camera(CameraType::Panorama) {}
 
-	Vec2f getRasterPos(Ray ray);
+	Vec2f rasterPos(Ray ray);
 
 	Ray generateRay(SamplerPtr sampler);
 	Ray generateRay(Vec2f uv, SamplerPtr sampler);
@@ -149,7 +150,7 @@ public:
 	float pdfIi(Vec3f ref, Vec3f y) { return 0.0f; }
 	std::optional<CameraIiSample> sampleIi(Vec3f ref, Vec2f u);
 	std::pair<float, float> pdfIe(Ray ray);
-	Vec3f Ie(Ray ray);
+	Spectrum Ie(Ray ray);
 
 	bool deltaArea() const { return true; }
 };

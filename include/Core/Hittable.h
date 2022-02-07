@@ -16,7 +16,7 @@ enum class HittableType
 class Hittable
 {
 public:
-	Hittable(HittableType type) : type(type) {}
+	Hittable(HittableType type) : mType(type) {}
 
 	virtual std::optional<float> closestHit(const Ray &ray) = 0;
 	virtual Vec3f uniformSample(const Vec2f &u) = 0;
@@ -26,15 +26,15 @@ public:
 	virtual Vec2f surfaceUV(const Vec3f &p) = 0;
 	virtual AABB bound() = 0;
 
-	HittableType getType() const { return type; }
+	HittableType type() const { return mType; }
 
-	virtual void setTransform(TransformPtr trans) { transform = trans; }
-	virtual void setTransform(const glm::mat4 &trans) { transform->set(trans); }
-	TransformPtr getTransform() const { return transform; }
+	virtual void setTransform(TransformPtr trans) { mTransform = trans; }
+	virtual void setTransform(const glm::mat4 &trans) { mTransform->set(trans); }
+	TransformPtr getTransform() const { return mTransform; }
 
 protected:
-	TransformPtr transform = std::make_shared<Transform>();
-	HittableType type;
+	TransformPtr mTransform = std::make_shared<Transform>();
+	HittableType mType;
 };
 
 using HittablePtr = std::shared_ptr<Hittable>;
