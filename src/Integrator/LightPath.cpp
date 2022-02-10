@@ -16,8 +16,8 @@ void LightPathIntegrator::renderOnePass()
     mSampler->nextSamples(mPathsOnePass * MaxThreads);
     mPathCount += mPathsOnePass * MaxThreads;
     auto &film = mScene->mCamera->film();
-    *mResultScale = static_cast<float>(film.width) * film.height / mPathCount;
-    std::cout << "\r[LightPathIntegrator paths: " << mPathCount << ", spp: " << 1.0f / *mResultScale << "]";
+    mResultScale = static_cast<float>(film.width) * film.height / mPathCount;
+    std::cout << "\r[LightPathIntegrator paths: " << mPathCount << ", spp: " << std::fixed << std::setprecision(3) << 1.0f / mResultScale << "]";
 }
 
 void LightPathIntegrator::reset()
@@ -63,7 +63,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
     Vec3f Nl = lt->normalGeom(leSamp.ray.ori);
     Vec3f Wo = -leSamp.ray.dir;
     Ray ray = leSamp.ray.offset();
-    Vec3f beta = leSamp.Le * Math::absDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
+    Vec3f throughput = leSamp.Le * Math::absDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
 
     for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
     {
@@ -95,7 +95,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
                 if (mScene->visible(pShading, pCam))
                 {
                     Spectrum res = Ii * surf.material->bsdf(surf.NShad, Wo, Wi, TransportMode::Importance) *
-                        beta * Math::satDot(surf.NShad, Wi) / pdf;
+                        throughput * Math::satDot(surf.NShad, Wi) / pdf;
                     addToFilm(uvRaster, res);
                 }
             }
@@ -106,21 +106,21 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
             break;
         auto [Wi, bsdfPdf, type, eta, bsdf] = sample.value();
 
-        if (bounce >= mRRStartDepth && mRussianRoulette)
+        if (bounce >= mRRStartDepth && mParam.russianRoulette)
         {
             float continueProb = glm::min<float>(1.0f, Math::maxComponent(bsdf / bsdfPdf));
             float rr = sampler->get1();
             if (rr > continueProb)
                 break;
-            beta /= continueProb;
+            throughput /= continueProb;
         }
-        if (bounce >= mMaxDepth && !mRussianRoulette)
+        if (bounce >= mParam.maxDepth && !mParam.russianRoulette)
             break;
 
         float NoWi = deltaBsdf ? 1.0f : Math::satDot(surf.NShad, Wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
-        beta *= bsdf * NoWi / bsdfPdf;
+        throughput *= bsdf * NoWi / bsdfPdf;
         ray = Ray(pShading, Wi).offset();
         Wo = -Wi;
     }

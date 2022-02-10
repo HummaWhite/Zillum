@@ -15,7 +15,7 @@ uint32_t sobolSample(uint64_t index, int dim, uint32_t scramble = 0)
 float SimpleSobolSampler::get1()
 {
     float r = static_cast<float>(sobolSample(index, dim++, scramble)) * 0x1p-32f;
-    scramble = enableScrambling ? rng() : 0;
+    scramble = randomScrambling ? rng() : 0;
     return std::min(r, Math::OneMinusEpsilon);
 }
 

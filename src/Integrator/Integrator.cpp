@@ -78,6 +78,7 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
             result = glm::clamp(result, Spectrum(0.0f), Spectrum(1e8f));
             auto resultBuffer = mScene->mCamera->film();
             resultBuffer(x, y) = resultBuffer(x, y) * ((float)(mCurspp) / (float)(mCurspp + 1)) + result / (float)(mCurspp + 1);
+            mResultScale = 1.0f;
         }
     }
 }

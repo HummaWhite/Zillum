@@ -1,8 +1,16 @@
 #include "../include/Application.h"
 #include "../include/Core/ToneMapping.h"
 
-void Application::init(const std::string &name, HINSTANCE instance, int width, int height, int spp)
+void Application::init(const std::string &name, HINSTANCE instance, const char *cmdParam)
 {
+    std::string integType;
+    std::string samplerType;
+    int width, height;
+    int spp;
+    std::stringstream param(cmdParam);
+
+    param >> integType >> samplerType >> width >> height >> spp;
+
     this->mInstance = instance;
     this->mWindowWidth = width;
     this->mWindowHeight = height;
@@ -26,7 +34,48 @@ void Application::init(const std::string &name, HINSTANCE instance, int width, i
     SetWindowPos(mWindow, HWND_TOP, 0, 0, width + 5, height + 25, SWP_NOMOVE);
 
     mColorBuffer.init(width, height);
-    initScene(spp);
+    initScene();
+
+    bool scramble;
+    if (integType == "-path2")
+    {
+        int pathsOnePass;
+        param >> pathsOnePass;
+        auto integ = std::make_shared<PathIntegrator2>(mScene, spp, pathsOnePass);
+        integ->mParam.maxDepth = 5;
+        integ->mParam.MIS = true;
+        mIntegrator = integ;
+        scramble = false;
+    }
+    else if (integType == "-path")
+    {
+        auto integ = std::make_shared<PathIntegrator>(mScene, spp);
+        integ->mLimitSpp = (spp != 0);
+        integ->mParam.maxDepth = 5;
+        integ->mParam.MIS = true;
+        mIntegrator = integ;
+        scramble = true;
+    }
+    else if (integType == "-lpath")
+    {
+        auto integ = std::make_shared<LightPathIntegrator>(mScene, spp);
+        integ->mParam.maxDepth = 5;
+        mIntegrator = integ;
+        scramble = false;
+    }
+    else
+    {
+        auto integ = std::make_shared<AdjointPathIntegrator>(mScene, spp);
+        integ->mRussianRoulette = false;
+        integ->mMaxCameraDepth = 3;
+        integ->mMaxLightDepth = 3;
+        mIntegrator = integ;
+        scramble = true;
+    }
+    if (samplerType == "-rng")
+        mIntegrator->mSampler = std::make_shared<IndependentSampler>();
+    else
+        mIntegrator->mSampler = std::make_shared<SimpleSobolSampler>(mWindowWidth, mWindowHeight, scramble);
 }
 
 LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -151,7 +200,7 @@ void Application::render()
     mColorBuffer.swap();
 }
 
-void Application::initScene(int spp)
+void Application::initScene()
 {
     srand(time(nullptr));
 
@@ -226,11 +275,11 @@ void Application::initScene(int spp)
             //std::make_shared<Lambertian>(Spectrum(1.0f))
             ));
 
-    scene->addHittable(
-        std::make_shared<Object>(
-            std::make_shared<Sphere>(Spectrum(0.0f, 3.0f, 0.0f), 1.0f, true),
-            std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-        ));
+    // scene->addHittable(
+    //     std::make_shared<Object>(
+    //         std::make_shared<Sphere>(Spectrum(0.0f, 3.0f, 0.0f), 1.0f, true),
+    //         std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+    //     ));
 
     // scene->addHittable(
     //     std::make_shared<Object>(
@@ -249,7 +298,7 @@ void Application::initScene(int spp)
 
     scene->addObjectMesh("res/model/cube.obj", trBoxSmall,
                          std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.6f)
-                         // std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+                         //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
     );
 
     model = glm::mat4(1.0f);
@@ -259,9 +308,17 @@ void Application::initScene(int spp)
     std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
 
     scene->addObjectMesh("res/model/cube.obj", trBoxLarge,
-                         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
+                         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
                          //std::make_shared<Lambertian>(Spectrum(1.0f))
     );
+
+    // glm::mat4 model(1.0f);
+    // model = glm::translate(model, Vec3f(0.0f, 3.0f, -1.0f));
+    // model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
+    // model = glm::scale(model, Vec3f(1.0f));
+    // std::shared_ptr<Transform> transform = std::make_shared<Transform>(model);
+    // scene->addObjectMesh("res/model/bunny.obj", transform,
+    //                      std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
 
     scene->addLight(
         std::make_shared<Light>(
@@ -269,8 +326,10 @@ void Application::initScene(int spp)
                 Vec3f(-0.75f, 3.75f, 2.999f),
                 Vec3f(0.75f, 3.75f, 2.999f),
                 Vec3f(-0.75f, 2.25f, 2.999f)),
+                // Vec3f(-0.025f, 3.025f, 2.999f),
+                // Vec3f(0.025f, 3.025f, 2.999f),
+                // Vec3f(-0.025f, 2.975f, 2.999f)),
             Spectrum(100.0f), false));
-
 
     // auto transform = std::make_shared<Transform>(glm::rotate(Mat4f(1.0f), glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f)));
     // scene->addObjectMesh("res/model/bidir/diffuse.obj", transform,
@@ -283,14 +342,14 @@ void Application::initScene(int spp)
     //     std::make_shared<Lambertian>(Spectrum(0.33f, 0.26f, 0.15f)));
     // scene->addLightMesh("res/model/bidir/light1.obj", transform, Spectrum(100.0f));
     // scene->addLightMesh("res/model/bidir/light2.obj", transform, Spectrum(200.0f));
-    
+
     auto camera = std::make_shared<ThinLensCamera>(40.0f);
     camera->initFilm(mWindowWidth, mWindowHeight);
     // camera->setPos({0.0f, -12.0f, 4.0f});
     // camera->lookAt(Vec3f(0.0f, 0.0f, 4.0f));
     // camera->setPos({0.0f, -12.0f, 6.0f});
     // camera->lookAt(Vec3f(0.0f, 0.0f, 2.5f));
-    camera->setPos({ 0.0f, -8.0f, 0.0f });
+    camera->setPos({0.0f, -8.0f, 0.0f});
     camera->lookAt(Vec3f(0.0f));
 
     //scene->mEnv = std::make_shared<EnvSphereMapHDR>("res/texture/090.hdr");
@@ -300,24 +359,6 @@ void Application::initScene(int spp)
     scene->mCamera = camera;
     scene->buildScene();
     mScene = scene;
-    
-    // auto integ = std::make_shared<PathIntegrator>(scene, spp);
-    // integ->mLimitSpp = (spp != 0);
-    // integ->mMaxDepth = 5;
-    // integ->mSampleLi = true;
-    // integ->mUseMIS = true;
-
-    auto integ = std::make_shared<LightPathIntegrator>(scene, spp);
-    integ->mMaxDepth = 5;
-    integ->mResultScale = &mResultScale;
-
-    // auto integ = std::make_shared<AdjointPathIntegrator>(scene, spp);
-    // integ->mRussianRoulette = false;
-    // integ->mMaxCameraDepth = 3;
-    // integ->mMaxLightDepth = 3;
-
-    integ->mSampler = std::make_shared<SimpleSobolSampler>(mWindowWidth, mWindowHeight, false);
-    mIntegrator = integ;
 }
 
 void Application::writeBuffer()
@@ -325,13 +366,13 @@ void Application::writeBuffer()
     auto resultBuffer = mIntegrator->result();
     using namespace ToneMapping;
 
-    Vec3f (*toneMapping[4])(const Vec3f &) = { reinhard, CE, filmic, ACES };
+    Vec3f (*toneMapping[4])(const Vec3f &) = {reinhard, CE, filmic, ACES};
 
     for (int i = 0; i < mWindowWidth; i++)
     {
         for (int j = 0; j < mWindowHeight; j++)
         {
-            auto result = resultBuffer(i, j) * mResultScale;
+            auto result = resultBuffer(i, j) * mIntegrator->mResultScale;
             result = glm::clamp(result, Vec3f(0.0f), Vec3f(1e8f));
             result = toneMapping[mToneMappingMethod](result);
             result = glm::pow(result, Vec3f(1.0f / 2.2f));

@@ -15,12 +15,12 @@
 class Application
 {
 public:
-	void init(const std::string& name, HINSTANCE instance, int width, int height, int spp = 0);
+	void init(const std::string& name, HINSTANCE instance, const char *cmdParam);
 	LRESULT process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void render();
 
 private:
-	void initScene(int spp);
+	void initScene();
 	void writeBuffer();
 	void flushScreen();
 	void processKey();
@@ -48,6 +48,4 @@ private:
 	FrameBufferDouble<RGB24> mColorBuffer;
 	IntegratorPtr mIntegrator;
 	ScenePtr mScene;
-
-	float mResultScale = 1.0f;
 };

@@ -28,7 +28,8 @@ public:
 	std::array<float, N> get()
 	{
 		auto ret = std::array<float, N>();
-		for (int i = 0; i < N; i++) ret[i] = get1();
+		for (int i = 0; i < N; i++)
+            ret[i] = get1();
 		return ret;
 	}
 
@@ -36,7 +37,7 @@ public:
 	virtual void nextSample() = 0;
     virtual void nextSamples(size_t samples) {}
 	virtual bool isProgressive() const = 0;
-	virtual std::shared_ptr<Sampler> copy() = 0;
+	virtual SamplerPtr copy() = 0;
 
 	SamplerType getType() const { return type; }
 
@@ -53,8 +54,9 @@ public:
     float get1();
     Vec2f get2();
 
-    void setPixel(int x, int y) {}
-    void nextSample() {}
+    void setPixel(int x, int y) { rng.seed(globalRandomEngine()); }
+    void nextSample() { rng.seed(globalRandomEngine()); }
+    void nextSamples(size_t samples) override { rng.seed(globalRandomEngine()); }
     bool isProgressive() const { return true; }
     SamplerPtr copy();
 
@@ -68,8 +70,8 @@ class SimpleSobolSampler :
     public Sampler
 {
 public:
-    SimpleSobolSampler(int xPixels, int yPixels, bool enableScrambling) :
-		xPixels(xPixels), yPixels(yPixels), enableScrambling(enableScrambling), Sampler(SamplerType::SimpleSobol) {}
+    SimpleSobolSampler(int xPixels, int yPixels, bool randomScrambling) :
+		xPixels(xPixels), yPixels(yPixels), randomScrambling(randomScrambling), Sampler(SamplerType::SimpleSobol) {}
 
     float get1();
     Vec2f get2();
@@ -84,7 +86,7 @@ private:
     const int xPixels, yPixels;
     uint64_t index = 0;
     int dim = 0;
-    bool enableScrambling;
+    bool randomScrambling;
     uint32_t scramble = 0;
     std::mt19937 rng;
 };

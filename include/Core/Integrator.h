@@ -46,6 +46,7 @@ public:
 
 public:
 	SamplerPtr mSampler = std::make_shared<IndependentSampler>();
+	float mResultScale = 1.0f;
 
 protected:
 	IntegratorType mType;
@@ -77,6 +78,16 @@ protected:
 	int mWidth, mHeight;
 };
 
+struct PathIntegParam
+{
+	bool russianRoulette = true;
+	int rrStartDepth = 3;
+	int maxDepth = 5;
+	bool sampleDirect = true;
+	bool MIS = true;
+	float spp = 0;
+};
+
 class PathIntegrator : public PixelIndependentIntegrator
 {
 public:
@@ -84,15 +95,34 @@ public:
 		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::Path) {}
 	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
 
+public:
+	PathIntegParam mParam;
+};
+
+class PathIntegrator2 : public Integrator
+{
+public:
+	PathIntegrator2(ScenePtr scene, int maxSpp, int pathsOnePass) :
+		mMaxSpp(maxSpp), mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::Path) {}
+	void renderOnePass();
+	void reset();
+
 private:
-	Spectrum trace(Ray ray, SurfaceInfo surf, SamplerPtr sampler);
+	void trace(int paths, SamplerPtr sampler);
+	void addToFilm(Vec2f uv, Spectrum val);
 
 public:
-	bool mRussianRoulette = true;
-	int mRRStartDepth = 3;
-	int mMaxDepth = 5;
-	bool mSampleLi = false;
-	bool mUseMIS = true;
+	PathIntegParam mParam;
+
+private:
+	int mMaxSpp;
+	int mPathsOnePass;
+};
+
+struct LightPathIntegParam
+{
+	bool russianRoulette = true;
+	int maxDepth = 5;
 };
 
 class LightPathIntegrator : public Integrator
@@ -109,9 +139,7 @@ private:
 	void addToFilm(Vec2f uv, Spectrum val);
 
 public:
-	bool mRussianRoulette = true;
-	int mMaxDepth = 5;
-	float *mResultScale;
+	LightPathIntegParam mParam;
 
 private:
 	int mPathsOnePass;
@@ -144,6 +172,12 @@ public:
 	int mMaxLightDepth = 5;
 };
 
+struct AOIntegParam
+{
+	float radius = 0.5f;
+	int samplesOneTime = 1;
+};
+
 class AOIntegrator : public PixelIndependentIntegrator
 {
 public:
@@ -151,15 +185,39 @@ public:
 		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AO) {}
 	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
 
+public:
+	AOIntegParam mParam;
+};
+
+class AOIntegrator2 : public Integrator
+{
+public:
+	AOIntegrator2(ScenePtr scene, int maxSpp) : Integrator(scene, IntegratorType::AO) {}
+	void renderOnePass();
+	void reset();
+
 private:
-	Spectrum trace(Ray ray, Vec3f N, SamplerPtr sampler);
+	void trace(int paths, SamplerPtr sampler);
+	void addToFilm(Vec2f uv, Spectrum val);
 
 public:
-	float mRadius = 0.5f;
-	int mSamplesOneTime = 1;
+	AOIntegParam mParam;
+
+private:
+	int mSpp = 0;
+};
+
+struct BDPTIntegParam
+{
+	bool russianRoulette = true;
+	int rrLightStartDepth = 3;
+	int rrCameraStartDepth = 3;
+	int maxLightDepth = 5;
+	int maxCameraDepth = 5;
 };
 
 struct BDPTVertex;
+struct VertexPath;
 
 class BDPTIntegrator : public PixelIndependentIntegrator
 {
@@ -169,18 +227,15 @@ public:
 	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
 
 private:
-	std::vector<BDPTVertex> createLightPath(SamplerPtr sampler);
-	std::vector<BDPTVertex> createCameraPath(const Ray &ray, SamplerPtr sampler);
+	void createLightPath(VertexPath &path, SamplerPtr sampler);
+	void createCameraPath(VertexPath &path, Ray ray, SamplerPtr sampler);
 
-	float connect(const std::vector<BDPTVertex> &lightPath, const std::vector<BDPTVertex> &cameraPath);
-	Spectrum eval(const std::vector<BDPTVertex> &lightPath, const std::vector<BDPTVertex> &cameraPath);
+	float connect(const VertexPath &lightPath, const VertexPath &cameraPath);
+	Spectrum eval(const VertexPath &lightPath, const VertexPath &cameraPath);
 
 public:
-	bool mRussianRoulette = true;
-	int mRRLightStartDepth = 3;
-	int mRRCameraStartDepth = 3;
-	int mMaxLightDepth = 5;
-	int mMaxCameraDepth = 5;
+	BDPTIntegParam mParam;
+	SamplerPtr mLightSampler;
 
 private:
 };
