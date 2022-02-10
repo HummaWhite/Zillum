@@ -55,7 +55,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
         {
             auto Le = lt->Le({ Pd, Wi });
             auto contrib = Le;
-            addToFilm(uvRaster, contrib);
+            addToFilmLocked(uvRaster, contrib);
         }
     }
 
@@ -74,8 +74,8 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
             break;
         auto obj = dynamic_cast<Object*>(hit.get());
 
-        Vec3f pShading = ray.get(distObj);
-        auto surf = obj->surfaceInfo(pShading);
+        Vec3f P = ray.get(distObj);
+        auto surf = obj->surfaceInfo(P);
 
         if (glm::dot(surf.NShad, Wo) < 0)
         {
@@ -87,16 +87,16 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
 
         if (!deltaBsdf)
         {
-            auto directSample = mScene->mCamera->sampleIi(pShading, sampler->get2());
+            auto directSample = mScene->mCamera->sampleIi(P, sampler->get2());
             if (directSample)
             {
                 auto [Wi, Ii, dist, uvRaster, pdf] = directSample.value();
-                Vec3f pCam = pShading + Wi * dist;
-                if (mScene->visible(pShading, pCam))
+                Vec3f pCam = P + Wi * dist;
+                if (mScene->visible(P, pCam))
                 {
                     Spectrum res = Ii * surf.material->bsdf(surf.NShad, Wo, Wi, TransportMode::Importance) *
                         throughput * Math::satDot(surf.NShad, Wi) / pdf;
-                    addToFilm(uvRaster, res);
+                    addToFilmLocked(uvRaster, res);
                 }
             }
         }
@@ -121,18 +121,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
         throughput *= bsdf * NoWi / bsdfPdf;
-        ray = Ray(pShading, Wi).offset();
+        ray = Ray(P, Wi).offset();
         Wo = -Wi;
     }
-}
-
-void LightPathIntegrator::addToFilm(Vec2f uv, Spectrum val)
-{
-    if (!Camera::inFilmBound(uv))
-        return;
-    auto &film = mScene->mCamera->film();
-    auto &filmLocker = mScene->mCamera->filmLocker()(uv.x, uv.y);
-    filmLocker.lock();
-    film(uv.x, uv.y) += val;
-    filmLocker.unlock();
 }

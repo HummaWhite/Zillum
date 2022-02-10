@@ -63,15 +63,7 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
         mIntegrator = integ;
         scramble = false;
     }
-    else
-    {
-        auto integ = std::make_shared<AdjointPathIntegrator>(mScene, spp);
-        integ->mRussianRoulette = false;
-        integ->mMaxCameraDepth = 3;
-        integ->mMaxLightDepth = 3;
-        mIntegrator = integ;
-        scramble = true;
-    }
+    
     if (samplerType == "-rng")
         mIntegrator->mSampler = std::make_shared<IndependentSampler>();
     else

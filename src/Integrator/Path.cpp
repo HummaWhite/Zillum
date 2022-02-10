@@ -46,7 +46,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
         auto newRay = Ray(P, Wi).offset();
         auto [dist, obj] = scene->closestHit(newRay);
 
-        if (obj == nullptr)
+        if (!obj)
         {
             float weight = 1.0f;
             if (!deltaBsdf && param.sampleDirect)
@@ -58,7 +58,6 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
             result += scene->mEnv->radiance(Wi) * throughput * weight;
             break;
         }
-
         if (obj->type() == HittableType::Light)
         {
             float weight = 1.0f;
@@ -176,18 +175,7 @@ void PathIntegrator2::trace(int paths, SamplerPtr sampler)
             ray.ori = p;
             result = traceOnePath(mParam, mScene, ray, surf, sampler);
         }
-        addToFilm(uv, result);
+        addToFilmLocked(uv, result);
         sampler->nextSample();
     }
-}
-
-void PathIntegrator2::addToFilm(Vec2f uv, Spectrum val)
-{
-    if (!Camera::inFilmBound(uv))
-        return;
-    auto &film = mScene->mCamera->film();
-    auto &filmLocker = mScene->mCamera->filmLocker()(uv.x, uv.y);
-    filmLocker.lock();
-    film(uv.x, uv.y) += val;
-    filmLocker.unlock();
 }

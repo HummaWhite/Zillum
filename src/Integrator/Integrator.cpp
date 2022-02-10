@@ -8,6 +8,17 @@ void Integrator::setModified()
     mFinished = false;
 }
 
+void Integrator::addToFilmLocked(const Vec2f &uv, const Spectrum &val)
+{
+    if (!Camera::inFilmBound(uv))
+        return;
+    auto &film = mScene->mCamera->film();
+    auto &filmLocker = mScene->mCamera->filmLocker()(uv.x, uv.y);
+    filmLocker.lock();
+    film(uv.x, uv.y) += val;
+    filmLocker.unlock();
+}
+
 PixelIndependentIntegrator::PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type) :
     mMaxSpp(maxSpp), Integrator(scene, type)
 {
