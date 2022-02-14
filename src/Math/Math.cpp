@@ -86,7 +86,7 @@ bool coin(float u)
 
 bool sameHemisphere(const Vec3f &N, const Vec3f &A, const Vec3f &B)
 {
-    return glm::dot(N, A) * glm::dot(N, B) > 0.0f;
+    return glm::dot(N, A) * glm::dot(N, B) > 0;
 }
 
 float maxComponent(const Vec3f &v)
@@ -139,6 +139,11 @@ float biHeuristic(float pf, float pg)
 float luminance(const Spectrum &c)
 {
     return glm::dot(Spectrum(0.299f, 0.587f, 0.114f), c);
+}
+
+bool isBlack(const Spectrum &c)
+{
+    return maxComponent(c) <= 1e-6f;
 }
 
 float diskArea(float radius)

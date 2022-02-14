@@ -153,6 +153,7 @@ struct BDPTIntegParam
 	int rrCameraStartDepth = 3;
 	int maxLightDepth = 5;
 	int maxCameraDepth = 5;
+	bool resampleDirect = true;
 };
 
 class BDPTIntegrator : public PixelIndependentIntegrator

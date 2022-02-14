@@ -101,7 +101,7 @@ LiSample Scene::sampleLiLightAndEnv(const Vec3f &x, const std::array<float, 5> &
     Vec2f u2(sample[3], sample[4]);
 
     auto [Wi, coef, pdf] = sampleLight ? sampleLiOneLight(x, u1, u2) : sampleLiEnv(x, u1, u2);
-    return {Wi, coef / pdfSelect, pdf * pdfSelect};
+    return { Wi, coef / pdfSelect, pdf * pdfSelect };
 }
 
 LeSample Scene::sampleLeOneLight(const std::array<float, 6> &sample)

@@ -42,6 +42,12 @@ struct CameraIeSample
 	float pdfDir;
 };
 
+struct CameraPdf
+{
+	float pdfPos;
+	float pdfDir;
+};
+
 class Camera
 {
 public:
@@ -74,8 +80,8 @@ public:
 	virtual Ray generateRay(Vec2f uv, SamplerPtr sampler) = 0;
 
 	virtual float pdfIi(Vec3f ref, Vec3f y) = 0;
-	virtual std::optional<CameraIiSample> sampleIi(Vec3f ref, Vec2f u) = 0;
-	virtual std::pair<float, float> pdfIe(Ray ray) = 0;
+	virtual std::optional<CameraIiSample> sampleIi(Vec3f refPoint, Vec2f u) = 0;
+	virtual CameraPdf pdfIe(Ray ray) = 0;
 	virtual Spectrum Ie(Ray ray) = 0;
 
 	virtual bool deltaArea() const = 0;
@@ -125,7 +131,7 @@ public:
 
 	float pdfIi(Vec3f ref, Vec3f y);
 	std::optional<CameraIiSample> sampleIi(Vec3f ref, Vec2f u);
-	std::pair<float, float> pdfIe(Ray ray);
+	CameraPdf pdfIe(Ray ray);
 	Spectrum Ie(Ray ray);
 
 	bool deltaArea() const { return mIsDelta; }
@@ -152,7 +158,7 @@ public:
 
 	float pdfIi(Vec3f ref, Vec3f y) { return 0.0f; }
 	std::optional<CameraIiSample> sampleIi(Vec3f ref, Vec2f u);
-	std::pair<float, float> pdfIe(Ray ray);
+	CameraPdf pdfIe(Ray ray);
 	Spectrum Ie(Ray ray);
 
 	bool deltaArea() const { return true; }

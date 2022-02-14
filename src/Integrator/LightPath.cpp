@@ -81,7 +81,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
         {
             auto bxdf = surf.material->bxdf();
             if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
-                surf.NShad = -surf.NShad;
+                surf.flipNormal();
         }
         bool deltaBsdf = surf.material->bxdf().isDelta();
 

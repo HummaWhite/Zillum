@@ -71,6 +71,6 @@ namespace Math
         Vec2f uv = Transform::toConcentricDisk(u);
         float z = glm::sqrt(1.0f - glm::dot(uv, uv));
         Vec3f v = Transform::normalToWorld(N, Vec3f(uv, z));
-        return {v, PiInv * z};
+        return { v, PiInv * z };
     }
 }

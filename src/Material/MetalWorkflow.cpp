@@ -5,7 +5,7 @@ Spectrum MetalWorkflow::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, T
     Vec3f H = glm::normalize(Wi + Wo);
     float alpha = roughness * roughness;
 
-    if (dot(N, Wi) < 1e-10f || dot(N, Wo) < 1e-10f)
+    if (!Math::sameHemisphere(N, Wo, Wi))
         return Spectrum(0.0f);
 
     float NoL = Math::satDot(N, Wi);
@@ -42,7 +42,7 @@ float MetalWorkflow::pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, Trans
 std::optional<BSDFSample> MetalWorkflow::sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)
 {
     float spec = 1.0f / (2.0f - metallic);
-    bool sampleDiff = u1 > spec;
+    bool sampleDiff = u1 >= spec;
 
     Vec3f Wi;
     if (sampleDiff)
@@ -52,8 +52,7 @@ std::optional<BSDFSample> MetalWorkflow::sample(const Vec3f &N, const Vec3f &Wo,
         auto H = distrib.sampleWm(N, Wo, u2);
         Wi = glm::reflect(-Wo, H);
     }
-    float NoWi = glm::dot(N, Wi);
-    if (NoWi < 0.0f)
+    if (glm::dot(N, Wi) <= 0)
         return std::nullopt;
     return BSDFSample(Wi, pdf(N, Wo, Wi, mode), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl, bsdf(N, Wo, Wi, mode));
 }

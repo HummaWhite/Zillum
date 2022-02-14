@@ -23,6 +23,12 @@ struct LightLeSample
 	float pdfDir;
 };
 
+struct LightPdf
+{
+	float pdfPos;
+	float pdfDir;
+};
+
 class Light:
 	public Hittable
 {
@@ -47,10 +53,11 @@ public:
 	Spectrum getPower(){ return mPower; }
 	float luminance() { return Math::luminance(mPower); }
 	
-	std::optional<LightLiSample> sampleLi(Vec3f ref, Vec2f u);
+	std::optional<LightLiSample> sampleLi(Vec3f refPoint, Vec2f u);
 	float pdfLi(const Vec3f &ref, const Vec3f &y);
 	Spectrum Le(Ray ray);
 	LightLeSample sampleLe(const std::array<float, 4> &u);
+	LightPdf pdfLe(const Ray &ray);
 
 protected:
 	HittablePtr shape;

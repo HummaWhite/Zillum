@@ -76,6 +76,9 @@ public:
 	std::optional<BSDFSample> sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode);
 
 private:
+	bool approxDelta() const { return roughness <= 0.014f; }
+
+private:
 	Spectrum albedo;
 	float metallic;
 	float roughness;

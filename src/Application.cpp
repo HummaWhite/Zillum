@@ -223,8 +223,8 @@ void Application::initScene()
                 Vec3f(-3.0f, 0.0f, -3.0f),
                 Vec3f(3.0f, 0.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, -3.0f)),
-            std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(Spectrum(1.0f))
+            //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
+            std::make_shared<Lambertian>(Spectrum(1.0f))
             ));
 
     scene->addHittable(
@@ -233,8 +233,8 @@ void Application::initScene()
                 Vec3f(-3.0f, 0.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, -3.0f),
                 Vec3f(-3.0f, 0.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(Spectrum(1.0f, 0.25f, 0.25f))
+            //std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
+            std::make_shared<Lambertian>(Spectrum(1.0f, 0.25f, 0.25f))
             ));
 
     scene->addHittable(
@@ -243,8 +243,8 @@ void Application::initScene()
                 Vec3f(3.0f, 6.0f, -3.0f),
                 Vec3f(3.0f, 0.0f, -3.0f),
                 Vec3f(3.0f, 6.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(Spectrum(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(Spectrum(0.25f, 0.25f, 1.0f))
+            //std::make_shared<MetalWorkflow>(Spectrum(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
+            std::make_shared<Lambertian>(Spectrum(0.25f, 0.25f, 1.0f))
             ));
 
     scene->addHittable(
@@ -253,8 +253,8 @@ void Application::initScene()
                 Vec3f(3.0f, 6.0f, 3.0f),
                 Vec3f(3.0f, 0.0f, 3.0f),
                 Vec3f(-3.0f, 6.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(Spectrum(1.0f))
+            //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
+            std::make_shared<Lambertian>(Spectrum(1.0f))
             ));
 
     scene->addHittable(
@@ -263,8 +263,8 @@ void Application::initScene()
                 Vec3f(-3.0f, 6.0f, -3.0f),
                 Vec3f(3.0f, 6.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
-            //std::make_shared<Lambertian>(Spectrum(1.0f))
+            //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
+            std::make_shared<Lambertian>(Spectrum(1.0f))
             ));
 
     // scene->addHittable(
@@ -289,7 +289,8 @@ void Application::initScene()
     std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
 
     scene->addObjectMesh("res/model/cube.obj", trBoxSmall,
-                         std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.6f)
+                         //std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.6f)
+                         std::make_shared<Lambertian>(Spectrum(1.0f))
                          //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
     );
 
@@ -300,8 +301,8 @@ void Application::initScene()
     std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
 
     scene->addObjectMesh("res/model/cube.obj", trBoxLarge,
-                         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
-                         //std::make_shared<Lambertian>(Spectrum(1.0f))
+                         //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
+                         std::make_shared<Lambertian>(Spectrum(1.0f))
     );
 
     // glm::mat4 model(1.0f);

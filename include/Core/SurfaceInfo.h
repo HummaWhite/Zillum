@@ -14,7 +14,17 @@ struct SurfaceInfo
 		uv(uv), NShad(Ns), material(mat) {}
 
 	SurfaceInfo(const Vec2f &uv, const Vec3f &Ns, const Vec3f &Ng, MaterialPtr mat) :
-		uv(uv), NShad(Ns), NGeom(Ng), material(mat) {}
+		uv(uv), NShad(Ns), NGeom(Ng), material(mat)
+	{
+		if (glm::dot(Ng, Ns) < 0)
+			NGeom = -NGeom;
+	}
+
+	void flipNormal()
+	{
+		NShad = -NShad;
+		NGeom = -NGeom;
+	}
 
 	Vec2f uv;
 	Vec3f NShad;

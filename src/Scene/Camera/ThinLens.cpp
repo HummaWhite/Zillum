@@ -71,7 +71,7 @@ std::optional<CameraIiSample> ThinLensCamera::sampleIi(Vec3f ref, Vec2f u)
     return CameraIiSample{ Wi, Ie(ray), dist, uv, pdf };
 }
 
-std::pair<float, float> ThinLensCamera::pdfIe(Ray ray)
+CameraPdf ThinLensCamera::pdfIe(Ray ray)
 {
     float cosTheta = glm::dot(ray.dir, mFront);
     if (cosTheta < 1e-6f)

@@ -10,14 +10,13 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
     {
         Vec3f P = ray.ori;
         Vec3f Wo = -ray.dir;
-        Vec3f N = surf.NShad;
         MaterialPtr mat = surf.material;
 
-        if (glm::dot(N, Wo) < 0)
+        if (glm::dot(surf.NShad, Wo) <= 0)
         {
             auto bxdf = mat->bxdf();
             if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
-                N = -N;
+                surf.flipNormal();
         }
         bool deltaBsdf = mat->bxdf().isDelta();
 
@@ -25,21 +24,22 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
         if (!deltaBsdf && param.sampleDirect)
         {
             auto [Wi, coef, lightPdf] = scene->sampleLiLightAndEnv(P, lightSample);
-            if (lightPdf != 0.0f)
+            if (lightPdf != 0)
             {
-                float bsdfPdf = mat->pdf(N, Wo, Wi);
+                float bsdfPdf = mat->pdf(surf.NShad, Wo, Wi);
                 float weight = param.MIS ? Math::biHeuristic(lightPdf, bsdfPdf) : 0.5f;
-                result += mat->bsdf(N, Wo, Wi, TransportMode::Radiance) * throughput * Math::satDot(N, Wi) * coef * weight;
+                result += mat->bsdf(surf.NShad, Wo, Wi, TransportMode::Radiance) * throughput *
+                    Math::satDot(surf.NShad, Wi) * coef * weight;
             }
         }
 
-        auto bsdfSample = surf.material->sample(N, Wo, sampler->get1(), sampler->get2());
+        auto bsdfSample = surf.material->sample(surf.NShad, Wo, sampler->get1(), sampler->get2());
         if (!bsdfSample)
             break;
         auto [Wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
 
-        float NoWi = type.isDelta() ? 1.0f : Math::absDot(N, Wi);
-        if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
+        float NoWi = type.isDelta() ? 1.0f : Math::absDot(surf.NShad, Wi);
+        if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf) || NoWi < 1e-6f)
             break;
         throughput *= bsdf * NoWi / bsdfPdf;
 
@@ -52,7 +52,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
             if (!deltaBsdf && param.sampleDirect)
             {
                 float envPdf = scene->mEnv->pdfLi(Wi) * scene->pdfSampleEnv();
-                weight = (envPdf <= 0.0f) ? 0.0f : param.MIS ? Math::biHeuristic(bsdfPdf, envPdf)
+                weight = (envPdf <= 0) ? 0 : param.MIS ? Math::biHeuristic(bsdfPdf, envPdf)
                                                            : 0.5f;
             }
             result += scene->mEnv->radiance(Wi) * throughput * weight;
@@ -66,7 +66,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
             if (!deltaBsdf && param.sampleDirect)
             {
                 float lightPdf = lt->pdfLi(P, hitPoint) * scene->pdfSampleLight(lt);
-                weight = (lightPdf <= 0.0f) ? 0.0f : param.MIS ? Math::biHeuristic(bsdfPdf, lightPdf)
+                weight = (lightPdf <= 0) ? 0 : param.MIS ? Math::biHeuristic(bsdfPdf, lightPdf)
                                                              : 0.5f;
             }
             result += lt->Le({ hitPoint, -Wi }) * throughput * weight;
@@ -78,8 +78,8 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
 
         if (bounce >= param.rrStartDepth && param.russianRoulette)
         {
-            float continueProb = glm::min<float>(0.9f, Math::maxComponent(bsdf / bsdfPdf) * etaScale);
-            if (sampler->get1() > continueProb)
+            float continueProb = glm::min<float>(Math::maxComponent(bsdf / bsdfPdf) * etaScale, 0.95f);
+            if (sampler->get1() >= continueProb)
                 break;
             throughput /= continueProb;
         }

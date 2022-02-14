@@ -23,7 +23,7 @@ std::optional<CameraIiSample> PanoramaCamera::sampleIi(Vec3f ref, Vec2f u)
     return std::nullopt;
 }
 
-std::pair<float, float> PanoramaCamera::pdfIe(Ray ray)
+CameraPdf PanoramaCamera::pdfIe(Ray ray)
 {
     return {};
 }

@@ -7,7 +7,7 @@ Spectrum Lambertian::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, Tran
 
 float Lambertian::pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
 {
-    return glm::dot(Wi, N) * Math::PiInv;
+    return glm::dot(N, Wi) * Math::PiInv;
 }
 
 std::optional<BSDFSample> Lambertian::sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)

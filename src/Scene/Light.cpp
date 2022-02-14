@@ -12,7 +12,6 @@ std::optional<LightLiSample> Light::sampleLi(Vec3f ref, Vec2f u)
 
     float dist = glm::distance(ref, y);
     float pdf = dist * dist / (surfaceArea() * cosTheta);
-
     return LightLiSample{Wi, Le({y, -Wi}), dist, pdf};
 }
 
@@ -23,7 +22,6 @@ float Light::pdfLi(const Vec3f &ref, const Vec3f &y)
     float cosTheta = Math::satDot(N, -Wi);
     if (cosTheta < 1e-8f)
         return 0.0f;
-
     return Math::distSquare(ref, y) / (surfaceArea() * cosTheta);
 }
 
@@ -42,6 +40,12 @@ LightLeSample Light::sampleLe(const std::array<float, 4> &u)
     auto N = normalGeom(ori);
     auto [We, pdfDir] = Math::sampleHemisphereCosine(N, { u[2], u[3] });
     Ray ray(ori, We);
-
     return { ray, Le(ray), pdfPos, pdfDir };
+}
+
+LightPdf Light::pdfLe(const Ray &ray)
+{
+    float pdfPos = 1.0f / surfaceArea();
+    float pdfDir = (glm::dot(normalGeom(ray.ori), ray.dir) <= 0) ? 0 : 0.5f * Math::PiInv;
+    return { pdfPos, pdfDir };
 }

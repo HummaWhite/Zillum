@@ -92,6 +92,7 @@ float heuristic(int nf, float pf, int ng, float pg, int pow);
 float biHeuristic(float pf, float pg);
 
 float luminance(const Spectrum &c);
+bool isBlack(const Spectrum &c);
 
 float diskArea(float radius);
 
