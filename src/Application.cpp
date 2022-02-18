@@ -63,6 +63,26 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
         mIntegrator = integ;
         scramble = false;
     }
+    else if (integType == "-bdpt")
+    {
+        auto integ = std::make_shared<BDPTIntegrator>(mScene, spp);
+        integ->mParam.resampleDirect = true;
+        integ->mLightSampler = std::make_shared<IndependentSampler>();
+    }
+    else if (integType == "-ao")
+    {
+        auto integ = std::make_shared<AOIntegrator>(mScene, spp);
+        param >> integ->mParam.radius;
+        mIntegrator = integ;
+    }
+    else if (integType == "-ao2")
+    {
+        int pathsOnePass;
+        param >> pathsOnePass;
+        auto integ = std::make_shared<AOIntegrator2>(mScene, spp, pathsOnePass);
+        param >> integ->mParam.radius;
+        mIntegrator = integ;
+    }
     
     if (samplerType == "-rng")
         mIntegrator->mSampler = std::make_shared<IndependentSampler>();

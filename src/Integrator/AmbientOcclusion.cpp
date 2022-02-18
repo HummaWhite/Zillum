@@ -26,8 +26,11 @@ Spectrum AOIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 
 void AOIntegrator2::renderOnePass()
 {
+    if (mMaxSpp && mParam.spp >= mMaxSpp)
+        return;
+
     auto &film = mScene->mCamera->film();
-    int pathsOnePass = film.width * film.height / MaxThreads;
+    int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / MaxThreads;
     std::thread *threads = new std::thread[MaxThreads];
     for (int i = 0; i < MaxThreads; i++)
     {
@@ -40,15 +43,15 @@ void AOIntegrator2::renderOnePass()
     delete[] threads;
 
     mSampler->nextSamples(pathsOnePass * MaxThreads);
-    mSpp += static_cast<float>(pathsOnePass) * MaxThreads / (film.width * film.height);
-    mResultScale = 1.0f / mSpp;
-    std::cout << "\r[AOIntegrator spp: " << mSpp << "]";
+    mParam.spp += static_cast<float>(pathsOnePass) * MaxThreads / (film.width * film.height);
+    mResultScale = 1.0f / mParam.spp;
+    std::cout << "\r[AOIntegrator2 spp: " << std::fixed << std::setprecision(3) << mParam.spp << "]";
 }
 
 void AOIntegrator2::reset()
 {
     mScene->mCamera->film().fill(Spectrum(0.0f));
-    mSpp = 0;
+    mParam.spp = 0;
 }
 
 void AOIntegrator2::trace(int paths, SamplerPtr sampler)

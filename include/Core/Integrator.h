@@ -46,7 +46,7 @@ public:
 	virtual void addToFilmLocked(const Vec2f &uv, const Spectrum &val);
 
 public:
-	SamplerPtr mSampler = std::make_shared<IndependentSampler>();
+	SamplerPtr mSampler;
 	float mResultScale = 1.0f;
 
 protected:
@@ -166,14 +166,17 @@ public:
 public:
 	BDPTIntegParam mParam;
 	SamplerPtr mLightSampler;
+};
 
-private:
+class BDPTIntegrator2 : public Integrator
+{
 };
 
 struct AOIntegParam
 {
 	float radius = 0.5f;
 	int samplesOneTime = 1;
+	float spp = 0;
 };
 
 class AOIntegrator : public PixelIndependentIntegrator
@@ -190,7 +193,8 @@ public:
 class AOIntegrator2 : public Integrator
 {
 public:
-	AOIntegrator2(ScenePtr scene, int maxSpp) : Integrator(scene, IntegratorType::AO) {}
+	AOIntegrator2(ScenePtr scene, int maxSpp, int pathsOnePass) :
+		mMaxSpp(maxSpp), mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::AO) {}
 	void renderOnePass();
 	void reset();
 
@@ -201,5 +205,6 @@ public:
 	AOIntegParam mParam;
 
 private:
-	int mSpp = 0;
+	int mMaxSpp;
+	int mPathsOnePass;
 };
