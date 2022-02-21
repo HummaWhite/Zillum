@@ -64,6 +64,7 @@ public:
 	PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type);
 	void renderOnePass();
 	virtual Spectrum tracePixel(Ray ray, SamplerPtr sampler) = 0;
+	virtual void scaleResult();
 
 	void reset() { setModified(); }
 
@@ -154,6 +155,8 @@ struct BDPTIntegParam
 	int maxLightDepth = 5;
 	int maxCameraDepth = 5;
 	bool resampleDirect = true;
+	bool debug = false;
+	Vec2i debugStrategy;
 };
 
 class BDPTIntegrator : public PixelIndependentIntegrator
@@ -162,6 +165,7 @@ public:
 	BDPTIntegrator(ScenePtr scene, int maxSpp) :
 		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::BDPT) {};
 	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
+	void scaleResult() override;
 
 public:
 	BDPTIntegParam mParam;

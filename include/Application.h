@@ -11,6 +11,7 @@
 #include "Core/Texture.h"
 #include "Core/Integrator.h"
 #include "Utils/FrameBufferDouble.h"
+#include "Utils/ImageSave.h"
 
 class Application
 {

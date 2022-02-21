@@ -35,35 +35,52 @@ void LightPathIntegrator::trace(SamplerPtr sampler)
     }
 }
 
+std::mutex mtx;
+
 void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
 {
     auto [lightSource, pdfSource] = mScene->sampleLightAndEnv(sampler->get2(), sampler->get1());
 
-    if (lightSource.index() != 0)
-        return;
-    auto lt = std::get<0>(lightSource);
+    Ray ray;
+    Vec3f Wo;
+    Spectrum throughput;
 
-    Vec3f Pd = lt->uniformSample(sampler->get2());
-    auto ciSamp = mScene->mCamera->sampleIi(Pd, sampler->get2());
-    if (ciSamp)
+    if (lightSource.index() == 0)
     {
-        auto [Wi, Ii, dist, uvRaster, pdf] = ciSamp.value();
-        Vec3f Pc = Pd + Wi * dist;
-        Vec3f Nd = lt->normalGeom(Pd);
-        float pdfPos = 1.0f / lt->surfaceArea();
-        if (mScene->visible(Pd, Pc))
-        {
-            auto Le = lt->Le({ Pd, Wi });
-            auto contrib = Le;
-            addToFilmLocked(uvRaster, contrib);
-        }
-    }
+        auto areaLight = std::get<0>(lightSource);
 
-    auto leSamp = lt->sampleLe(sampler->get<4>());
-    Vec3f Nl = lt->normalGeom(leSamp.ray.ori);
-    Vec3f Wo = -leSamp.ray.dir;
-    Ray ray = leSamp.ray.offset();
-    Vec3f throughput = leSamp.Le * Math::absDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
+        Vec3f Pd = areaLight->uniformSample(sampler->get2());
+        auto ciSamp = mScene->mCamera->sampleIi(Pd, sampler->get2());
+        if (ciSamp)
+        {
+            auto [Wi, Ii, dist, uvRaster, pdf] = ciSamp.value();
+            Vec3f Pc = Pd + Wi * dist;
+            Vec3f Nd = areaLight->normalGeom(Pd);
+            float pdfPos = 1.0f / areaLight->surfaceArea();
+            if (mScene->visible(Pd, Pc))
+            {
+                auto Le = areaLight->Le({ Pd, Wi });
+                auto contrib = Le;
+                addToFilmLocked(uvRaster, contrib);
+            }
+        }
+
+        auto leSamp = areaLight->sampleLe(sampler->get<4>());
+        Vec3f Nl = areaLight->normalGeom(leSamp.ray.ori);
+
+        Wo = -leSamp.ray.dir;
+        ray = leSamp.ray.offset();
+        throughput = leSamp.Le * Math::absDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
+    }
+    else
+    {
+        auto envLight = std::get<1>(lightSource);
+        auto [emiRay, Le, pdf] = mScene->sampleLeEnv(sampler->get<6>());
+
+        Wo = -emiRay.dir;
+        ray = { emiRay.ori, emiRay.dir };
+        throughput = Le / (pdfSource * pdf);
+    }
 
     for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
     {

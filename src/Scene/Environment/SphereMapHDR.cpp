@@ -1,4 +1,5 @@
 #include "../../../include/Core/Environment.h"
+#include "../../../include/Utils/ImageSave.h"
 
 EnvSphereMapHDR::EnvSphereMapHDR(const char *filePath)
 {
@@ -7,11 +8,13 @@ EnvSphereMapHDR::EnvSphereMapHDR(const char *filePath)
     mHeight = mSphereMap.texHeight();
 
     float *pdf = new float[mWidth * mHeight];
+    float sum = 0.0f;
     for (int j = 0; j < mHeight; j++)
     {
         for (int i = 0; i < mWidth; i++)
         {
             pdf[j * mWidth + i] = Math::luminance(mSphereMap(i, j)) * glm::sin((float)(j + 0.5f) / mHeight * Math::Pi);
+            sum += pdf[j * mWidth + i];
         }
     }
     mDistrib = PiecewiseIndependent2D(pdf, mWidth, mHeight);
@@ -43,13 +46,4 @@ float EnvSphereMapHDR::pdfLi(const Vec3f &Wi)
 float EnvSphereMapHDR::getPortion(const Vec3f &Wi)
 {
     return Math::luminance(Spectrum(mSphereMap.getSpherical(Wi))) / mDistrib.sum();
-}
-
-LightLeSample EnvSphereMapHDR::sampleLe(float radius, const std::array<float, 6> &u)
-{
-    auto [Wi, radiance, pdfDir] = sampleLi({ u[0], u[1] }, { u[2], u[3] });
-    auto ori = Vec3f(Transform::toConcentricDisk({ u[4], u[5] }), 1.0f) * radius;
-    ori = Transform::normalToWorld(Wi, ori);
-
-    return { { ori, -Wi }, radiance, Math::PiInv / (radius * radius), pdfDir };
 }

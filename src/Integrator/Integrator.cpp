@@ -63,6 +63,7 @@ void PixelIndependentIntegrator::renderOnePass()
 
     float perc = (float)mCurspp / (float)mMaxSpp * 100.0f;
     std::cout << "  " << std::fixed << std::setprecision(2) << perc << "%";
+    scaleResult();
 }
 
 void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sampler)
@@ -77,7 +78,7 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
             float sx = 2.0f * (x + 0.5f) * invW - 1.0f;
             float sy = 1.0f - 2.0f * (y + 0.5f) * invH;
 
-            Ray ray = mScene->mCamera->generateRay({sx, sy}, sampler);
+            Ray ray = mScene->mCamera->generateRay({ sx, sy }, sampler);
             Spectrum result = tracePixel(ray, sampler);
 
             if (Math::isNan(result.x) || Math::isNan(result.y) || Math::isNan(result.z))
@@ -85,11 +86,14 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
                 Error::bracketLine<0>("nan discovered");
                 result = Spectrum(0.0f);
             }
-
             result = glm::clamp(result, Spectrum(0.0f), Spectrum(1e8f));
             auto resultBuffer = mScene->mCamera->film();
-            resultBuffer(x, y) = resultBuffer(x, y) * ((float)(mCurspp) / (float)(mCurspp + 1)) + result / (float)(mCurspp + 1);
-            mResultScale = 1.0f;
+            resultBuffer(x, y) += result;
         }
     }
+}
+
+void PixelIndependentIntegrator::scaleResult()
+{
+    mResultScale = 1.0f / mCurspp;
 }

@@ -11,7 +11,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow)
 {
-	const char *name = "Test";
+	const char *name = "Zillum";
 
 	MSG				msg;
 	WNDCLASSA		wndClass;

@@ -71,7 +71,7 @@ LiSample Scene::sampleLiOneLight(const Vec3f &x, const Vec2f &u1, const Vec2f &u
         return InvalidLiSample;
 
     pdf *= pdfSample;
-    return {Wi, weight / pdf, pdf};
+    return { Wi, weight / pdf, pdf };
 }
 
 LiSample Scene::sampleLiEnv(const Vec3f &x, const Vec2f &u1, const Vec2f &u2)
@@ -115,9 +115,12 @@ LeSample Scene::sampleLeOneLight(const std::array<float, 6> &sample)
 
 LeSample Scene::sampleLeEnv(const std::array<float, 6> &sample)
 {
-    auto [ray, Le, pdfPos, pdfDir] = mEnv->sampleLe(mBoundRadius, sample);
-    ray.ori += mBound.centroid();
-    return { ray, Le, pdfPos * pdfDir };
+    auto [Wi, Le, pdfDir] = mEnv->sampleLi({ sample[0], sample[1] }, { sample[2], sample[3] });
+    Vec3f ori(Transform::toConcentricDisk({ sample[4], sample[5] }), 0.0f);
+    
+    ori = mBound.centroid() + Transform::normalToWorld(Wi, ori * mBoundRadius);
+    float pdfPos = Math::PiInv / (mBoundRadius * mBoundRadius);
+    return { { ori, Wi }, Le, pdfPos * pdfDir };
 }
 
 LeSample Scene::sampleLeLightAndEnv(const std::array<float, 7> &sample)

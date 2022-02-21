@@ -2,8 +2,12 @@
 
 #include <iostream>
 #include <sstream>
+#include <mutex>
 
 #include "NamespaceDecl.h"
+
+static std::mutex DebugPrintMutex;
+#define DEBUG_PRINT(x) { DebugPrintMutex.lock(); std::cout << x; DebugPrintMutex.unlock(); }
 
 NAMESPACE_BEGIN(Error)
 

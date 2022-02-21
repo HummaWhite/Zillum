@@ -46,10 +46,9 @@ Piecewise1D::Piecewise1D(const std::vector<float> &distrib)
 
 int Piecewise1D::sample(const Vec2f &u)
 {
-    int rx = static_cast<int>(table.size() * u.x);
+    int rx = u.x * table.size();
     float ry = u.y;
-
-    return (ry <= table[rx].second) ? rx : table[rx].first;
+    return (ry <= table[rx].second / sumDistrib) ? rx : table[rx].first;
 }
 
 PiecewiseIndependent2D::PiecewiseIndependent2D(float *pdf, int width, int height)

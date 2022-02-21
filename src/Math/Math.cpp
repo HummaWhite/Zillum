@@ -2,6 +2,8 @@
 
 NAMESPACE_BEGIN(Math)
 
+std::mutex printMutex;
+
 namespace FloatBitMask
 {
     const uint32_t Sign = 0x80000000;
@@ -19,7 +21,9 @@ void printBits32(void *bits, std::string info)
 
 void printVec3(const Vec3f &v, std::string info)
 {
+    printMutex.lock();
     std::cout << std::setprecision(6) << info << "  " << v.x << "  " << v.y << "  " << v.z << "\n";
+    printMutex.unlock();
 }
 
 std::string vec3ToString(const Vec3f &v)

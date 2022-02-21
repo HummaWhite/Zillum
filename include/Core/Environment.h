@@ -25,7 +25,6 @@ public:
 	virtual Spectrum radiance(const Vec3f &dir) = 0;
 	virtual EnvLiSample sampleLi(const Vec2f &u1, const Vec2f &u2) = 0;
 	virtual float pdfLi(const Vec3f &Wi) = 0;
-	virtual LightLeSample sampleLe(float radius, const std::array<float, 6> &u) = 0;
 	virtual float power() = 0;
 };
 
@@ -40,7 +39,6 @@ public:
 	Spectrum radiance(const Vec3f &dir) { return mRadiance; }
 	EnvLiSample sampleLi(const Vec2f &u1, const Vec2f &u2);
 	float pdfLi(const Vec3f &Wi);
-	LightLeSample sampleLe(float radius, const std::array<float, 6> &u);
 	float power() { return Math::luminance(mRadiance) * 2.0f * Math::square(Math::Pi); }
 
 private:
@@ -56,7 +54,6 @@ public:
 	Spectrum radiance(const Vec3f &dir) { return mSphereMap.getSpherical(dir); }
 	EnvLiSample sampleLi(const Vec2f &u1, const Vec2f &u2);
 	float pdfLi(const Vec3f &Wi);
-	LightLeSample sampleLe(float radius, const std::array<float, 6> &u);
 	float power() { return mDistrib.sum(); }
 
 private:
