@@ -6,10 +6,11 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
     std::string integType;
     std::string samplerType;
     int width, height;
+    int maxDepth;
     int spp;
     std::stringstream param(cmdParam);
 
-    param >> integType >> samplerType >> width >> height >> spp;
+    param >> integType >> samplerType >> width >> height >> spp >> maxDepth;
 
     this->mInstance = instance;
     this->mWindowWidth = width;
@@ -42,8 +43,8 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
         int pathsOnePass;
         param >> pathsOnePass;
         auto integ = std::make_shared<PathIntegrator2>(mScene, spp, pathsOnePass);
-        integ->mParam.russianRoulette = false;
-        integ->mParam.maxDepth = 1;
+        integ->mParam.russianRoulette = maxDepth == 0;
+        integ->mParam.maxDepth = maxDepth;
         integ->mParam.MIS = true;
         mIntegrator = integ;
         scramble = false;
@@ -51,8 +52,8 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
     else if (integType == "-path")
     {
         auto integ = std::make_shared<PathIntegrator>(mScene, spp);
-        integ->mLimitSpp = (spp != 0);
-        integ->mParam.maxDepth = 5;
+        integ->mParam.russianRoulette = maxDepth == 0;
+        integ->mParam.maxDepth = maxDepth;
         integ->mParam.MIS = true;
         mIntegrator = integ;
         scramble = true;
@@ -60,6 +61,8 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
     else if (integType == "-lpath")
     {
         auto integ = std::make_shared<LightPathIntegrator>(mScene, spp);
+        integ->mParam.russianRoulette = maxDepth == 0;
+        integ->mParam.maxDepth = maxDepth;
         mIntegrator = integ;
         scramble = false;
     }
@@ -67,19 +70,41 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
     {
         auto integ = std::make_shared<BDPTIntegrator>(mScene, spp);
         //integ->mParam.resampleDirect = false;
-        //integ->mParam.debug = true;
-        //param >> integ->mParam.debugStrategy.x >> integ->mParam.debugStrategy.y;
-        integ->mParam.russianRoulette = false;
-        integ->mParam.maxCameraDepth = 10;
-        integ->mParam.maxLightDepth = 10;
+        param >> integ->mParam.debug;
+        param >> integ->mParam.debugStrategy.x >> integ->mParam.debugStrategy.y;
+        integ->mParam.rrCameraPath = true;
+        integ->mParam.maxCameraDepth = maxDepth;
+        integ->mParam.rrLightPath = true;
+        integ->mParam.maxLightDepth = maxDepth;
+        integ->mParam.maxConnectDepth = maxDepth;
+        //integ->mLightSampler = std::make_shared<SimpleSobolSampler>(UniformUint(), false);
         integ->mLightSampler = std::make_shared<IndependentSampler>();
         mIntegrator = integ;
+        scramble = true;
+    }
+    else if (integType == "-bdpt2")
+    {
+        // int pathsOnePass;
+        // param >> pathsOnePass;
+        // auto integ = std::make_shared<BDPTIntegrator2>(mScene, spp, pathsOnePass);
+        // param >> integ->mParam.debug;
+        // param >> integ->mParam.debugStrategy.x >> integ->mParam.debugStrategy.y;
+        // integ->mParam.rrCameraPath = maxDepth == 0;
+        // integ->mParam.maxCameraDepth = maxDepth;
+        // integ->mParam.rrLightPath = maxDepth == 0;
+        // integ->mParam.maxLightDepth = maxDepth;
+        // integ->mParam.maxConnectDepth = maxDepth;
+        // integ->mLightSampler = std::make_shared<SimpleSobolSampler>(uniformInt(0, 0x7fffffff), false);
+        // //integ->mLightSampler = std::make_shared<IndependentSampler>();
+        // mIntegrator = integ;
+        // scramble = true;
     }
     else if (integType == "-ao")
     {
         auto integ = std::make_shared<AOIntegrator>(mScene, spp);
         param >> integ->mParam.radius;
         mIntegrator = integ;
+        scramble = true;
     }
     else if (integType == "-ao2")
     {
@@ -88,12 +113,13 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
         auto integ = std::make_shared<AOIntegrator2>(mScene, spp, pathsOnePass);
         param >> integ->mParam.radius;
         mIntegrator = integ;
+        scramble = false;
     }
     
     if (samplerType == "-rng")
         mIntegrator->mSampler = std::make_shared<IndependentSampler>();
     else
-        mIntegrator->mSampler = std::make_shared<SimpleSobolSampler>(mWindowWidth, mWindowHeight, scramble);
+        mIntegrator->mSampler = std::make_shared<SimpleSobolSampler>(0, scramble);
 }
 
 LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -148,7 +174,7 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
             mFirstCursorMove = true;
         }
         else if ((int)wParam == 'T')
-            mToneMappingMethod = (mToneMappingMethod + 1) % 4;
+            mToneMapping = !mToneMapping;
         else if ((int)wParam == 'O')
             saveImage();
         break;
@@ -309,17 +335,17 @@ void Application::initScene()
     //         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
     //         ));
 
-    // glm::mat4 model(1.0f);
-    // model = glm::translate(model, Vec3f(1.0f, 2.0f, -2.1f));
-    // model = glm::rotate(model, glm::radians(-17.5f), Vec3f(0.0f, 0.0f, 1.0f));
-    // model = glm::scale(model, Vec3f(1.8f));
-    // std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, Vec3f(1.0f, 2.0f, -2.1f));
+    model = glm::rotate(model, glm::radians(-17.5f), Vec3f(0.0f, 0.0f, 1.0f));
+    model = glm::scale(model, Vec3f(1.8f));
+    std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
 
-    // scene->addObjectMesh("res/model/cube.obj", trBoxSmall,
-    //                      //std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.6f)
-    //                      std::make_shared<Lambertian>(Spectrum(1.0f))
-    //                      //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-    // );
+    scene->addObjectMesh("res/model/cube.obj", trBoxSmall,
+                         std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.2f)
+                         //std::make_shared<Lambertian>(Spectrum(1.0f))
+                         //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+    );
 
     // model = glm::mat4(1.0f);
     // model = glm::translate(model, Vec3f(-1.0f, 4.0f, -1.2f));
@@ -328,12 +354,12 @@ void Application::initScene()
     // std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
 
     // scene->addObjectMesh("res/model/cube.obj", trBoxLarge,
-    //                      //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
-    //                      std::make_shared<Lambertian>(Spectrum(1.0f))
+    //                      std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
+    //                      //std::make_shared<Lambertian>(Spectrum(1.0f))
     // );
 
-    glm::mat4 model(1.0f);
-    model = glm::translate(model, Vec3f(0.0f, 3.0f, -1.0f));
+    model = Mat4f(1.0f);
+    model = glm::translate(model, Vec3f(-0.5f, 3.0f, -1.0f));
     model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
     model = glm::scale(model, Vec3f(1.0f));
     std::shared_ptr<Transform> transform = std::make_shared<Transform>(model);
@@ -349,7 +375,7 @@ void Application::initScene()
                 Vec3f(-0.025f, 3.025f, 2.999f),
                 Vec3f(0.025f, 3.025f, 2.999f),
                 Vec3f(-0.025f, 2.975f, 2.999f)),
-            Spectrum(100.0f), false));
+            Spectrum(200.0f), false));
 
     // auto transform = std::make_shared<Transform>(glm::rotate(Mat4f(1.0f), glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f)));
     // scene->addObjectMesh("res/model/bidir/diffuse.obj", transform,
@@ -360,8 +386,8 @@ void Application::initScene()
     //     std::make_shared<MetalWorkflow>(Spectrum(0.8f, 0.356f, 0.135f), 1.0f, 0.25f));
     // scene->addObjectMesh("res/model/bidir/wood.obj", transform,
     //     std::make_shared<Lambertian>(Spectrum(0.33f, 0.26f, 0.15f)));
-    // scene->addLightMesh("res/model/bidir/light1.obj", transform, Spectrum(100.0f));
-    // scene->addLightMesh("res/model/bidir/light2.obj", transform, Spectrum(200.0f));
+    // scene->addLightMesh("res/model/bidir/light1.obj", transform, Spectrum(200.0f));
+    // scene->addLightMesh("res/model/bidir/light2.obj", transform, Spectrum(400.0f));
 
     auto camera = std::make_shared<ThinLensCamera>(40.0f);
     camera->initFilm(mWindowWidth, mWindowHeight);
@@ -384,17 +410,14 @@ void Application::initScene()
 void Application::writeBuffer()
 {
     auto resultBuffer = mIntegrator->result();
-    using namespace ToneMapping;
-
-    Vec3f (*toneMapping[4])(const Vec3f &) = {reinhard, CE, filmic, ACES};
-
     for (int i = 0; i < mWindowWidth; i++)
     {
         for (int j = 0; j < mWindowHeight; j++)
         {
             auto result = resultBuffer(i, j) * mIntegrator->mResultScale;
             result = glm::clamp(result, Vec3f(0.0f), Vec3f(1e8f));
-            result = toneMapping[mToneMappingMethod](result);
+            if (mToneMapping)
+                result = ToneMapping::filmic(result);
             result = glm::pow(result, Vec3f(1.0f / 2.2f));
             mColorBuffer(i, j) = RGB24::swapRB(RGB24(result));
         }

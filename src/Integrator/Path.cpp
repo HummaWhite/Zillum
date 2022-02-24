@@ -8,11 +8,11 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
 
     for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
     {
-        Vec3f P = ray.ori;
-        Vec3f Wo = -ray.dir;
+        Vec3f pos = ray.ori;
+        Vec3f wo = -ray.dir;
         MaterialPtr mat = surf.material;
 
-        if (glm::dot(surf.NShad, Wo) <= 0)
+        if (glm::dot(surf.ns, wo) <= 0)
         {
             auto bxdf = mat->bxdf();
             if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
@@ -23,27 +23,27 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
         auto lightSample = sampler->get<5>();
         if (!deltaBsdf && param.sampleDirect)
         {
-            auto [Wi, coef, lightPdf] = scene->sampleLiLightAndEnv(P, lightSample);
+            auto [wi, coef, lightPdf] = scene->sampleLiLightAndEnv(pos, lightSample);
             if (lightPdf != 0)
             {
-                float bsdfPdf = mat->pdf(surf.NShad, Wo, Wi);
+                float bsdfPdf = mat->pdf(surf.ns, wo, wi);
                 float weight = param.MIS ? Math::biHeuristic(lightPdf, bsdfPdf) : 0.5f;
-                result += mat->bsdf(surf.NShad, Wo, Wi, TransportMode::Radiance) * throughput *
-                    Math::satDot(surf.NShad, Wi) * coef * weight;
+                result += mat->bsdf(surf.ns, wo, wi, TransportMode::Radiance) * throughput *
+                    Math::satDot(surf.ns, wi) * coef * weight;
             }
         }
 
-        auto bsdfSample = surf.material->sample(surf.NShad, Wo, sampler->get1(), sampler->get2());
+        auto bsdfSample = surf.material->sample(surf.ns, wo, sampler->get1(), sampler->get2());
         if (!bsdfSample)
             break;
-        auto [Wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
+        auto [wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
 
-        float NoWi = type.isDelta() ? 1.0f : Math::absDot(surf.NShad, Wi);
-        if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf) || NoWi < 1e-6f)
+        float cosWi = type.isDelta() ? 1.0f : Math::absDot(surf.ns, wi);
+        if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf) || cosWi < 1e-6f)
             break;
-        throughput *= bsdf * NoWi / bsdfPdf;
+        throughput *= bsdf * cosWi / bsdfPdf;
 
-        auto newRay = Ray(P, Wi).offset();
+        auto newRay = Ray(pos, wi).offset();
         auto [dist, obj] = scene->closestHit(newRay);
 
         if (!obj)
@@ -51,25 +51,25 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
             float weight = 1.0f;
             if (!deltaBsdf && param.sampleDirect)
             {
-                float envPdf = scene->mEnv->pdfLi(Wi) * scene->pdfSampleEnv();
+                float envPdf = scene->mEnv->pdfLi(wi) * scene->pdfSampleEnv();
                 weight = (envPdf <= 0) ? 0 : param.MIS ? Math::biHeuristic(bsdfPdf, envPdf)
                                                            : 0.5f;
             }
-            result += scene->mEnv->radiance(Wi) * throughput * weight;
+            result += scene->mEnv->radiance(wi) * throughput * weight;
             break;
         }
         if (obj->type() == HittableType::Light)
         {
             float weight = 1.0f;
-            auto lt = dynamic_cast<Light *>(obj.get());
+            auto light = dynamic_cast<Light*>(obj.get());
             auto hitPoint = newRay.get(dist);
             if (!deltaBsdf && param.sampleDirect)
             {
-                float lightPdf = lt->pdfLi(P, hitPoint) * scene->pdfSampleLight(lt);
+                float lightPdf = light->pdfLi(pos, hitPoint) * scene->pdfSampleLight(light);
                 weight = (lightPdf <= 0) ? 0 : param.MIS ? Math::biHeuristic(bsdfPdf, lightPdf)
                                                              : 0.5f;
             }
-            result += lt->Le({ hitPoint, -Wi }) * throughput * weight;
+            result += light->Le({ hitPoint, -wi }) * throughput * weight;
             break;
         }
 
@@ -86,10 +86,10 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Ray ray, Surf
         if (bounce >= param.maxDepth && !param.russianRoulette)
             break;
 
-        Vec3f nextP = newRay.get(dist);
-        auto ob = dynamic_cast<Object *>(obj.get());
-        surf = ob->surfaceInfo(nextP);
-        newRay.ori = nextP;
+        Vec3f nextPos = newRay.get(dist);
+        auto nextObj = dynamic_cast<Object*>(obj.get());
+        surf = nextObj->surfaceInfo(nextPos);
+        newRay.ori = nextPos;
         ray = newRay;
     }
     return result;
@@ -104,16 +104,16 @@ Spectrum PathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 
     if (obj->type() == HittableType::Light)
     {
-        auto lt = dynamic_cast<Light *>(obj.get());
-        auto y = ray.get(dist);
-        return lt->Le({ y, -ray.dir });
+        auto light = dynamic_cast<Light*>(obj.get());
+        auto pl = ray.get(dist);
+        return light->Le({ pl, -ray.dir });
     }
     else if (obj->type() == HittableType::Object)
     {
-        Vec3f p = ray.get(dist);
-        auto ob = dynamic_cast<Object*>(obj.get());
-        SurfaceInfo surf = ob->surfaceInfo(p);
-        ray.ori = p;
+        Vec3f pos = ray.get(dist);
+        auto object = dynamic_cast<Object*>(obj.get());
+        SurfaceInfo surf = object->surfaceInfo(pos);
+        ray.ori = pos;
         return traceOnePath(mParam, mScene, ray, surf, sampler);
     }
     Error::impossiblePath();
@@ -162,17 +162,16 @@ void PathIntegrator2::trace(int paths, SamplerPtr sampler)
             result = mScene->mEnv->radiance(ray.dir);
         else if (obj->type() == HittableType::Light)
         {
-            auto lt = dynamic_cast<Light *>(obj.get());
-            auto y = ray.get(dist);
-            result = lt->Le({ y, -ray.dir });
+            auto light = dynamic_cast<Light*>(obj.get());
+            auto pl = ray.get(dist);
+            result = light->Le({ pl, -ray.dir });
         }
         else if (obj->type() == HittableType::Object)
         {
-            Vec3f p = ray.get(dist);
-            auto tmp = obj.get();
-            auto ob = dynamic_cast<Object *>(obj.get());
-            SurfaceInfo surf = ob->surfaceInfo(p);
-            ray.ori = p;
+            Vec3f pos = ray.get(dist);
+            auto object = dynamic_cast<Object*>(obj.get());
+            SurfaceInfo surf = object->surfaceInfo(pos);
+            ray.ori = pos;
             result = traceOnePath(mParam, mScene, ray, surf, sampler);
         }
         addToFilmLocked(uv, result);

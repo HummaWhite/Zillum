@@ -20,7 +20,7 @@ void Integrator::addToFilmLocked(const Vec2f &uv, const Spectrum &val)
 }
 
 PixelIndependentIntegrator::PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type) :
-    mMaxSpp(maxSpp), Integrator(scene, type)
+    mMaxSpp(maxSpp), mLimitSpp(maxSpp != 0), Integrator(scene, type)
 {
     auto film = scene->mCamera->film();
     mWidth = film.width;
@@ -81,7 +81,7 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
             Ray ray = mScene->mCamera->generateRay({ sx, sy }, sampler);
             Spectrum result = tracePixel(ray, sampler);
 
-            if (Math::isNan(result.x) || Math::isNan(result.y) || Math::isNan(result.z))
+            if (Math::hasNan(result))
             {
                 Error::bracketLine<0>("nan discovered");
                 result = Spectrum(0.0f);

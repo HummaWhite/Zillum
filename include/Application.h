@@ -44,7 +44,7 @@ private:
 	int mLastCursorY;
 	bool mFirstCursorMove = true;
 
-	int mToneMappingMethod = 2;
+	bool mToneMapping = true;
 
 	FrameBufferDouble<RGB24> mColorBuffer;
 	IntegratorPtr mIntegrator;

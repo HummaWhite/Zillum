@@ -42,42 +42,41 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
     auto [lightSource, pdfSource] = mScene->sampleLightAndEnv(sampler->get2(), sampler->get1());
 
     Ray ray;
-    Vec3f Wo;
+    Vec3f wo;
     Spectrum throughput;
 
     if (lightSource.index() == 0)
     {
         auto areaLight = std::get<0>(lightSource);
 
-        Vec3f Pd = areaLight->uniformSample(sampler->get2());
-        auto ciSamp = mScene->mCamera->sampleIi(Pd, sampler->get2());
+        Vec3f pLit = areaLight->uniformSample(sampler->get2());
+        auto ciSamp = mScene->mCamera->sampleIi(pLit, sampler->get2());
         if (ciSamp)
         {
-            auto [Wi, Ii, dist, uvRaster, pdf] = ciSamp.value();
-            Vec3f Pc = Pd + Wi * dist;
-            Vec3f Nd = areaLight->normalGeom(Pd);
+            auto [wi, Ii, dist, uvRaster, pdf] = ciSamp.value();
+            Vec3f pCam = pLit + wi * dist;
             float pdfPos = 1.0f / areaLight->surfaceArea();
-            if (mScene->visible(Pd, Pc))
+            if (mScene->visible(pLit, pCam))
             {
-                auto Le = areaLight->Le({ Pd, Wi });
+                auto Le = areaLight->Le({ pLit, wi });
                 auto contrib = Le;
                 addToFilmLocked(uvRaster, contrib);
             }
         }
 
         auto leSamp = areaLight->sampleLe(sampler->get<4>());
-        Vec3f Nl = areaLight->normalGeom(leSamp.ray.ori);
+        Vec3f nl = areaLight->normalGeom(leSamp.ray.ori);
 
-        Wo = -leSamp.ray.dir;
+        wo = -leSamp.ray.dir;
         ray = leSamp.ray.offset();
-        throughput = leSamp.Le * Math::absDot(Nl, -Wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
+        throughput = leSamp.Le * Math::absDot(nl, -wo) / (pdfSource * leSamp.pdfPos * leSamp.pdfDir);
     }
     else
     {
         auto envLight = std::get<1>(lightSource);
         auto [emiRay, Le, pdf] = mScene->sampleLeEnv(sampler->get<6>());
 
-        Wo = -emiRay.dir;
+        wo = -emiRay.dir;
         ray = { emiRay.ori, emiRay.dir };
         throughput = Le / (pdfSource * pdf);
     }
@@ -91,10 +90,10 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
             break;
         auto obj = dynamic_cast<Object*>(hit.get());
 
-        Vec3f P = ray.get(distObj);
-        auto surf = obj->surfaceInfo(P);
+        Vec3f pos = ray.get(distObj);
+        auto surf = obj->surfaceInfo(pos);
 
-        if (glm::dot(surf.NShad, Wo) < 0)
+        if (glm::dot(surf.ns, wo) < 0)
         {
             auto bxdf = surf.material->bxdf();
             if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
@@ -104,24 +103,24 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
 
         if (!deltaBsdf)
         {
-            auto directSample = mScene->mCamera->sampleIi(P, sampler->get2());
+            auto directSample = mScene->mCamera->sampleIi(pos, sampler->get2());
             if (directSample)
             {
-                auto [Wi, Ii, dist, uvRaster, pdf] = directSample.value();
-                Vec3f pCam = P + Wi * dist;
-                if (mScene->visible(P, pCam))
+                auto [wi, Ii, dist, uvRaster, pdf] = directSample.value();
+                Vec3f pCam = pos + wi * dist;
+                if (mScene->visible(pos, pCam))
                 {
-                    Spectrum res = Ii * surf.material->bsdf(surf.NShad, Wo, Wi, TransportMode::Importance) *
-                        throughput * Math::satDot(surf.NShad, Wi) / pdf;
+                    Spectrum res = Ii * surf.material->bsdf(surf.ns, wo, wi, TransportMode::Importance) *
+                        throughput * Math::satDot(surf.ns, wi) / pdf;
                     addToFilmLocked(uvRaster, res);
                 }
             }
         }
 
-        auto sample = surf.material->sample(surf.NShad, Wo, sampler->get1(), sampler->get2(), TransportMode::Importance);
+        auto sample = surf.material->sample(surf.ns, wo, sampler->get1(), sampler->get2(), TransportMode::Importance);
         if (!sample)
             break;
-        auto [Wi, bsdfPdf, type, eta, bsdf] = sample.value();
+        auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
 
         if (bounce >= mRRStartDepth && mParam.russianRoulette)
         {
@@ -134,11 +133,11 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
         if (bounce >= mParam.maxDepth && !mParam.russianRoulette)
             break;
 
-        float NoWi = deltaBsdf ? 1.0f : Math::satDot(surf.NShad, Wi);
+        float cosWi = deltaBsdf ? 1.0f : Math::satDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
-        throughput *= bsdf * NoWi / bsdfPdf;
-        ray = Ray(P, Wi).offset();
-        Wo = -Wi;
+        throughput *= bsdf * cosWi / bsdfPdf;
+        ray = Ray(pos, wi).offset();
+        wo = -wi;
     }
 }

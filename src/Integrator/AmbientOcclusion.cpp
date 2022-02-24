@@ -1,12 +1,12 @@
 #include "../../include/Core/Integrator.h"
 
-Spectrum traceOnePath(const AOIntegParam &param, ScenePtr scene, Ray ray, Vec3f N, SamplerPtr sampler)
+Spectrum traceOnePath(const AOIntegParam &param, ScenePtr scene, Ray ray, Vec3f n, SamplerPtr sampler)
 {
     Spectrum ao(0.0f);
     for (int i = 0; i < param.samplesOneTime; i++)
     {
-        auto Wi = Math::sampleHemisphereCosine(N, sampler->get2()).first;
-        auto occRay = Ray(ray.ori, Wi).offset();
+        auto wi = Math::sampleHemisphereCosine(n, sampler->get2()).first;
+        auto occRay = Ray(ray.ori, wi).offset();
         if (scene->quickIntersect(occRay, param.radius))
             ao += Spectrum(1.0f);
     }
@@ -19,9 +19,9 @@ Spectrum AOIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
     if (obj == nullptr)
         return Vec3f(1.0f);
 
-    auto p = ray.get(dist);
-    ray.ori = p;
-    return traceOnePath(mParam, mScene, ray, obj->normalGeom(p), sampler);
+    auto pos = ray.get(dist);
+    ray.ori = pos;
+    return traceOnePath(mParam, mScene, ray, obj->normalGeom(pos), sampler);
 }
 
 void AOIntegrator2::renderOnePass()
@@ -67,12 +67,11 @@ void AOIntegrator2::trace(int paths, SamplerPtr sampler)
             result = mScene->mEnv->radiance(ray.dir);
         else if (obj->type() == HittableType::Object)
         {
-            Vec3f p = ray.get(dist);
-            auto tmp = obj.get();
-            auto ob = dynamic_cast<Object *>(obj.get());
-            SurfaceInfo sInfo = ob->surfaceInfo(p);
-            ray.ori = p;
-            result = traceOnePath(mParam, mScene, ray, sInfo.NGeom, sampler);
+            Vec3f pos = ray.get(dist);
+            auto object = dynamic_cast<Object *>(obj.get());
+            SurfaceInfo sInfo = object->surfaceInfo(pos);
+            ray.ori = pos;
+            result = traceOnePath(mParam, mScene, ray, sInfo.ng, sampler);
         }
         addToFilmLocked(uv, result);
         sampler->nextSample();

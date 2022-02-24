@@ -13,30 +13,30 @@ struct Vertex
 {
     Vertex() = default;
 
-    Vertex(const Vec3f &P, const Vec3f &N, Camera *camera) :
-        P(P), NCamera(N), camera(camera), type(VertexType::Camera) {}
+    Vertex(const Vec3f &pos, Camera *camera) :
+        pos(pos), normCam(camera->f()), camera(camera), type(VertexType::Camera) {}
 
-    Vertex(const Vec3f &P, const SurfaceInfo &surf, const Vec3f &Wo) :
-        P(P), NShad(surf.NShad), NGeom(surf.NGeom), W(Wo), bsdf(surf.material.get()), type(VertexType::Surface) {}
+    Vertex(const Vec3f &pos, const SurfaceInfo &surf, const Vec3f &wo) :
+        pos(pos), normShad(surf.ns), normGeom(surf.ng), dir(wo), bsdf(surf.material.get()), type(VertexType::Surface) {}
 
-    Vertex(const Vec3f &Wi, Environment *env) : W(Wi), envLight(env), type(VertexType::EnvLight) {}
+    Vertex(const Vec3f &wi, Environment *env) : dir(wi), envLight(env), type(VertexType::EnvLight) {}
 
-    Vertex(const Vec3f &P, const Vec3f &N, Light *light) :
-        P(P), NLight(N), areaLight(light), type(VertexType::AreaLight) {}
+    Vertex(const Vec3f &pos, Light *light) :
+        pos(pos), normLit(light->normalGeom(pos)), areaLight(light), type(VertexType::AreaLight) {}
 
     Vec3f getNormal() const
     {
-        return (type == VertexType::Surface) ? NShad : NGeom;
+        return (type == VertexType::Surface) ? normShad : normGeom;
     }
 
-    Vec3f P;
-    Vec3f W;
-    Vec3f NShad;
+    Vec3f pos;
+    Vec3f dir;
+    Vec3f normShad;
     union 
     {
-        Vec3f NGeom;
-        Vec3f NCamera;
-        Vec3f NLight;
+        Vec3f normGeom;
+        Vec3f normCam;
+        Vec3f normLit;
     };
 
     float pdfLitward;
@@ -57,10 +57,10 @@ struct Vertex
 
 struct Path
 {
-    static Vertex createCamera(const Vec3f &P, const Vec3f &N, Camera *camera) { return Vertex(P, N, camera); }
-    static Vertex createSurface(const Vec3f &P, const SurfaceInfo &surf, const Vec3f &Wo) { return Vertex(P, surf, Wo); }
-    static Vertex createEnvLight(const Vec3f &Wi, Environment *env) { return Vertex(Wi, env); }
-    static Vertex createAreaLight(const Vec3f &P, const Vec3f &N, Light *light) { return Vertex(P, N, light); }
+    static Vertex createCamera(const Vec3f &pos, Camera *camera) { return Vertex(pos, camera); }
+    static Vertex createSurface(const Vec3f &pos, const SurfaceInfo &surf, const Vec3f &wo) { return Vertex(pos, surf, wo); }
+    static Vertex createEnvLight(const Vec3f &wi, Environment *env) { return Vertex(wi, env); }
+    static Vertex createAreaLight(const Vec3f &pos, Light *light) { return Vertex(pos, light); }
 
     void addVertex(const Vertex &v)
     {
@@ -85,52 +85,50 @@ struct Path
 
 float g(const Vertex &a, const Vertex &b, ScenePtr scene)
 {
-    return scene->g(a.P, b.P, a.getNormal(), b.getNormal());
+    return scene->g(a.pos, b.pos, a.getNormal(), b.getNormal());
 }
 
 float gNoVisibility(const Vertex &a, const Vertex &b)
 {
-    Vec3f W = glm::normalize(a.P - b.P);
-    return Math::satDot(a.getNormal(), -W) * Math::satDot(b.getNormal(), W) / Math::distSquare(a.P, b.P);
+    Vec3f w = glm::normalize(a.pos - b.pos);
+    return Math::satDot(a.getNormal(), -w) * Math::satDot(b.getNormal(), w) / Math::distSquare(a.pos, b.pos);
 }
 
-float halfG(const Vertex &fr, const Vertex &to)
-{
-    Vec3f W = glm::normalize(fr.P - to.P);
-    return glm::dot(to.NShad, W) / Math::distSquare(fr.P, to.P);
-}
-
-float convertPdfToArea(const Vec3f &fr, const Vec3f &to, const Vec3f &N, float pdfSolidAngle)
+float convertPdfToArea(const Vec3f &fr, const Vec3f &to, const Vec3f &n, float pdfSolidAngle)
 {
     float dist2 = Math::distSquare(fr, to);
-    return pdfSolidAngle * Math::absDot(N, glm::normalize(fr - to)) / dist2;
+    return pdfSolidAngle * Math::absDot(n, glm::normalize(fr - to)) / dist2;
 }
 
 float convertPdf(const Vertex &fr, const Vertex &to, float pdfSolidAngle)
 {
-    return (to.type == VertexType::EnvLight) ? pdfSolidAngle : convertPdfToArea(fr.P, to.P, to.getNormal(), pdfSolidAngle);
+    return (to.type == VertexType::EnvLight) ? pdfSolidAngle : convertPdfToArea(fr.pos, to.pos, to.getNormal(), pdfSolidAngle);
 }
 
 Spectrum bsdf(const Vertex &fr, const Vertex &to, TransportMode mode)
 {
-    Vec3f Wi = glm::normalize(to.P - fr.P);
-    return fr.bsdf->bsdf(fr.getNormal(), fr.W, Wi, mode);
+    Vec3f wi = glm::normalize(to.pos - fr.pos);
+    return fr.bsdf->bsdf(fr.getNormal(), fr.dir, wi, mode);
 }
 
-float threePointPdf(const Vertex *prev, const Vertex &fr, const Vertex &to)
+// fr must be a source vertex, either radiance or importance
+float twoPointPdf(const Vertex &fr, const Vertex &to)
 {
-    Vec3f Wi = glm::normalize(to.P - fr.P);
-    if (fr.type == VertexType::Surface)
-    {
-        Vec3f Wo = glm::normalize(prev->P - fr.P);
-        return convertPdf(fr, to, fr.bsdf->pdf(fr.NShad, Wo, Wi));
-    }
-    else if (fr.type == VertexType::Camera)
-        return convertPdf(fr, to, fr.camera->pdfIe(Ray(fr.P, Wi)).pdfDir);
+    Vec3f wi = glm::normalize(to.pos - fr.pos);
+    if (fr.type == VertexType::Camera)
+        return convertPdf(fr, to, fr.camera->pdfIe(Ray(fr.pos, wi)).pdfDir);
     else if (fr.type == VertexType::AreaLight)
-        return convertPdf(fr, to, fr.areaLight->pdfLe(Ray(fr.P, Wi)).pdfDir);
+        return convertPdf(fr, to, fr.areaLight->pdfLe(Ray(fr.pos, wi)).pdfDir);
     // TODO: handle environment light
     return 0;
+}
+
+// fr must be a surface vertex
+float threePointPdf(const Vertex &prev, const Vertex &fr, const Vertex &to)
+{
+    Vec3f wi = glm::normalize(to.pos - fr.pos);
+    Vec3f wo = glm::normalize(prev.pos - fr.pos);
+    return convertPdf(fr, to, fr.bsdf->pdf(fr.normShad, wo, wi));
 }
 
 float pdfLightOrigin(const Vertex &light, const Vertex &ref, ScenePtr scene)
@@ -138,8 +136,7 @@ float pdfLightOrigin(const Vertex &light, const Vertex &ref, ScenePtr scene)
     if (light.type == VertexType::EnvLight)
         // TODO: environment light
         return 0.0f;
-    Vec3f Wi = glm::normalize(light.P - ref.P);
-    Ray ray(light.P, Wi);
+    Ray ray(light.pos, glm::normalize(light.pos - ref.pos));
     return light.areaLight->pdfLe(ray).pdfPos * scene->pdfSampleLight(light.areaLight);
 }
 
@@ -148,7 +145,7 @@ float pdfLight(const Vertex &light, const Vertex &ref, ScenePtr scene)
     if (light.type == VertexType::EnvLight)
         // TODO: env light
         return 0.0f;
-    return light.areaLight->pdfLi(ref.P, light.P) * scene->pdfSampleLight(light.areaLight);
+    return light.areaLight->pdfLi(ref.pos, light.pos) * scene->pdfSampleLight(light.areaLight);
 }
 
 void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr sampler, Path &path)
@@ -160,10 +157,9 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
     auto light = std::get<0>(lightSource);
 
     auto leSamp = light->sampleLe(sampler->get<4>());
-    Vec3f Nl = light->normalGeom(leSamp.ray.ori);
-    Vec3f Wo = -leSamp.ray.dir;
+    Vec3f wo = -leSamp.ray.dir;
 
-    auto vertex = Path::createAreaLight(leSamp.ray.ori, Nl, light.get());
+    auto vertex = Path::createAreaLight(leSamp.ray.ori, light.get());
     vertex.throughput = leSamp.Le / (pdfSource * leSamp.pdfPos);
     vertex.pdfCamward = pdfSource * leSamp.pdfPos;
     vertex.isDelta = false; // light->isDelta();
@@ -171,59 +167,61 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
 
     Ray ray = leSamp.ray.offset();
     float pdfSolidAngle = leSamp.pdfDir;
-    Spectrum throughput = path[0].throughput * Math::absDot(Nl, -Wo) / pdfSolidAngle;
+    Spectrum throughput = path[0].throughput * Math::absDot(light->normalGeom(leSamp.ray.ori), -wo) / pdfSolidAngle;
 
-    for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
+    for (int bounce = 1; bounce < param.maxConnectDepth; bounce++)
     {
+        if (Math::isBlack(throughput))
+            break;
         auto [hitDist, hit] = scene->closestHit(ray);
         if (!hit)
             break;
         if (hit->type() != HittableType::Object)
             break;
-        auto obj = dynamic_cast<Object*>(hit.get());
+        auto object = dynamic_cast<Object*>(hit.get());
 
-        Vec3f P = ray.get(hitDist);
-        auto surf = obj->surfaceInfo(P);
+        Vec3f pos = ray.get(hitDist);
+        auto surf = object->surfaceInfo(pos);
 
-        if (glm::dot(surf.NShad, Wo) < 0)
+        if (glm::dot(surf.ns, wo) < 0)
         {
             auto bxdf = surf.material->bxdf();
             if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
-                surf.NShad = -surf.NShad;
+                surf.flipNormal();
         }
         bool deltaBsdf = surf.material->bxdf().isDelta();
 
-        vertex = Path::createSurface(P, surf, Wo);
+        vertex = Path::createSurface(pos, surf, wo);
         vertex.throughput = throughput;
         vertex.pdfCamward = convertPdf(path[bounce - 1], vertex, pdfSolidAngle);
         vertex.isDelta = deltaBsdf;
         path.addVertex(vertex);
 
-        auto sample = surf.material->sample(surf.NShad, Wo, sampler->get1(), sampler->get2(), TransportMode::Importance);
+        auto sample = surf.material->sample(surf.ns, wo, sampler->get1(), sampler->get2(), TransportMode::Importance);
         if (!sample)
             break;
-        auto [Wi, bsdfPdf, type, eta, bsdf] = sample.value();
+        auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
 
-        float NoWi = deltaBsdf ? 1.0f : Math::satDot(surf.NShad, Wi);
+        float cosWi = deltaBsdf ? 1.0f : Math::satDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
         
-        if (bounce >= param.rrLightStartDepth && param.russianRoulette)
+        if (bounce >= param.rrLightStartDepth && param.rrLightPath)
         {
             float continueProb = glm::min<float>(1.0f, Math::maxComponent(bsdf / bsdfPdf));
             if (sampler->get1() > continueProb)
                 break;
             throughput /= continueProb;
         }
-        if (bounce >= param.maxLightDepth && !param.russianRoulette)
+        if (bounce >= param.maxLightDepth && !param.rrLightPath)
             break;
         if (bounce > 1)
-            path[bounce - 2].pdfLitward = threePointPdf(&path[bounce], path[bounce - 1], path[bounce - 2]);
+            path[bounce - 2].pdfLitward = threePointPdf(path[bounce], path[bounce - 1], path[bounce - 2]);
 
-        throughput *= bsdf * NoWi / bsdfPdf;
+        throughput *= bsdf * cosWi / bsdfPdf;
         pdfSolidAngle = bsdfPdf;
-        ray = Ray(P, Wi).offset();
-        Wo = -Wi;
+        ray = Ray(pos, wi).offset();
+        wo = -wi;
     }
 }
 
@@ -231,105 +229,137 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
 {
     auto camera = scene->mCamera;
     auto [pdfCamPos, pdfCamDir] = camera->pdfIe(ray);
-    Vec3f Nc = camera->f();
 
-    auto vertex = Path::createCamera(ray.ori, Nc, camera.get());
-    vertex.throughput = camera->Ie(ray) / pdfCamPos;
+    auto vertex = Path::createCamera(ray.ori, camera.get());
+    vertex.throughput = Spectrum(1.0f); //camera->Ie(ray) / pdfCamPos;
     vertex.pdfLitward = pdfCamPos;
     vertex.isDelta = false; // camera->isDelta();
     path.addVertex(vertex);
 
-    float pdfSolidAngle = pdfCamDir;
-    Spectrum throughput = vertex.throughput * Math::absDot(Nc, ray.dir) / pdfSolidAngle;
-    Vec3f Wo = -ray.dir;
+    float pdfSolidAngle = 1.0f; //pdfCamDir;
+    Spectrum throughput = vertex.throughput * Math::absDot(camera->f(), ray.dir) / pdfSolidAngle;
+    Vec3f wo = -ray.dir;
     float etaScale = 1.0f;
 
-    for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
+    for (int bounce = 1; bounce < param.maxConnectDepth; bounce++)
     {
+        if (Math::isBlack(throughput))
+            break;
         auto [hitDist, hit] = scene->closestHit(ray);
         if (!hit)
         {
             // TODO: create environment light vertex
             break;
         }
-        if (hit->type() != HittableType::Object)
+
+        Vec3f pos = ray.get(hitDist);
+        if (hit->type() == HittableType::Light)
+        {
+            auto light = dynamic_cast<Light*>(hit.get());
+            vertex = Path::createAreaLight(pos, light);
+            vertex.throughput = throughput;
+            vertex.pdfLitward = convertPdf(path[bounce - 1], vertex, pdfSolidAngle);
+            vertex.isDelta = false;
+            path.addVertex(vertex);
             break;
-        auto obj = dynamic_cast<Object *>(hit.get());
+        }
 
-        Vec3f P = ray.get(hitDist);
-        auto surf = obj->surfaceInfo(P);
-
-        if (glm::dot(surf.NShad, Wo) < 0)
+        auto object = dynamic_cast<Object*>(hit.get());
+        auto surf = object->surfaceInfo(pos);
+        if (glm::dot(surf.ns, wo) < 0)
         {
             auto bxdf = surf.material->bxdf();
             if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
-                surf.NShad = -surf.NShad;
+                surf.ns = -surf.ns;
         }
         bool deltaBsdf = surf.material->bxdf().isDelta();
 
-        vertex = Path::createSurface(P, surf, Wo);
+        vertex = Path::createSurface(pos, surf, wo);
         vertex.throughput = throughput;
         vertex.pdfLitward = convertPdf(path[bounce - 1], vertex, pdfSolidAngle);
         vertex.isDelta = deltaBsdf;
         path.addVertex(vertex);
 
-        auto sample = surf.material->sample(surf.NShad, Wo, sampler->get1(), sampler->get2(), TransportMode::Radiance);
+        auto sample = surf.material->sample(surf.ns, wo, sampler->get1(), sampler->get2(), TransportMode::Radiance);
         if (!sample)
             break;
-        auto [Wi, bsdfPdf, type, eta, bsdf] = sample.value();
+        auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
 
-        float NoWi = type.isDelta() ? 1.0f : Math::absDot(surf.NShad, Wi);
+        float cosWi = type.isDelta() ? 1.0f : Math::absDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
         if (type.isTransmission())
             etaScale *= Math::square(eta);
 
-        if (bounce >= param.rrCameraStartDepth && param.russianRoulette)
+        if (bounce >= param.rrCameraStartDepth && param.rrCameraPath)
         {
             float continueProb = glm::min<float>(Math::maxComponent(bsdf / bsdfPdf) * etaScale, 0.95f);
             if (sampler->get1() > continueProb)
                 break;
             throughput /= continueProb;
         }
-        if (bounce >= param.maxCameraDepth && !param.russianRoulette)
+        if (bounce >= param.maxCameraDepth && !param.rrCameraPath)
             break;
         if (bounce > 1)
-            path[bounce - 2].pdfCamward = threePointPdf(&path[bounce], path[bounce - 1], path[bounce - 2]);
+            path[bounce - 2].pdfCamward = threePointPdf(path[bounce], path[bounce - 1], path[bounce - 2]);
 
-        throughput *= bsdf * NoWi / bsdfPdf;
+        throughput *= bsdf * cosWi / bsdfPdf;
         pdfSolidAngle = bsdfPdf;
-        ray = Ray(P, Wi).offset();
-        Wo = -Wi;
+        ray = Ray(pos, wi).offset();
+        wo = -wi;
     }
 }
 
 float MISWeight(Path &lightPath, Path &cameraPath, int s, int t, ScenePtr scene)
 {
+    auto remapPdf = [](float v) -> float
+    {
+        return v < 1e-8f ? 1.0f : v;
+    };
+
     if (s + t == 2)
         return 1.0f;
-    auto remapPdf = [](float v) -> float { return v == 0 ? 1.0f : v; };
-    float sum = 0.0f;
 
-    Vertex *vs = lightPath(s - 1);
-    Vertex *vt = cameraPath(t - 1);
-    Vertex *vsPred = lightPath(s - 2);
-    Vertex *vtPred = cameraPath(t - 2);
+    auto vs = lightPath(s - 1);
+    auto vt = cameraPath(t - 1);
+    auto vsPred = lightPath(s - 2);
+    auto vtPred = cameraPath(t - 2);
 
-    TempAssignment<bool> tmpDeltaVs(vs->isDelta, false);
-    TempAssignment<bool> tmpDeltaVt(vt->isDelta, false);
-
+    TempAssignment<bool> tmpDeltaVs;
+    TempAssignment<bool> tmpDeltaVt;
     TempAssignment<float> tmpPdfLitwardVs, tmpPdfLitwardVsPred;
-    if (vsPred)
-        tmpPdfLitwardVsPred = { vsPred->pdfLitward, threePointPdf(vt, *vs, *vsPred) };
-    if (vs)
-        tmpPdfLitwardVs = { vs->pdfLitward, threePointPdf(vtPred, *vt, *vs) };
-
     TempAssignment<float> tmpPdfCamwardVt, tmpPdfCamwardVtPred;
-    if (vtPred)
-        tmpPdfCamwardVtPred = { vtPred->pdfCamward, threePointPdf(vs, *vt, *vtPred) };
-    if (vt)
-        tmpPdfCamwardVt = { vt->pdfCamward, threePointPdf(vsPred, *vs, *vt) };
+    
+    if (s == 0)
+    {
+        if (vt->type == VertexType::AreaLight)
+        {
+            auto [pdfPos, pdfDir] = vt->areaLight->pdfLe({ vt->pos, glm::normalize(vtPred->pos - vt->pos) });
+            tmpPdfCamwardVt = { vt->pdfCamward, pdfPos * scene->pdfSampleLight(vt->areaLight) };
+            tmpPdfCamwardVtPred = { vtPred->pdfCamward, convertPdf(*vt, *vtPred, pdfDir) };
+        }
+        else if (vt->type == VertexType::EnvLight)
+        {
+            // TODO: env light
+            return 0.0f;
+        }
+        else
+            return 0.0f;
+    }
+    else
+    {
+        tmpDeltaVs = { vs->isDelta, false };
+        tmpDeltaVt = { vt->isDelta, false };
+        tmpPdfLitwardVs = { vs->pdfLitward, vtPred ? threePointPdf(*vtPred, *vt, *vs) : twoPointPdf(*vt, *vs) };
+        tmpPdfCamwardVt = { vt->pdfCamward, vsPred ? threePointPdf(*vsPred, *vs, *vt) : twoPointPdf(*vs, *vt) };
 
+        if (vsPred)
+            tmpPdfLitwardVsPred = { vsPred->pdfLitward, threePointPdf(*vt, *vs, *vsPred) };
+        if (vtPred)
+            tmpPdfCamwardVtPred = { vtPred->pdfCamward, threePointPdf(*vs, *vt, *vtPred) };
+    }
+
+    float sum = 0.0f;
     float r = 1.0f;
     for (int i = s - 1; i > 0; i--)
     {
@@ -347,26 +377,38 @@ float MISWeight(Path &lightPath, Path &cameraPath, int s, int t, ScenePtr scene)
     return 1.0f / (1.0f + sum);
 }
 
-Spectrum connectPaths(Path &lightPath, Path &cameraPath, int numLit, int numCam,
-    ScenePtr scene, SamplerPtr sampler, bool resampleDirect, std::optional<Vec2f> &uvRaster,
-    bool debug)
+Spectrum connectPaths(Path &lightPath, Path &cameraPath, int s, int t,
+    ScenePtr scene, SamplerPtr sampler, bool resampleEndPoint, std::optional<Vec2f> &uvRaster)
 {
-    if (numLit == 0)
-    {
-        // naive PT
-        // since the case of environment light is currently omitted
-        // no need to implement now
-        return Spectrum(0.0f);
-    }
-    const auto &vs = lightPath[numLit - 1];
-    const auto &vt = cameraPath[numCam - 1];
-
     Spectrum result;
     Vertex endPoint;
     TempAssignment<Vertex> tmpEndPoint;
-    if (numLit == 1)
+
+    if (s == 0)
     {
-        if (resampleDirect)
+        const auto &vt = cameraPath[t - 1];
+        if (vt.type == VertexType::AreaLight)
+        {
+            const auto &vtPred = cameraPath[t - 2];
+            Ray emiRay(vt.pos, glm::normalize(vtPred.pos - vt.pos));
+            result = vt.areaLight->Le(emiRay) * vt.throughput;
+        }
+        else if (vt.type == VertexType::EnvLight)
+        {
+            // TODO: env light
+        }
+        else
+            return Spectrum(0.0f);
+    }
+    else if (s == 1)
+    {
+        const auto &vs = lightPath[0];
+        const auto &vt = cameraPath[t - 1];
+        if (vt.type != VertexType::Surface)
+            return Spectrum(0.0f);
+        if (Math::isBlack(vt.throughput))
+            return Spectrum(0.0f);
+        if (resampleEndPoint)
         {
             if (vt.isDelta)
                 return Spectrum(0.0f);
@@ -376,32 +418,34 @@ Spectrum connectPaths(Path &lightPath, Path &cameraPath, int numLit, int numCam,
                 return Spectrum(0.0f);
             auto light = std::get<0>(lightSource);
 
-            auto LiSample = light->sampleLi(vt.P, sampler->get2());
+            auto LiSample = light->sampleLi(vt.pos, sampler->get2());
             if (!LiSample)
                 return Spectrum(0.0f);
-            auto [Wi, Li, dist, pdfLi] = LiSample.value();
+            auto [wi, Li, dist, pdfLi] = LiSample.value();
+            if (pdfLi == 0)
+                return Spectrum(0.0f);
             
-            Vec3f Pl = Ray(vt.P, Wi).get(dist);
-            if (!scene->visible(vt.P, Pl))
+            Vec3f pLit = Ray(vt.pos, wi).get(dist);
+            if (!scene->visible(vt.pos, pLit))
                 return Spectrum(0.0f);
 
-            endPoint = Vertex(Pl, light->normalGeom(Pl), light.get());
+            endPoint = Path::createAreaLight(pLit, light.get());
             endPoint.throughput = Li / (pdfLi * pdfSource);
-            endPoint.pdfCamward = light->pdfLe({ Pl, -Wi }).pdfPos * pdfSource;
+            endPoint.pdfCamward = light->pdfLe({ pLit, -wi }).pdfPos * pdfSource;
             endPoint.isDelta = false; // light->isDelta();
             
             result = endPoint.throughput * bsdf(vt, endPoint, TransportMode::Radiance) * vt.throughput *
-                Math::absDot(vt.NShad, Wi);
+                Math::satDot(vt.normShad, wi);
         }
         else
         {
             if (vs.isDelta || vt.isDelta)
                 return Spectrum(0.0f);
-            if (!scene->visible(vs.P, vt.P))
+            if (!scene->visible(vs.pos, vt.pos))
                 return Spectrum(0.0f);
-            Vec3f Wi = glm::normalize(vs.P - vt.P);
+            Vec3f wi = glm::normalize(vs.pos - vt.pos);
 
-            Spectrum Le = vs.areaLight->Le({ vs.P, -Wi });
+            Spectrum Le = vs.areaLight->Le({ vs.pos, -wi });
             endPoint = vs;
             endPoint.throughput = Le / vs.pdfCamward;
 
@@ -410,37 +454,41 @@ Spectrum connectPaths(Path &lightPath, Path &cameraPath, int numLit, int numCam,
         }
         tmpEndPoint = { lightPath[0], endPoint };
     }
-    else if (numCam == 1)
+    else if (t == 1)
     {
-        if (resampleDirect)
+        const auto &vs = lightPath[s - 1];
+        const auto &vt = cameraPath[0];
+        if (Math::isBlack(vs.throughput))
+            return Spectrum(0.0f);
+        if (resampleEndPoint)
         {
             if (vs.isDelta)
                 return Spectrum(0.0f);
-            auto IiSample = vt.camera->sampleIi(vs.P, sampler->get2());
+            auto IiSample = vt.camera->sampleIi(vs.pos, sampler->get2());
             if (!IiSample)
                 return Spectrum(0.0f);
-            auto [Wi, Ii, dist, uv, pdf] = IiSample.value();
-            Vec3f Pc = Ray(vs.P, Wi).get(dist);
+            auto [wi, Ii, dist, uv, pdf] = IiSample.value();
+            Vec3f pCam = Ray(vs.pos, wi).get(dist);
             uvRaster = uv;
 
-            if (!scene->visible(vs.P, Pc))
+            if (!scene->visible(vs.pos, pCam))
                 return Spectrum(0.0f);
-            endPoint = Vertex(Pc, vt.camera->f(), vt.camera);
+            endPoint = Path::createCamera(pCam, vt.camera);
             endPoint.throughput = Ii / pdf;
-            endPoint.pdfLitward = vt.camera->pdfIe({ Pc, -Wi }).pdfPos;
+            endPoint.pdfLitward = vt.camera->pdfIe({ pCam, -wi }).pdfPos;
             endPoint.isDelta = false; // camera->isDelta();
             
             result = endPoint.throughput * bsdf(vs, endPoint, TransportMode::Importance) * vs.throughput *
-                Math::absDot(vs.NShad, Wi);
+                Math::satDot(vs.normShad, wi);
         }
         else
         {
             if (vs.isDelta || vt.isDelta)
                 return Spectrum(0.0f);
-            if (!scene->visible(vt.P, vs.P))
+            if (!scene->visible(vt.pos, vs.pos))
                 return Spectrum(0.0f);
-            Vec3f Wi = glm::normalize(vt.P - vs.P);
-            Ray ray(vt.P, -Wi);
+            Vec3f wi = glm::normalize(vt.pos - vs.pos);
+            Ray ray(vt.pos, -wi);
             uvRaster = vt.camera->rasterPos(ray);
             
             Spectrum Ie = vt.camera->Ie(ray);
@@ -454,46 +502,47 @@ Spectrum connectPaths(Path &lightPath, Path &cameraPath, int numLit, int numCam,
     }
     else
     {
-        if (vs.isDelta || vt.isDelta)
+        const auto &vs = lightPath[s - 1];
+        const auto &vt = cameraPath[t - 1];
+        if (Math::isBlack(vs.throughput) || Math::isBlack(vt.throughput))
             return Spectrum(0.0f);
-        if (!scene->visible(vt.P, vs.P))
+        if (vt.type != VertexType::Surface || vs.isDelta || vt.isDelta)
+            return Spectrum(0.0f);
+        if (!scene->visible(vt.pos, vs.pos))
             return Spectrum(0.0f);
         result = vs.throughput * bsdf(vs, vt, TransportMode::Importance) * gNoVisibility(vs, vt) *
             bsdf(vt, vs, TransportMode::Radiance) * vt.throughput;
     }
-    float mis = MISWeight(lightPath, cameraPath, numLit, numCam, scene);
-    return debug ? result : result * mis;
+    if (Math::isBlack(result))
+        return Spectrum(0.0f);
+    return result * MISWeight(lightPath, cameraPath, s, t, scene);
 }
 
-struct EvalResult
-{
-    Spectrum result;
-    std::vector<std::tuple<Vec2f, Spectrum>> pixels;
-};
-
-EvalResult eval(Path &lightPath, Path &cameraPath, ScenePtr scene, SamplerPtr sampler, const BDPTIntegParam &param)
+Spectrum BDPTIntegrator::eval(Path &lightPath, Path &cameraPath, SamplerPtr sampler)
 {
     Spectrum result(0.0f);
-    std::vector<std::tuple<Vec2f, Spectrum>> pixels;
     for (int s = 0; s <= lightPath.length; s++)
     {
-        for (int t = 1; t <= cameraPath.length; t++)
+        for (int t = 1; (t <= cameraPath.length) && (s + t <= mParam.maxConnectDepth); t++)
         {
             if (s == 1 && t == 1)
                 continue;
                 
-            if (param.debug && s != param.debugStrategy.x && t != param.debugStrategy.y)
+            if (mParam.debug && (s != mParam.debugStrategy.x || t != mParam.debugStrategy.y))
                 continue;
 
             std::optional<Vec2f> uvRaster;
-            Spectrum est = connectPaths(lightPath, cameraPath, s, t, scene, sampler, param.resampleDirect, uvRaster, param.debug);
+            Spectrum est = connectPaths(lightPath, cameraPath, s, t, mScene, sampler, mParam.resampleEndPoint, uvRaster);
+            
+            if (Math::hasNan(est))
+                continue;
             if (uvRaster)
-                pixels.push_back({ *uvRaster, est });
+                addToFilmLocked(*uvRaster, est);
             else
                 result += est;
         }
     }
-    return { result, pixels };
+    return result;
 }
 
 Spectrum BDPTIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
@@ -501,13 +550,10 @@ Spectrum BDPTIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
     Path lightPath, cameraPath;
     generateLightPath(mParam, mScene, mLightSampler, lightPath);
     generateCameraPath(mParam, mScene, ray, sampler, cameraPath);
-    auto [result, pixels] = eval(lightPath, cameraPath, mScene, sampler, mParam);
-    for (const auto [uv, val] : pixels)
-        addToFilmLocked(uv, val);
-    return result;
+    return eval(lightPath, cameraPath, sampler);
 }
 
 void BDPTIntegrator::scaleResult()
 {
-    mResultScale = 0.5f / mCurspp;
+    mResultScale = 1.0f / mCurspp;
 }

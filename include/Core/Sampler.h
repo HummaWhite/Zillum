@@ -70,8 +70,8 @@ class SimpleSobolSampler :
     public Sampler
 {
 public:
-    SimpleSobolSampler(int xPixels, int yPixels, bool randomScrambling) :
-		xPixels(xPixels), yPixels(yPixels), randomScrambling(randomScrambling), Sampler(SamplerType::SimpleSobol) {}
+    SimpleSobolSampler(uint32_t seed, bool randomScrambling) :
+		seed(seed), scramble(seed), randomScrambling(randomScrambling), Sampler(SamplerType::SimpleSobol) {}
 
     float get1();
     Vec2f get2();
@@ -83,10 +83,10 @@ public:
     SamplerPtr copy();
 
 private:
-    const int xPixels, yPixels;
     uint64_t index = 0;
     int dim = 0;
     bool randomScrambling;
+    uint32_t seed = 0;
     uint32_t scramble = 0;
     std::mt19937 rng;
 };

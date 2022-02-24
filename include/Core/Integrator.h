@@ -149,23 +149,31 @@ private:
 
 struct BDPTIntegParam
 {
-	bool russianRoulette = true;
+	bool rrLightPath = true;
+	bool rrCameraPath = true;
 	int rrLightStartDepth = 3;
 	int rrCameraStartDepth = 3;
 	int maxLightDepth = 5;
 	int maxCameraDepth = 5;
-	bool resampleDirect = true;
+	int maxConnectDepth = TracingDepthLimit;
+	bool resampleEndPoint = true;
 	bool debug = false;
 	Vec2i debugStrategy;
+	float spp = 0;
 };
+
+struct Path;
 
 class BDPTIntegrator : public PixelIndependentIntegrator
 {
 public:
 	BDPTIntegrator(ScenePtr scene, int maxSpp) :
-		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::BDPT) {};
+		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::BDPT) {}
 	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
 	void scaleResult() override;
+
+private:
+	Spectrum eval(Path &lightPath, Path &cameraPath, SamplerPtr sampler);
 
 public:
 	BDPTIntegParam mParam;
@@ -174,6 +182,23 @@ public:
 
 class BDPTIntegrator2 : public Integrator
 {
+public:
+	BDPTIntegrator2(ScenePtr scene, int maxSpp, int pathsOnePass) :
+		mMaxSpp(maxSpp), mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::BDPT) {}
+	void renderOnePass();
+	void reset();
+
+private:
+	void trace(int paths, SamplerPtr lightSampler, SamplerPtr cameraSampler);
+	void traceOnePath(SamplerPtr lightSampler, SamplerPtr cameraSampler);
+
+public:
+	BDPTIntegParam mParam;
+	SamplerPtr mLightSampler;
+
+private:
+	int mMaxSpp;
+	int mPathsOnePass;
 };
 
 struct AOIntegParam
