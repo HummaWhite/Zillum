@@ -19,6 +19,26 @@ void Integrator::addToFilmLocked(const Vec2f &uv, const Spectrum &val)
     filmLocker.unlock();
 }
 
+void Integrator::addToDebugBuffer(int index, const Vec2f &uv, const Spectrum &val)
+{
+    if (!Camera::inFilmBound(uv))
+        return;
+    auto &film = mDebugBuffers[index];
+    auto &filmLocker = mDebugBufLockers[index](uv.x, uv.y);
+    filmLocker.lock();
+    film(uv.x, uv.y) += val;
+    filmLocker.unlock();
+}
+
+void Integrator::addToDebugBuffer(int index, const Vec2i &pixel, const Spectrum &val)
+{
+    auto &film = mDebugBuffers[index];
+    auto &filmLocker = mDebugBufLockers[index](pixel.x, pixel.y);
+    filmLocker.lock();
+    film(pixel.x, pixel.y) += val;
+    filmLocker.unlock();
+}
+
 PixelIndependentIntegrator::PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type) :
     mMaxSpp(maxSpp), mLimitSpp(maxSpp != 0), Integrator(scene, type)
 {
@@ -74,6 +94,7 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
     {
         for (int y = 0; y < mHeight; y++)
         {
+            mPixelPos = { x, y };
             sampler->setPixel(x, y);
             float sx = 2.0f * (x + 0.5f) * invW - 1.0f;
             float sy = 1.0f - 2.0f * (y + 0.5f) * invH;

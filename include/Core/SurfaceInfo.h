@@ -10,6 +10,8 @@ using MaterialPtr = std::shared_ptr<Material>;
 
 struct SurfaceInfo
 {
+	SurfaceInfo() = default;
+
 	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, MaterialPtr mat) :
 		uv(uv), ns(ns), material(mat) {}
 
@@ -32,12 +34,15 @@ struct SurfaceInfo
 	MaterialPtr material;
 };
 
-struct SurfaceInteraction
+struct SurfInteraction
 {
-	SurfaceInteraction(const Vec3f &wo, const Vec3f &wi, const Vec3f &ns) :
-		wo(wo), wi(wi), ns(ns) {}
+	SurfInteraction(const SurfaceInfo &info, const Vec3f &wo, const Vec3f &wi) :
+		wo(wo), wi(wi), ns(info.ns), ng(info.ng), uv(info.uv) {}
 
-	SurfaceInteraction(const Vec3f &wo, const Vec3f &wi, const Vec3f &ns, const Vec3f &ng) :
+	SurfInteraction(const Vec3f &wo, const Vec3f &wi, const Vec3f &ng) :
+		wo(wo), wi(wi), ns(ng), ng(ng) {}
+
+	SurfInteraction(const Vec3f &wo, const Vec3f &wi, const Vec3f &ns, const Vec3f &ng) :
 		wo(wo), wi(wi), ns(ns), ng(ng) {}
 
 	Vec3f wo;

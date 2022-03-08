@@ -30,6 +30,30 @@ struct RGB24
 		std::swap(c.r, c.b);
     	return c;
 	}
+
+	static Vec3f halfWheel(float x)
+	{
+		const float Div = 1.0f / 3.0f;
+		if (x < Div)
+			return Vec3f(0.0f, 1.0f, 1.0f - x / Div);
+		else if (x < Div * 2)
+			return Vec3f(x / Div - 1.0f, 1.0f, 0.0f);
+		else
+			return Vec3f(1.0f, 3.0f - x / Div, 0.0f);
+	}
+
+	static Vec3f threeFourthWheel(float x)
+	{
+		const float Div = 1.0f / 4.0f;
+		if (x < Div)
+			return Vec3f(0.0f, x / Div, 1.0f);
+		else if (x < Div * 2)
+			return Vec3f(0.0f, 1.0f, 2.0f - x / Div);
+		else if (x < Div * 3)
+			return Vec3f(x / Div - 2.0f, 1.0f, 0.0f);
+		else
+			return Vec3f(1.0f, 4.0f - x / Div, 0.0f);
+	}
 	
 	uint8_t r, g, b;
 };

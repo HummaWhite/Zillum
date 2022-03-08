@@ -59,28 +59,28 @@ std::optional<CameraIiSample> ThinLensCamera::sampleIi(Vec3f ref, Vec2f u)
     Vec3f y = mPos + mTBNMat * pLens;
     float dist = glm::distance(ref, y);
 
-    Vec3f Wi = glm::normalize(y - ref);
-    float cosTheta = Math::satDot(mFront, -Wi);
+    Vec3f wi = glm::normalize(y - ref);
+    float cosTheta = Math::satDot(mFront, -wi);
     if (cosTheta < 1e-6f)
         return std::nullopt;
 
-    Ray ray(y, -Wi);
+    Ray ray(y, -wi);
     Vec2f uv = rasterPos(ray);
     float pdf = dist * dist / (cosTheta * (mIsDelta ? 1.0f : mLensArea));
 
-    return CameraIiSample{ Wi, Ie(ray), dist, uv, pdf };
+    return CameraIiSample{ wi, Ie(ray), dist, uv, pdf };
 }
 
 CameraPdf ThinLensCamera::pdfIe(Ray ray)
 {
     float cosTheta = glm::dot(ray.dir, mFront);
     if (cosTheta < 1e-6f)
-        return {0.0f, 0.0f};
+        return { 0.0f, 0.0f };
 
     Vec2f pRaster = rasterPos(ray);
 
     if (!inFilmBound(pRaster))
-        return {0.0f, 0.0f};
+        return { 0.0f, 0.0f };
 
     float pdfPos = mIsDelta ? 1.0f : 1.0f / mLensArea;
     float pdfDir = 1.0f / (cosTheta * cosTheta * cosTheta);

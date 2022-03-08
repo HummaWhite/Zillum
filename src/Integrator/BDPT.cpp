@@ -67,14 +67,19 @@ struct Path
         vertices[length++] = v;
     }
 
-    Vertex *operator()(int index)
+    Vertex* operator () (int index)
     {
         if (index < 0 || index >= length)
             return nullptr;
         return vertices + index;
     }
 
-    Vertex &operator[](int index)
+    Vertex& operator [] (int index)
+    {
+        return vertices[index];
+    }
+
+    const Vertex& operator [] (int index) const
     {
         return vertices[index];
     }
@@ -97,7 +102,7 @@ float gNoVisibility(const Vertex &a, const Vertex &b)
 float convertPdfToArea(const Vec3f &fr, const Vec3f &to, const Vec3f &n, float pdfSolidAngle)
 {
     float dist2 = Math::distSquare(fr, to);
-    return pdfSolidAngle * Math::absDot(n, glm::normalize(fr - to)) / dist2;
+    return pdfSolidAngle * Math::satDot(n, glm::normalize(fr - to)) / dist2;
 }
 
 float convertPdf(const Vertex &fr, const Vertex &to, float pdfSolidAngle)
@@ -124,11 +129,11 @@ float twoPointPdf(const Vertex &fr, const Vertex &to)
 }
 
 // fr must be a surface vertex
-float threePointPdf(const Vertex &prev, const Vertex &fr, const Vertex &to)
+float threePointPdf(const Vertex &prev, const Vertex &fr, const Vertex &to, TransportMode mode)
 {
     Vec3f wi = glm::normalize(to.pos - fr.pos);
     Vec3f wo = glm::normalize(prev.pos - fr.pos);
-    return convertPdf(fr, to, fr.bsdf->pdf(fr.normShad, wo, wi));
+    return convertPdf(fr, to, fr.bsdf->pdf(fr.getNormal(), wo, wi, mode));
 }
 
 float pdfLightOrigin(const Vertex &light, const Vertex &ref, ScenePtr scene)
@@ -167,7 +172,7 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
 
     Ray ray = leSamp.ray.offset();
     float pdfSolidAngle = leSamp.pdfDir;
-    Spectrum throughput = path[0].throughput * Math::absDot(light->normalGeom(leSamp.ray.ori), -wo) / pdfSolidAngle;
+    Spectrum throughput = path[0].throughput * Math::satDot(light->normalGeom(leSamp.ray.ori), -wo) / pdfSolidAngle;
 
     for (int bounce = 1; bounce < param.maxConnectDepth; bounce++)
     {
@@ -216,7 +221,8 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
         if (bounce >= param.maxLightDepth && !param.rrLightPath)
             break;
         if (bounce > 1)
-            path[bounce - 2].pdfLitward = threePointPdf(path[bounce], path[bounce - 1], path[bounce - 2]);
+            path[bounce - 2].pdfLitward = threePointPdf(path[bounce], path[bounce - 1], path[bounce - 2],
+                TransportMode::Radiance);
 
         throughput *= bsdf * cosWi / bsdfPdf;
         pdfSolidAngle = bsdfPdf;
@@ -228,18 +234,16 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
 void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, SamplerPtr sampler, Path &path)
 {
     auto camera = scene->mCamera;
-    auto [pdfCamPos, pdfCamDir] = camera->pdfIe(ray);
+    auto [pdfCamPos, pdfSolidAngle] = camera->pdfIe(ray);
 
     auto vertex = Path::createCamera(ray.ori, camera.get());
-    vertex.throughput = Spectrum(1.0f); //camera->Ie(ray) / pdfCamPos;
-    vertex.pdfLitward = pdfCamPos;
+    vertex.throughput = Spectrum(1.0f);
+    vertex.pdfLitward = 1.0f;
     vertex.isDelta = false; // camera->isDelta();
     path.addVertex(vertex);
 
-    float pdfSolidAngle = 1.0f; //pdfCamDir;
-    Spectrum throughput = vertex.throughput * Math::absDot(camera->f(), ray.dir) / pdfSolidAngle;
+    Spectrum throughput(1.0f);
     Vec3f wo = -ray.dir;
-    float etaScale = 1.0f;
 
     for (int bounce = 1; bounce < param.maxConnectDepth; bounce++)
     {
@@ -270,7 +274,7 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
         {
             auto bxdf = surf.material->bxdf();
             if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
-                surf.ns = -surf.ns;
+                surf.flipNormal();
         }
         bool deltaBsdf = surf.material->bxdf().isDelta();
 
@@ -285,15 +289,13 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
 
-        float cosWi = type.isDelta() ? 1.0f : Math::absDot(surf.ns, wi);
+        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
-        if (type.isTransmission())
-            etaScale *= Math::square(eta);
 
         if (bounce >= param.rrCameraStartDepth && param.rrCameraPath)
         {
-            float continueProb = glm::min<float>(Math::maxComponent(bsdf / bsdfPdf) * etaScale, 0.95f);
+            float continueProb = glm::min<float>(Math::maxComponent(bsdf / bsdfPdf), 0.95f);
             if (sampler->get1() > continueProb)
                 break;
             throughput /= continueProb;
@@ -301,7 +303,8 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
         if (bounce >= param.maxCameraDepth && !param.rrCameraPath)
             break;
         if (bounce > 1)
-            path[bounce - 2].pdfCamward = threePointPdf(path[bounce], path[bounce - 1], path[bounce - 2]);
+            path[bounce - 2].pdfCamward = threePointPdf(path[bounce], path[bounce - 1], path[bounce - 2],
+                TransportMode::Importance);
 
         throughput *= bsdf * cosWi / bsdfPdf;
         pdfSolidAngle = bsdfPdf;
@@ -310,11 +313,47 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
     }
 }
 
+void modifyCameraPath(Path &path, ScenePtr scene)
+{
+    auto vt = path(path.length - 1);
+    auto vtPred = path(path.length - 2);
+    auto [pdfPos, pdfDir] = vt->areaLight->pdfLe({ vt->pos, glm::normalize(vtPred->pos - vt->pos) });
+    vt->pdfCamward = pdfPos * scene->pdfSampleLight(vt->areaLight);
+    vtPred->pdfCamward = convertPdf(*vt, *vtPred, pdfDir);
+
+    for (int i = path.length - 2; i > 0; i--)
+    {
+        auto wi = glm::normalize(path[i - 1].pos - path[i].pos);
+        auto wo = glm::normalize(path[i + 1].pos - path[i].pos);
+        std::cout << std::fixed << threePointPdf(path[i + 1], path[i], path[i - 1], TransportMode::Importance) << " ";
+        std::cout << std::fixed << path[i - 1].pdfCamward << "\n";
+    }
+}
+
+void debugPrintVertex(const Vertex &vertex, int index)
+{
+    std::cout << "\t[Vertex " << index << "]\n";
+    std::cout << "\t\tpos: " << Math::vec3ToString(vertex.pos) << ", norm: " << Math::vec3ToString(vertex.normGeom) << "\n";
+    std::cout << "\t\tp->cam: " << vertex.pdfCamward << ", p->lit: " << vertex.pdfLitward << ", throughput: " << Math::vec3ToString(vertex.throughput) << "\n";
+    std::cout << "\t\tdelta: " << vertex.isDelta << "\n";
+}
+
+void debugPrintPath(const Path &lightPath, const Path &cameraPath, int s, int t)
+{
+    std::cout << "[Light path length: " << lightPath.length << "]\n";
+    for (int i = 0; i < s; i++)
+        debugPrintVertex(lightPath[i], i);
+    std::cout << "[Camera path length: " << cameraPath.length << "]\n";
+    for (int i = 0; i < t; i++)
+        debugPrintVertex(cameraPath[i], i);
+    std::cout << "\n";
+}
+
 float MISWeight(Path &lightPath, Path &cameraPath, int s, int t, ScenePtr scene)
 {
     auto remapPdf = [](float v) -> float
     {
-        return v < 1e-8f ? 1.0f : v;
+        return v < 1e-6f ? 1.0f : v * v;
     };
 
     if (s + t == 2)
@@ -350,13 +389,17 @@ float MISWeight(Path &lightPath, Path &cameraPath, int s, int t, ScenePtr scene)
     {
         tmpDeltaVs = { vs->isDelta, false };
         tmpDeltaVt = { vt->isDelta, false };
-        tmpPdfLitwardVs = { vs->pdfLitward, vtPred ? threePointPdf(*vtPred, *vt, *vs) : twoPointPdf(*vt, *vs) };
-        tmpPdfCamwardVt = { vt->pdfCamward, vsPred ? threePointPdf(*vsPred, *vs, *vt) : twoPointPdf(*vs, *vt) };
+        tmpPdfLitwardVs = { vs->pdfLitward,
+            vtPred ? threePointPdf(*vtPred, *vt, *vs, TransportMode::Radiance) : twoPointPdf(*vt, *vs) };
+        tmpPdfCamwardVt = { vt->pdfCamward,
+            vsPred ? threePointPdf(*vsPred, *vs, *vt, TransportMode::Importance) : twoPointPdf(*vs, *vt) };
 
         if (vsPred)
-            tmpPdfLitwardVsPred = { vsPred->pdfLitward, threePointPdf(*vt, *vs, *vsPred) };
+            tmpPdfLitwardVsPred = { vsPred->pdfLitward,
+                threePointPdf(*vt, *vs, *vsPred, TransportMode::Radiance) };
         if (vtPred)
-            tmpPdfCamwardVtPred = { vtPred->pdfCamward, threePointPdf(*vs, *vt, *vtPred) };
+            tmpPdfCamwardVtPred = { vtPred->pdfCamward,
+                threePointPdf(*vs, *vt, *vtPred, TransportMode::Importance) };
     }
 
     float sum = 0.0f;
@@ -380,7 +423,7 @@ float MISWeight(Path &lightPath, Path &cameraPath, int s, int t, ScenePtr scene)
 Spectrum connectPaths(Path &lightPath, Path &cameraPath, int s, int t,
     ScenePtr scene, SamplerPtr sampler, bool resampleEndPoint, std::optional<Vec2f> &uvRaster)
 {
-    Spectrum result;
+    Spectrum result(0.0f);
     Vertex endPoint;
     TempAssignment<Vertex> tmpEndPoint;
 
@@ -513,15 +556,22 @@ Spectrum connectPaths(Path &lightPath, Path &cameraPath, int s, int t,
         result = vs.throughput * bsdf(vs, vt, TransportMode::Importance) * gNoVisibility(vs, vt) *
             bsdf(vt, vs, TransportMode::Radiance) * vt.throughput;
     }
+    REPORT_RETURN_IF(Math::hasNan(result), Spectrum(0.0f), "BDPT nan subpath connection")
     if (Math::isBlack(result))
         return Spectrum(0.0f);
-    return result * MISWeight(lightPath, cameraPath, s, t, scene);
+
+    float weight = MISWeight(lightPath, cameraPath, s, t, scene);
+    REPORT_IF(weight > 1.0f, "BDPT weight > 1 for (" << s << ", " << t << ")")
+    REPORT_RETURN_IF(Math::isNan(weight), Spectrum(0.0f), "BDPT nan MIS weight")
+    return result * weight;
+    //return Spectrum(weight);
+    //return RGB24::threeFourthWheel(weight);
 }
 
 Spectrum BDPTIntegrator::eval(Path &lightPath, Path &cameraPath, SamplerPtr sampler)
 {
     Spectrum result(0.0f);
-    for (int s = 0; s <= lightPath.length; s++)
+    for (int s = 0; s <= lightPath.length && s <= mParam.maxConnectDepth; s++)
     {
         for (int t = 1; (t <= cameraPath.length) && (s + t <= mParam.maxConnectDepth); t++)
         {
@@ -533,10 +583,8 @@ Spectrum BDPTIntegrator::eval(Path &lightPath, Path &cameraPath, SamplerPtr samp
 
             std::optional<Vec2f> uvRaster;
             Spectrum est = connectPaths(lightPath, cameraPath, s, t, mScene, sampler, mParam.resampleEndPoint, uvRaster);
-            
-            if (Math::hasNan(est))
-                continue;
-            if (uvRaster)
+
+            if (uvRaster && !Math::isBlack(est))
                 addToFilmLocked(*uvRaster, est);
             else
                 result += est;
@@ -556,4 +604,82 @@ Spectrum BDPTIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 void BDPTIntegrator::scaleResult()
 {
     mResultScale = 1.0f / mCurspp;
+}
+
+void BDPTIntegrator2::renderOnePass()
+{
+    if (mMaxSpp && mParam.spp >= mMaxSpp)
+    {
+        mFinished = true;
+        return;
+    }
+    auto &film = mScene->mCamera->film();
+    int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / MaxThreads;
+    std::thread *threads = new std::thread[MaxThreads];
+    for (int i = 0; i < MaxThreads; i++)
+    {
+        auto cameraSampler = mSampler->copy();
+        auto lightSampler = mLightSampler->copy();
+        cameraSampler->nextSamples(pathsOnePass * i);
+        lightSampler->nextSamples(pathsOnePass * i);
+        threads[i] = std::thread(trace, this, pathsOnePass, lightSampler, cameraSampler);
+    }
+    for (int i = 0; i < MaxThreads; i++)
+        threads[i].join();
+    delete[] threads;
+
+    mSampler->nextSamples(pathsOnePass * MaxThreads);
+    mLightSampler->nextSamples(pathsOnePass * MaxThreads);
+    mParam.spp += static_cast<float>(pathsOnePass) * MaxThreads / (film.width * film.height);
+    mResultScale = 1.0f / mParam.spp;
+    std::cout << "\r[BDPTIntegrator2 spp: " << std::fixed << std::setprecision(3) << mParam.spp << "]";
+}
+
+void BDPTIntegrator2::reset()
+{
+    mScene->mCamera->film().fill(Spectrum(0.0f));
+    mParam.spp = 0;
+}
+
+void BDPTIntegrator2::trace(int paths, SamplerPtr lightSampler, SamplerPtr cameraSampler)
+{
+    for (int i = 0; i < paths; i++)
+    {
+        traceOnePath(lightSampler, cameraSampler);
+        lightSampler->nextSample();
+        cameraSampler->nextSample();
+    }
+}
+
+void BDPTIntegrator2::traceOnePath(SamplerPtr lightSampler, SamplerPtr cameraSampler)
+{
+    Path lightPath, cameraPath;
+    generateLightPath(mParam, mScene, lightSampler, lightPath);
+
+    Vec2f uv = cameraSampler->get2();
+    Ray ray = mScene->mCamera->generateRay(uv * Vec2f(2.0f, -2.0f) + Vec2f(-1.0f, 1.0f), cameraSampler);
+    generateCameraPath(mParam, mScene, ray, cameraSampler, cameraPath);
+
+    Spectrum result(0.0f);
+    for (int s = 0; s <= lightPath.length && s <= mParam.maxConnectDepth; s++)
+    {
+        for (int t = 1; (t <= cameraPath.length) && (s + t <= mParam.maxConnectDepth); t++)
+        {
+            if (s == 1 && t == 1)
+                continue;
+                
+            if (mParam.debug && (s != mParam.debugStrategy.x || t != mParam.debugStrategy.y))
+                continue;
+
+            std::optional<Vec2f> uvRaster;
+            Spectrum est = connectPaths(lightPath, cameraPath, s, t, mScene, lightSampler, mParam.resampleEndPoint, uvRaster);
+
+            if (uvRaster && !Math::isBlack(est))
+                addToFilmLocked(*uvRaster, est);
+            else
+                result += est;
+        }
+    }
+    if (!Math::isBlack(result))
+        addToFilmLocked(uv, result);
 }

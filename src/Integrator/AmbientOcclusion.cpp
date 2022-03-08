@@ -27,7 +27,10 @@ Spectrum AOIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
 void AOIntegrator2::renderOnePass()
 {
     if (mMaxSpp && mParam.spp >= mMaxSpp)
+    {
+        mFinished = true;
         return;
+    }
 
     auto &film = mScene->mCamera->film();
     int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / MaxThreads;
@@ -73,7 +76,8 @@ void AOIntegrator2::trace(int paths, SamplerPtr sampler)
             ray.ori = pos;
             result = traceOnePath(mParam, mScene, ray, sInfo.ng, sampler);
         }
-        addToFilmLocked(uv, result);
+        if (!Math::isBlack(result))
+            addToFilmLocked(uv, result);
         sampler->nextSample();
     }
 }

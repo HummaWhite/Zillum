@@ -3,6 +3,10 @@
 
 void Application::init(const std::string &name, HINSTANCE instance, const char *cmdParam)
 {
+    Error::bracketLine<0>(cmdParam);
+
+    mCorrectGamma = true;
+    mToneMapping = false;
     std::string integType;
     std::string samplerType;
     int width, height;
@@ -69,9 +73,8 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
     else if (integType == "-bdpt")
     {
         auto integ = std::make_shared<BDPTIntegrator>(mScene, spp);
-        //integ->mParam.resampleDirect = false;
-        param >> integ->mParam.debug;
         param >> integ->mParam.debugStrategy.x >> integ->mParam.debugStrategy.y;
+        integ->mParam.debug = (integ->mParam.debugStrategy.y != 0);
         integ->mParam.rrCameraPath = true;
         integ->mParam.maxCameraDepth = maxDepth;
         integ->mParam.rrLightPath = true;
@@ -84,20 +87,27 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
     }
     else if (integType == "-bdpt2")
     {
-        // int pathsOnePass;
-        // param >> pathsOnePass;
-        // auto integ = std::make_shared<BDPTIntegrator2>(mScene, spp, pathsOnePass);
-        // param >> integ->mParam.debug;
-        // param >> integ->mParam.debugStrategy.x >> integ->mParam.debugStrategy.y;
-        // integ->mParam.rrCameraPath = maxDepth == 0;
-        // integ->mParam.maxCameraDepth = maxDepth;
-        // integ->mParam.rrLightPath = maxDepth == 0;
-        // integ->mParam.maxLightDepth = maxDepth;
-        // integ->mParam.maxConnectDepth = maxDepth;
-        // integ->mLightSampler = std::make_shared<SimpleSobolSampler>(uniformInt(0, 0x7fffffff), false);
-        // //integ->mLightSampler = std::make_shared<IndependentSampler>();
-        // mIntegrator = integ;
-        // scramble = true;
+        int pathsOnePass;
+        param >> pathsOnePass;
+        auto integ = std::make_shared<BDPTIntegrator2>(mScene, spp, pathsOnePass);
+        param >> integ->mParam.debugStrategy.x >> integ->mParam.debugStrategy.y;
+        integ->mParam.debug = (integ->mParam.debugStrategy.y != 0);
+        integ->mParam.rrCameraPath = true;
+        integ->mParam.maxCameraDepth = maxDepth;
+        integ->mParam.rrLightPath = true;
+        integ->mParam.maxLightDepth = maxDepth;
+        integ->mParam.maxConnectDepth = maxDepth;
+        integ->mLightSampler = std::make_shared<SimpleSobolSampler>(0x12345678, true);
+        mIntegrator = integ;
+        scramble = false;
+    }
+    else if (integType == "-tpath")
+    {
+        int pathsOnePass;
+        param >> pathsOnePass;
+        auto integ = std::make_shared<TriPathIntegrator>(mScene, spp, pathsOnePass);
+        mIntegrator = integ;
+        scramble = false;
     }
     else if (integType == "-ao")
     {
@@ -175,6 +185,8 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
         }
         else if ((int)wParam == 'T')
             mToneMapping = !mToneMapping;
+        else if ((int)wParam == 'G')
+            mCorrectGamma = !mCorrectGamma;
         else if ((int)wParam == 'O')
             saveImage();
         break;
@@ -228,7 +240,7 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
     return 0;
 }
 
-void Application::render()
+bool Application::render()
 {
     processKey();
 
@@ -240,8 +252,13 @@ void Application::render()
     flushScreen();
 
     if (mIntegrator->isFinished())
-        return;
+    {
+        saveImage();
+        return false;
+    }
+
     mColorBuffer.swap();
+    return true;
 }
 
 void Application::initScene()
@@ -270,84 +287,86 @@ void Application::initScene()
     //         //std::make_shared<DisneyDiffuse>(Spectrum(1.0f, 0.5f, 0.2f), 1.0f, 1.0f)
     //     ));
 
-    scene->addHittable(
-        std::make_shared<Object>(
-            std::make_shared<Quad>(
-                Vec3f(-3.0f, 0.0f, -3.0f),
-                Vec3f(3.0f, 0.0f, -3.0f),
-                Vec3f(-3.0f, 6.0f, -3.0f)),
-            //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(Spectrum(1.0f))
-            ));
-
-    scene->addHittable(
-        std::make_shared<Object>(
-            std::make_shared<Quad>(
-                Vec3f(-3.0f, 0.0f, -3.0f),
-                Vec3f(-3.0f, 6.0f, -3.0f),
-                Vec3f(-3.0f, 0.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(Spectrum(1.0f, 0.25f, 0.25f))
-            ));
-
-    scene->addHittable(
-        std::make_shared<Object>(
-            std::make_shared<Quad>(
-                Vec3f(3.0f, 6.0f, -3.0f),
-                Vec3f(3.0f, 0.0f, -3.0f),
-                Vec3f(3.0f, 6.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(Spectrum(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(Spectrum(0.25f, 0.25f, 1.0f))
-            ));
-
-    scene->addHittable(
-        std::make_shared<Object>(
-            std::make_shared<Quad>(
-                Vec3f(3.0f, 6.0f, 3.0f),
-                Vec3f(3.0f, 0.0f, 3.0f),
-                Vec3f(-3.0f, 6.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(Spectrum(1.0f))
-            ));
-
-    scene->addHittable(
-        std::make_shared<Object>(
-            std::make_shared<Quad>(
-                Vec3f(-3.0f, 6.0f, -3.0f),
-                Vec3f(3.0f, 6.0f, -3.0f),
-                Vec3f(-3.0f, 6.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(Spectrum(1.0f))
-            ));
-
     // scene->addHittable(
     //     std::make_shared<Object>(
-    //         std::make_shared<Sphere>(Spectrum(0.0f, 3.0f, 0.0f), 1.0f, true),
-    //         std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-    //     ));
+    //         std::make_shared<Quad>(
+    //             Vec3f(-3.0f, 0.0f, -3.0f),
+    //             Vec3f(3.0f, 0.0f, -3.0f),
+    //             Vec3f(-3.0f, 6.0f, -3.0f)),
+    //         //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
+    //         std::make_shared<Lambertian>(Spectrum(1.0f))
+    //         ));
 
     // scene->addHittable(
     //     std::make_shared<Object>(
     //         std::make_shared<Quad>(
-    //             Vec3f(1.0f, 2.0f, 2.1f),
-    //             Vec3f(1.0f, 4.0f, 2.1f),
-    //             Vec3f(-1.0f, 2.0f, 2.8f)),
-    //         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
+    //             Vec3f(-3.0f, 0.0f, -3.0f),
+    //             Vec3f(-3.0f, 6.0f, -3.0f),
+    //             Vec3f(-3.0f, 0.0f, 3.0f)),
+    //         //std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
+    //         std::make_shared<Lambertian>(Spectrum(1.0f, 0.25f, 0.25f))
     //         ));
 
-    glm::mat4 model(1.0f);
-    model = glm::translate(model, Vec3f(1.0f, 2.0f, -2.1f));
-    model = glm::rotate(model, glm::radians(-17.5f), Vec3f(0.0f, 0.0f, 1.0f));
-    model = glm::scale(model, Vec3f(1.8f));
-    std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
+    // scene->addHittable(
+    //     std::make_shared<Object>(
+    //         std::make_shared<Quad>(
+    //             Vec3f(3.0f, 6.0f, -3.0f),
+    //             Vec3f(3.0f, 0.0f, -3.0f),
+    //             Vec3f(3.0f, 6.0f, 3.0f)),
+    //         //std::make_shared<MetalWorkflow>(Spectrum(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
+    //         std::make_shared<Lambertian>(Spectrum(0.25f, 0.25f, 1.0f))
+    //         ));
 
-    scene->addObjectMesh("res/model/cube.obj", trBoxSmall,
-                         std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.2f)
-                         //std::make_shared<Lambertian>(Spectrum(1.0f))
-                         //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-    );
+    // scene->addHittable(
+    //     std::make_shared<Object>(
+    //         std::make_shared<Quad>(
+    //             Vec3f(3.0f, 6.0f, 3.0f),
+    //             Vec3f(3.0f, 0.0f, 3.0f),
+    //             Vec3f(-3.0f, 6.0f, 3.0f)),
+    //         //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 0.0f, 1.0f)
+    //         std::make_shared<Lambertian>(Spectrum(1.0f))
+    //         ));
 
-    // model = glm::mat4(1.0f);
+    // scene->addHittable(
+    //     std::make_shared<Object>(
+    //         std::make_shared<Quad>(
+    //             Vec3f(-3.0f, 6.0f, -3.0f),
+    //             Vec3f(3.0f, 6.0f, -3.0f),
+    //             Vec3f(-3.0f, 6.0f, 3.0f)),
+    //         //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
+    //         //std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 0.1f)
+    //         std::make_shared<Lambertian>(Spectrum(1.0f))
+    //         ));
+
+    // // scene->addHittable(
+    // //     std::make_shared<Object>(
+    // //         std::make_shared<Sphere>(Spectrum(-1.5f, 3.0f, -1.0f), 1.0f, true),
+    // //         std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+    // //     ));
+
+    // // // scene->addHittable(
+    // // //     std::make_shared<Object>(
+    // // //         std::make_shared<Quad>(
+    // // //             Vec3f(1.0f, 2.0f, 2.1f),
+    // // //             Vec3f(1.0f, 4.0f, 2.1f),
+    // // //             Vec3f(-1.0f, 2.0f, 2.8f)),
+    // // //         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
+    // // //         ));
+
+    // Mat4f model(1.0f);
+
+    // model = glm::translate(model, Vec3f(1.0f, 2.0f, -2.1f));
+    // model = glm::rotate(model, glm::radians(-17.5f), Vec3f(0.0f, 0.0f, 1.0f));
+    // model = glm::scale(model, Vec3f(1.8f));
+    // std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
+
+    // scene->addObjectMesh("res/model/cube.obj", trBoxSmall,
+    //                      std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.14f)
+    //                      //std::make_shared<Lambertian>(Spectrum(1.0f))
+    //                      //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+    // );
+
+    // model = Mat4f(1.0f);
     // model = glm::translate(model, Vec3f(-1.0f, 4.0f, -1.2f));
     // model = glm::rotate(model, glm::radians(17.5f), Vec3f(0.0f, 0.0f, 1.0f));
     // model = glm::scale(model, Vec3f(1.8f, 1.8f, 3.6f));
@@ -358,45 +377,48 @@ void Application::initScene()
     //                      //std::make_shared<Lambertian>(Spectrum(1.0f))
     // );
 
-    model = Mat4f(1.0f);
-    model = glm::translate(model, Vec3f(-0.5f, 3.0f, -1.0f));
-    model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, Vec3f(1.0f));
-    std::shared_ptr<Transform> transform = std::make_shared<Transform>(model);
-    scene->addObjectMesh("res/model/bunny.obj", transform,
-                         std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+    // // model = Mat4f(1.0f);
+    // // model = glm::translate(model, Vec3f(-0.5f, 3.0f, -1.0f));
+    // // model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
+    // // model = glm::scale(model, Vec3f(1.0f));
+    // // std::shared_ptr<Transform> transform = std::make_shared<Transform>(model);
+    // // scene->addObjectMesh("res/model/bunny.obj", transform,
+    // //                      std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
 
-    scene->addLight(
-        std::make_shared<Light>(
-            std::make_shared<Quad>(
-                // Vec3f(-0.75f, 3.75f, 2.999f),
-                // Vec3f(0.75f, 3.75f, 2.999f),
-                // Vec3f(-0.75f, 2.25f, 2.999f)),
-                Vec3f(-0.025f, 3.025f, 2.999f),
-                Vec3f(0.025f, 3.025f, 2.999f),
-                Vec3f(-0.025f, 2.975f, 2.999f)),
-            Spectrum(200.0f), false));
+    // scene->addLight(
+    //     std::make_shared<Light>(
+    //         std::make_shared<Quad>(
+    //             Vec3f(-0.75f, 3.75f, 2.999f),
+    //             Vec3f(0.75f, 3.75f, 2.999f),
+    //             Vec3f(-0.75f, 2.25f, 2.999f)),
+    //             // Vec3f(-0.025f, 3.025f, 2.999f),
+    //             // Vec3f(0.025f, 3.025f, 2.999f),
+    //             // Vec3f(-0.025f, 2.975f, 2.999f)),
+    //         Spectrum(200.0f), false));
 
-    // auto transform = std::make_shared<Transform>(glm::rotate(Mat4f(1.0f), glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f)));
-    // scene->addObjectMesh("res/model/bidir/diffuse.obj", transform,
-    //     std::make_shared<Lambertian>(Spectrum(0.5f)));
-    // scene->addObjectMesh("res/model/bidir/glass.obj", transform,
-    //     std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
-    // scene->addObjectMesh("res/model/bidir/lamp.obj", transform,
-    //     std::make_shared<MetalWorkflow>(Spectrum(0.8f, 0.356f, 0.135f), 1.0f, 0.25f));
-    // scene->addObjectMesh("res/model/bidir/wood.obj", transform,
-    //     std::make_shared<Lambertian>(Spectrum(0.33f, 0.26f, 0.15f)));
-    // scene->addLightMesh("res/model/bidir/light1.obj", transform, Spectrum(200.0f));
-    // scene->addLightMesh("res/model/bidir/light2.obj", transform, Spectrum(400.0f));
+    auto transform = std::make_shared<Transform>(glm::rotate(Mat4f(1.0f), glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f)));
+    scene->addObjectMesh("res/model/bidir/diffuse.obj", transform,
+        std::make_shared<Lambertian>(Spectrum(0.5f)));
+    scene->addObjectMesh("res/model/bidir/glass.obj", transform,
+        std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+    scene->addObjectMesh("res/model/bidir/lamp.obj", transform,
+        std::make_shared<MetalWorkflow>(Spectrum(0.8f, 0.356f, 0.135f), 1.0f, 0.25f));
+    scene->addObjectMesh("res/model/bidir/wood.obj", transform,
+        std::make_shared<Lambertian>(Spectrum(0.33f, 0.26f, 0.15f)));
+    scene->addObjectMesh("res/model/bidir/shell.obj", transform,
+        //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
+        std::make_shared<Lambertian>(Spectrum(1.0f)));
+    scene->addLightMesh("res/model/bidir/light1.obj", transform, Spectrum(200.0f));
+    scene->addLightMesh("res/model/bidir/light2.obj", transform, Spectrum(400.0f));
 
     auto camera = std::make_shared<ThinLensCamera>(40.0f);
     camera->initFilm(mWindowWidth, mWindowHeight);
-    // camera->setPos({0.0f, -12.0f, 4.0f});
-    // camera->lookAt(Vec3f(0.0f, 0.0f, 4.0f));
+    camera->setPos({0.0f, -12.0f, 4.0f});
+    camera->lookAt(Vec3f(0.0f, 0.0f, 4.0f));
     // camera->setPos({0.0f, -12.0f, 6.0f});
     // camera->lookAt(Vec3f(0.0f, 0.0f, 2.5f));
-    camera->setPos({ 0.0f, -8.0f, 0.0f });
-    camera->lookAt(Vec3f(0.0f));
+    // camera->setPos({ 0.0f, -8.0f, 0.0f });
+    // camera->lookAt(Vec3f(0.0f, 10.0f, 0.0f));
 
     //scene->mEnv = std::make_shared<EnvSphereMapHDR>("res/texture/090.hdr");
     scene->mEnv = std::make_shared<EnvSingleColor>(Vec3f(0.0f));
@@ -418,7 +440,8 @@ void Application::writeBuffer()
             result = glm::clamp(result, Vec3f(0.0f), Vec3f(1e8f));
             if (mToneMapping)
                 result = ToneMapping::filmic(result);
-            result = glm::pow(result, Vec3f(1.0f / 2.2f));
+            if (mCorrectGamma)
+                result = glm::pow(result, Vec3f(1.0f / 2.2f));
             mColorBuffer(i, j) = RGB24::swapRB(RGB24(result));
         }
     }

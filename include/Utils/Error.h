@@ -7,7 +7,12 @@
 #include "NamespaceDecl.h"
 
 static std::mutex DebugPrintMutex;
-#define DEBUG_PRINT(x) { DebugPrintMutex.lock(); std::cout << x; DebugPrintMutex.unlock(); }
+#define DEBUG_PRINT_BEGIN DebugPrintMutex.lock();
+#define DEBUG_PRINT_END DebugPrintMutex.unlock();
+#define DEBUG_PRINT(msg) { DebugPrintMutex.lock(); std::cout << msg; DebugPrintMutex.unlock(); }
+#define DEBUG_LOG(msg) DEBUG_PRINT(msg << "\n")
+#define REPORT_IF(cond, msg) if (cond) DEBUG_LOG(msg)
+#define REPORT_RETURN_IF(cond, ret, msg) if (cond) { DEBUG_LOG(msg) return ret; }
 
 NAMESPACE_BEGIN(Error)
 

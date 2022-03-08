@@ -44,10 +44,15 @@ public:
 	void setModified();
 	virtual void reset() = 0;
 	virtual void addToFilmLocked(const Vec2f &uv, const Spectrum &val);
+	void addToDebugBuffer(int index, const Vec2f &uv, const Spectrum &val);
+	void addToDebugBuffer(int index, const Vec2i &pixel, const Spectrum &val);
 
 public:
 	SamplerPtr mSampler;
 	float mResultScale = 1.0f;
+
+	std::vector<Film> mDebugBuffers;
+	std::vector<Buffer2D<std::mutex>> mDebugBufLockers;
 
 protected:
 	IntegratorType mType;
@@ -78,6 +83,7 @@ protected:
 	const int mMaxSpp;
 	int mCurspp = 0;
 	int mWidth, mHeight;
+	Vec2i mPixelPos;
 };
 
 struct PathIntegParam
@@ -172,6 +178,8 @@ public:
 	Spectrum tracePixel(Ray ray, SamplerPtr sampler);
 	void scaleResult() override;
 
+	void initDebugBuffers(int width, int height);
+
 private:
 	Spectrum eval(Path &lightPath, Path &cameraPath, SamplerPtr sampler);
 
@@ -195,6 +203,37 @@ private:
 public:
 	BDPTIntegParam mParam;
 	SamplerPtr mLightSampler;
+
+private:
+	int mMaxSpp;
+	int mPathsOnePass;
+};
+
+struct TriPathIntegParam
+{
+	bool rrLightPath = true;
+	bool rrCameraPath = true;
+	int rrLightStartDepth = 3;
+	int rrCameraStartDepth = 3;
+	int maxLightDepth = 5;
+	int maxCameraDepth = 5;
+	float spp = 0;
+};
+
+class TriPathIntegrator: public Integrator
+{
+public:
+	TriPathIntegrator(ScenePtr scene, int maxSpp, int pathsOnePass) :
+		mMaxSpp(maxSpp), mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::Path) {}
+	void renderOnePass();
+	void reset();
+
+private:
+	void trace(int paths, SamplerPtr sampler);
+	void traceLightPath(SamplerPtr sampler);
+
+public:
+	TriPathIntegParam mParam;
 
 private:
 	int mMaxSpp;

@@ -18,7 +18,7 @@ class Application
 public:
 	void init(const std::string& name, HINSTANCE instance, const char *cmdParam);
 	LRESULT process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	void render();
+	bool render();
 
 private:
 	void initScene();
@@ -45,6 +45,9 @@ private:
 	bool mFirstCursorMove = true;
 
 	bool mToneMapping = true;
+	bool mCorrectGamma = true;
+
+	bool mAutoSaveImage = true;
 
 	FrameBufferDouble<RGB24> mColorBuffer;
 	IntegratorPtr mIntegrator;

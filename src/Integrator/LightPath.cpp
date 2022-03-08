@@ -35,8 +35,6 @@ void LightPathIntegrator::trace(SamplerPtr sampler)
     }
 }
 
-std::mutex mtx;
-
 void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
 {
     auto [lightSource, pdfSource] = mScene->sampleLightAndEnv(sampler->get2(), sampler->get1());
@@ -53,14 +51,15 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
         auto ciSamp = mScene->mCamera->sampleIi(pLit, sampler->get2());
         if (ciSamp)
         {
-            auto [wi, Ii, dist, uvRaster, pdf] = ciSamp.value();
+            auto [wi, Ii, dist, uvRaster, pdfIi] = ciSamp.value();
             Vec3f pCam = pLit + wi * dist;
             float pdfPos = 1.0f / areaLight->surfaceArea();
             if (mScene->visible(pLit, pCam))
             {
                 auto Le = areaLight->Le({ pLit, wi });
-                auto contrib = Le;
-                addToFilmLocked(uvRaster, contrib);
+                auto contrib = Le * Ii / (pdfIi * pdfPos* pdfSource);
+                if (!Math::isBlack(contrib))
+                    addToFilmLocked(uvRaster, contrib);
             }
         }
 
@@ -112,7 +111,8 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
                 {
                     Spectrum res = Ii * surf.material->bsdf(surf.ns, wo, wi, TransportMode::Importance) *
                         throughput * Math::satDot(surf.ns, wi) / pdf;
-                    addToFilmLocked(uvRaster, res);
+                    if (!Math::hasNan(res) && !Math::isNan(pdf) && pdf > 1e-8f && !Math::isBlack(res))
+                        addToFilmLocked(uvRaster, res);
                 }
             }
         }
