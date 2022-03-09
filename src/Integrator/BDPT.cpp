@@ -265,6 +265,10 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
             vertex.pdfLitward = convertPdf(path[bounce - 1], vertex, pdfSolidAngle);
             vertex.isDelta = false;
             path.addVertex(vertex);
+
+            if (bounce > 1)
+                path[bounce - 2].pdfCamward = threePointPdf(path[bounce], path[bounce - 1], path[bounce - 2],
+                    TransportMode::Importance);
             break;
         }
 
@@ -334,6 +338,7 @@ void debugPrintVertex(const Vertex &vertex, int index)
 {
     std::cout << "\t[Vertex " << index << "]\n";
     std::cout << "\t\tpos: " << Math::vec3ToString(vertex.pos) << ", norm: " << Math::vec3ToString(vertex.normGeom) << "\n";
+    std::cout << std::fixed << std::setprecision(9);
     std::cout << "\t\tp->cam: " << vertex.pdfCamward << ", p->lit: " << vertex.pdfLitward << ", throughput: " << Math::vec3ToString(vertex.throughput) << "\n";
     std::cout << "\t\tdelta: " << vertex.isDelta << "\n";
 }
@@ -353,7 +358,7 @@ float MISWeight(Path &lightPath, Path &cameraPath, int s, int t, ScenePtr scene)
 {
     auto remapPdf = [](float v) -> float
     {
-        return v < 1e-6f ? 1.0f : v * v;
+        return v == 0.0f ? 1.0f : v * v;
     };
 
     if (s + t == 2)

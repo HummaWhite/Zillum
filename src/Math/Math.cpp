@@ -29,7 +29,7 @@ void printVec3(const Vec3f &v, std::string info)
 std::string vec3ToString(const Vec3f &v)
 {
     std::stringstream ss;
-    ss << "[Vec3 " << v.x << " " << v.y << " " << v.z << "]";
+    ss << "[Vec3 " << std::fixed << std::setprecision(4) << v.x << " " << v.y << " " << v.z << "]";
     return ss.str();
 }
 

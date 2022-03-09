@@ -12,6 +12,7 @@
 #include "Core/Integrator.h"
 #include "Utils/FrameBufferDouble.h"
 #include "Utils/ImageSave.h"
+#include "SceneLoader.h"
 
 class Application
 {
