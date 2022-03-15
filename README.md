@@ -1,4 +1,4 @@
-# Zillium
+# Zillum
 
 **Z**lek's CPU-based Global **Illum**ination Renderer, [GPU version](https://github.com/HummaWhite/ZillumGL)
 
@@ -22,5 +22,5 @@
 - Photon Mapping family (PM, PPM, SPPM)
 - Metropolis Light Transport
 - BSSRDF
-- Paticipating Media
+- Participating Media
 - ...
