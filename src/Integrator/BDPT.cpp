@@ -317,23 +317,6 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
     }
 }
 
-void modifyCameraPath(Path &path, ScenePtr scene)
-{
-    auto vt = path(path.length - 1);
-    auto vtPred = path(path.length - 2);
-    auto [pdfPos, pdfDir] = vt->areaLight->pdfLe({ vt->pos, glm::normalize(vtPred->pos - vt->pos) });
-    vt->pdfCamward = pdfPos * scene->pdfSampleLight(vt->areaLight);
-    vtPred->pdfCamward = convertPdf(*vt, *vtPred, pdfDir);
-
-    for (int i = path.length - 2; i > 0; i--)
-    {
-        auto wi = glm::normalize(path[i - 1].pos - path[i].pos);
-        auto wo = glm::normalize(path[i + 1].pos - path[i].pos);
-        std::cout << std::fixed << threePointPdf(path[i + 1], path[i], path[i - 1], TransportMode::Importance) << " ";
-        std::cout << std::fixed << path[i - 1].pdfCamward << "\n";
-    }
-}
-
 void debugPrintVertex(const Vertex &vertex, int index)
 {
     std::cout << "\t[Vertex " << index << "]\n";
@@ -358,7 +341,7 @@ float MISWeight(Path &lightPath, Path &cameraPath, int s, int t, ScenePtr scene)
 {
     auto remapPdf = [](float v) -> float
     {
-        return v == 0.0f ? 1.0f : v * v;
+        return v < 1e-6f ? 1.0f : v * v;
     };
 
     if (s + t == 2)
@@ -589,7 +572,9 @@ Spectrum BDPTIntegrator::eval(Path &lightPath, Path &cameraPath, SamplerPtr samp
             std::optional<Vec2f> uvRaster;
             Spectrum est = connectPaths(lightPath, cameraPath, s, t, mScene, sampler, mParam.resampleEndPoint, uvRaster);
 
-            if (uvRaster && !Math::isBlack(est))
+            if (Math::isBlack(est))
+                continue;
+            if (uvRaster)
                 addToFilmLocked(*uvRaster, est);
             else
                 result += est;
@@ -665,26 +650,69 @@ void BDPTIntegrator2::traceOnePath(SamplerPtr lightSampler, SamplerPtr cameraSam
     Ray ray = mScene->mCamera->generateRay(uv * Vec2f(2.0f, -2.0f) + Vec2f(-1.0f, 1.0f), cameraSampler);
     generateCameraPath(mParam, mScene, ray, cameraSampler, cameraPath);
 
-    Spectrum result(0.0f);
-    for (int s = 0; s <= lightPath.length && s <= mParam.maxConnectDepth; s++)
+    if (mParam.debug)
     {
-        for (int t = 1; (t <= cameraPath.length) && (s + t <= mParam.maxConnectDepth); t++)
+        int s = mParam.debugStrategy.x;
+        int t = mParam.debugStrategy.y;
+        if (s <= lightPath.length && t <= cameraPath.length)
         {
-            if (s == 1 && t == 1)
-                continue;
-                
-            if (mParam.debug && (s != mParam.debugStrategy.x || t != mParam.debugStrategy.y))
+            std::optional<Vec2f> uvRaster;
+            Spectrum est = connectPaths(lightPath, cameraPath, s, t, mScene, lightSampler, mParam.resampleEndPoint, uvRaster);
+            if (uvRaster)
+                addToFilmLocked(*uvRaster, est);
+            else
+                addToFilmLocked(uv, est);
+        }
+        return;
+    }
+
+    Spectrum result(0.0f);
+    
+    if (mParam.stochasticConnect)
+    {
+        for (int depth = 2; depth <= lightPath.length + cameraPath.length; depth++)
+        {
+            int t = glm::clamp<int>(depth * lightSampler->get1() + 1, 1, depth);
+            int s = depth - t;
+
+            if ((s == 1 && t == 1) || s < 0 || s > lightPath.length || t > cameraPath.length)
                 continue;
 
             std::optional<Vec2f> uvRaster;
-            Spectrum est = connectPaths(lightPath, cameraPath, s, t, mScene, lightSampler, mParam.resampleEndPoint, uvRaster);
+            Spectrum est = connectPaths(lightPath, cameraPath, s, t, mScene, lightSampler, mParam.resampleEndPoint, uvRaster) *
+                static_cast<float>(depth);
 
-            if (uvRaster && !Math::isBlack(est))
+            if (Math::isBlack(est))
+                continue;
+            if (uvRaster)
                 addToFilmLocked(*uvRaster, est);
             else
                 result += est;
         }
     }
+    else
+    {
+        for (int depth = 2; depth <= mParam.maxConnectDepth; depth++)
+        {
+            for (int t = 1; t <= cameraPath.length; t++)
+            {
+                int s = depth - t;
+                if ((s == 1 && t == 1) || s < 0 || s > lightPath.length)
+                    continue;
+
+                std::optional<Vec2f> uvRaster;
+                Spectrum est = connectPaths(lightPath, cameraPath, s, t, mScene, lightSampler, mParam.resampleEndPoint, uvRaster);
+
+                if (Math::isBlack(est))
+                    continue;
+                if (uvRaster)
+                    addToFilmLocked(*uvRaster, est);
+                else
+                    result += est;
+            }
+        }
+    }
+    
     if (!Math::isBlack(result))
         addToFilmLocked(uv, result);
 }

@@ -91,47 +91,100 @@ ScenePtr boxScene(int width, int height)
     //         std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
     //     ));
 
+    {
+        auto model = glm::translate(Mat4f(1.0f), Vec3f(1.0f, 2.0f, -2.1f));
+        model = glm::rotate(model, glm::radians(-17.5f), Vec3f(0.0f, 0.0f, 1.0f));
+        model = glm::scale(model, Vec3f(1.8f));
+
+        // scene->addObjectMesh("res/model/cube.obj", std::make_shared<Transform>(model),
+        //     std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.14f)
+        //     //std::make_shared<Lambertian>(Spectrum(1.0f))
+        //     //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+        // );
+    }
+    {
+        auto model = glm::translate(Mat4f(1.0f), Vec3f(-1.0f, 4.0f, -1.2f));
+        model = glm::rotate(model, glm::radians(17.5f), Vec3f(0.0f, 0.0f, 1.0f));
+        model = glm::scale(model, Vec3f(1.8f, 1.8f, 3.6f));
+        std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
+
+        // scene->addObjectMesh("res/model/cube.obj", trBoxLarge,
+        //     //std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.14f)
+        //     //std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 0.1f)
+        //     std::make_shared<Lambertian>(Spectrum(1.0f))
+        // );
+    }
+    {
+        // auto model = glm::translate(Mat4f(1.0f), Vec3f(-0.5f, 3.0f, -1.0f));
+        // model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
+        // model = glm::scale(model, Vec3f(1.0f));
+        // scene->addObjectMesh("res/model/bunny.obj", std::make_shared<Transform>(model),
+        //     std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+
+        // auto model = glm::translate(Mat4f(1.0f), Vec3f(-0.75f, 4.0f, -1.0f));
+        // model = glm::rotate(model, glm::radians(95.0f), Vec3f(0.0f, 0.0f, 1.0f));
+        // model = glm::rotate(model, glm::radians(-20.0f), Vec3f(0.0f, 1.0f, 0.0f));
+        // model = glm::rotate(model, glm::radians(110.0f), Vec3f(1.0f, 0.0f, 0.0f));
+        // model = glm::scale(model, Vec3f(0.5f));
+        // scene->addObjectMesh("res/model/Mesh003.obj", std::make_shared<Transform>(model),
+        //     std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+        // scene->addObjectMesh("res/model/Mesh004.obj", std::make_shared<Transform>(model),
+        //     std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+
+        auto model = glm::translate(Mat4f(1.0f), Vec3f(1.5f, 4.0f, -2.5f));
+        model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
+        model = glm::scale(model, Vec3f(1.0f));
+        scene->addObjectMesh("res/model/bunny.obj", std::make_shared<Transform>(model),
+            std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.7f, 0.4f), 1.0f, 0.014f)
+            //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+        );
+    }
+
+    // scene->addLight(
+    //     std::make_shared<Light>(
+    //         std::make_shared<Quad>(
+    //             Vec3f(-0.75f, 3.75f, 2.999f),
+    //             Vec3f(0.75f, 3.75f, 2.999f),
+    //             Vec3f(-0.75f, 2.25f, 2.999f)),
+    //             // Vec3f(-0.01f, 3.01f, 2.999f),
+    //             // Vec3f(0.01f, 3.01f, 2.999f),
+    //             // Vec3f(-0.01f, 2.99f, 2.999f)),
+    //         Spectrum(200.0f), false));
+    {
+        auto model = glm::translate(Mat4f(1.0f), Vec3f(-2.0f, 0.0f, -2.75f));
+        model = glm::rotate(model, glm::radians(-45.0f), Vec3f(0.0f, 0.0f, 1.0f));
+        model = glm::rotate(model, glm::radians(15.0f), Vec3f(1.0f, 0.0f, 0.0f));
+        auto transform = std::make_shared<Transform>(model);
+        scene->addLightMesh("res/model/caustic/light_s.obj", transform, Spectrum(200.0f));
+        scene->addObjectMesh("res/model/caustic/mirror.obj", transform,
+            std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f));
+    }
+
+    {
+        auto model = glm::translate(Mat4f(1.0f), Vec3f(2.0f, 0.0f, -2.75f));
+        model = glm::rotate(model, glm::radians(45.0f), Vec3f(0.0f, 0.0f, 1.0f));
+        model = glm::rotate(model, glm::radians(15.0f), Vec3f(1.0f, 0.0f, 0.0f));
+        auto transform = std::make_shared<Transform>(model);
+        scene->addLightMesh("res/model/caustic/light_s.obj", transform, Spectrum(100.0f));
+        scene->addObjectMesh("res/model/caustic/mirror.obj", transform,
+            std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f));
+    }
+
+    {
+        auto model = glm::translate(Mat4f(1.0f), Vec3f(-1.5f, 3.7f, -2.0f));
+        model = glm::rotate(model, glm::radians(-45.0f), Vec3f(0.0f, 0.0f, 1.0f));
+        model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
+        model = glm::scale(model, Vec3f(1.0f));
+        scene->addObjectMesh("res/model/cube.obj", std::make_shared<Transform>(model),
+            std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+        );
+    }
+
     // scene->addHittable(
     //     std::make_shared<Object>(
-    //         std::make_shared<Quad>(
-    //             Vec3f(1.0f, 2.0f, 2.1f),
-    //             Vec3f(1.0f, 4.0f, 2.1f),
-    //             Vec3f(-1.0f, 2.0f, 2.8f)),
-    //         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
-    //         ));
-
-    Mat4f model(1.0f);
-
-    model = glm::translate(model, Vec3f(1.0f, 2.0f, -2.1f));
-    model = glm::rotate(model, glm::radians(-17.5f), Vec3f(0.0f, 0.0f, 1.0f));
-    model = glm::scale(model, Vec3f(1.8f));
-    std::shared_ptr<Transform> trBoxSmall = std::make_shared<Transform>(model);
-
-    scene->addObjectMesh("res/model/cube.obj", trBoxSmall,
-                         //std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.14f)
-                         std::make_shared<Lambertian>(Spectrum(1.0f))
-                         //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-    );
-
-    model = Mat4f(1.0f);
-    model = glm::translate(model, Vec3f(-1.0f, 4.0f, -1.2f));
-    model = glm::rotate(model, glm::radians(17.5f), Vec3f(0.0f, 0.0f, 1.0f));
-    model = glm::scale(model, Vec3f(1.8f, 1.8f, 3.6f));
-    std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
-
-    scene->addObjectMesh("res/model/cube.obj", trBoxLarge,
-                         std::make_shared<MetalWorkflow>(Spectrum(1.0f), 1.0f, 0.014f)
-                         //std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 0.1f)
-                         //std::make_shared<Lambertian>(Spectrum(1.0f))
-    );
-
-    // model = Mat4f(1.0f);
-    // model = glm::translate(model, Vec3f(-0.5f, 3.0f, -1.0f));
-    // model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
-    // model = glm::scale(model, Vec3f(1.0f));
-    // std::shared_ptr<Transform> transform = std::make_shared<Transform>(model);
-    // scene->addObjectMesh("res/model/bunny.obj", transform,
-    //                      std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+    //         std::make_shared<Sphere>(Spectrum(-1.2f, 3.0f, -0.5f), 0.7f, true),
+    //         std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+    //     ));
 
     scene->addLight(
         std::make_shared<Light>(
@@ -139,10 +192,7 @@ ScenePtr boxScene(int width, int height)
                 Vec3f(-0.75f, 3.75f, 2.999f),
                 Vec3f(0.75f, 3.75f, 2.999f),
                 Vec3f(-0.75f, 2.25f, 2.999f)),
-                // Vec3f(-0.025f, 3.025f, 2.999f),
-                // Vec3f(0.025f, 3.025f, 2.999f),
-                // Vec3f(-0.025f, 2.975f, 2.999f)),
-            Spectrum(200.0f), false));
+            Spectrum(150.0f), false));
 
     scene->mCamera = std::make_shared<ThinLensCamera>(40.0f);
     scene->mCamera->initFilm(width, height);

@@ -6,7 +6,7 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
     Error::bracketLine<0>(cmdParam);
 
     mCorrectGamma = true;
-    mToneMapping = false;
+    mToneMapping = true;
     std::string integType;
     std::string samplerType;
     int width, height;
@@ -97,6 +97,7 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
         integ->mParam.rrLightPath = true;
         integ->mParam.maxLightDepth = maxDepth;
         integ->mParam.maxConnectDepth = maxDepth;
+        integ->mParam.stochasticConnect = true;
         integ->mLightSampler = std::make_shared<SimpleSobolSampler>(0x12345678, true);
         mIntegrator = integ;
         scramble = false;

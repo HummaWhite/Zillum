@@ -57,7 +57,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
             if (mScene->visible(pLit, pCam))
             {
                 auto Le = areaLight->Le({ pLit, wi });
-                auto contrib = Le * Ii / (pdfIi * pdfPos* pdfSource);
+                auto contrib = Le * Ii / (pdfIi * pdfPos * pdfSource);
                 if (!Math::isBlack(contrib))
                     addToFilmLocked(uvRaster, contrib);
             }

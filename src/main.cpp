@@ -52,32 +52,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 				break;
 		}
 	}
-	// ThinLensCamera camera(90.0f);
-	// camera.setPos(Vec3f(0.0f));
-	// camera.lookAt({ 0.0f, 1.0f, 0.0f });
-	// camera.initFilm(100, 100);
-	// MetalWorkflow bsdf(Vec3f(1.0f), 1.0f, 0.1f);
-
-	// Vec3f AL = glm::normalize(Vec3f(-1.0f, 1.0f, 0.0f));
-	// Vec3f AB = glm::normalize(Vec3f(1.0f, 1.0f, 0.0f));
-	// Vec3f BA = glm::normalize(Vec3f(-1.0f, 1.0f, 0.0f));
-	// Vec3f BC = glm::normalize(Vec3f(-2.0f, 1.0f, 0.0f));
-	// Vec3f CB = glm::normalize(Vec3f(1.0f, 2.0f, 0.0f));
-	// Vec3f CE = glm::normalize(Vec3f(-1.0f, 2.0f, 0.0f));
-	// Vec3f N = glm::normalize(Vec3f(0.0f, 1.0f, 0.0f));
-
-	// std::cout << Math::vec3ToString(bsdf.bsdf(N, AL, AB, TransportMode::Radiance)) << "\n";
-	// std::cout << Math::vec3ToString(bsdf.bsdf(N, AB, AL, TransportMode::Importance)) << "\n";
-	// std::cout << bsdf.pdf(N, AL, AB, TransportMode::Radiance) << "\n";
-	// std::cout << bsdf.pdf(N, AB, AL, TransportMode::Importance) << "\n";
-
-	// std::cout << Math::vec3ToString(bsdf.bsdf(N, CB, CE, TransportMode::Radiance)) << "\n";
-	// std::cout << Math::vec3ToString(bsdf.bsdf(N, CE, CB, TransportMode::Importance)) << "\n";
-	// std::cout << bsdf.pdf(N, CB, CE, TransportMode::Radiance) << "\n";
-	// std::cout << bsdf.pdf(N, CE, CB, TransportMode::Importance) << "\n";
-
-	// Ray ray(Vec3f(0.0f), glm::normalize(Vec3f(1.0f, 2.0f, 0.0f)));
-	// std::cout << camera.pdfIe(ray).pdfDir << "\n";
 
 	return msg.wParam;
 }

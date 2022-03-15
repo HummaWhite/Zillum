@@ -163,6 +163,7 @@ struct BDPTIntegParam
 	int maxCameraDepth = 5;
 	int maxConnectDepth = TracingDepthLimit;
 	bool resampleEndPoint = true;
+	bool stochasticConnect = false;
 	bool debug = false;
 	Vec2i debugStrategy;
 	float spp = 0;
