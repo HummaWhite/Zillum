@@ -92,6 +92,7 @@ Spectrum ThinLensCamera::Ie(Ray ray)
     float cosTheta = glm::dot(ray.dir, mFront);
     if (cosTheta < 1e-6f)
         return Spectrum(0.0f);
+        
     Vec2f pRaster = rasterPos(ray);
     if (!inFilmBound(pRaster))
         return Spectrum(0.0f);

@@ -1,35 +1,35 @@
 #include "../../include/Core/Material.h"
 
-Spectrum Clearcoat::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum Clearcoat::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
 {
-    auto H = glm::normalize(Wo + Wi);
+    auto h = glm::normalize(wo + wi);
 
-    float NoWo = Math::satDot(N, Wo);
-    float NoWi = Math::satDot(N, Wi);
+    float cosWo = Math::satDot(n, wo);
+    float cosWi = Math::satDot(n, wi);
 
-    float D = distrib.d(N, H);
-    auto F = schlickF(Math::absDot(H, Wo), Vec3f(0.04f));
-    float G = smithG(N, Wo, Wi, 0.25f);
+    float d = distrib.d(n, h);
+    auto f = schlickF(Math::absDot(h, wo), Vec3f(0.04f));
+    float g = smithG(n, wo, wi, 0.25f);
 
-    float denom = 4.0f * NoWo * NoWi;
+    float denom = 4.0f * cosWo * cosWi;
     if (denom < 1e-7f)
         return Spectrum(0.0f);
 
-    return F * D * G * weight / denom;
+    return f * d * g * weight / denom;
 }
 
-float Clearcoat::pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+float Clearcoat::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
 {
-    auto H = glm::normalize(Wo + Wi);
-    return distrib.pdf(N, H, Wo) / (4.0f * glm::dot(H, Wo));
+    auto h = glm::normalize(wo + wi);
+    return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
 }
 
-std::optional<BSDFSample> Clearcoat::sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)
+std::optional<BSDFSample> Clearcoat::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
 {
-    auto H = distrib.sampleWm(N, Wo, u2);
-    auto Wi = glm::reflect(-Wo, H);
+    auto h = distrib.sampleWm(n, wo, { u.y, u.z });
+    auto wi = glm::reflect(-wo, h);
 
-    if (glm::dot(N, Wi) < 0.0f)
+    if (glm::dot(n, wi) < 0.0f)
         return std::nullopt;
-    return BSDFSample(Wi, pdf(N, Wo, Wi, mode), BXDF::GlosRefl, bsdf(N, Wo, Wi, mode));
+    return BSDFSample(wi, pdf(n, wo, wi, mode), BXDF::GlosRefl, bsdf(n, wo, wi, mode));
 }

@@ -56,16 +56,16 @@ float schlickW(float cosTheta)
 
 float schilickF(float cosTheta, float eta)
 {
-    float F0 = Math::square(eta - 1.0f) / Math::square(eta + 1.0f);
-    return F0 + (1.0f - F0) * Math::pow5(1.0f - cosTheta);
+    float f0 = Math::square(eta - 1.0f) / Math::square(eta + 1.0f);
+    return f0 + (1.0f - f0) * Math::pow5(1.0f - cosTheta);
 }
 
-Vec3f schlickF(float cosTheta, const Vec3f &F0)
+Vec3f schlickF(float cosTheta, const Vec3f &f0)
 {
-    return F0 + (Vec3f(1.0f) - F0) * Math::pow5(1.0f - cosTheta);
+    return f0 + (Vec3f(1.0f) - f0) * Math::pow5(1.0f - cosTheta);
 }
 
-Vec3f schlickF(float cosTheta, const Vec3f &F0, float roughness)
+Vec3f schlickF(float cosTheta, const Vec3f &f0, float roughness)
 {
-    return F0 + (glm::max(Vec3f(1.0f - roughness), F0) - F0) * Math::pow5(1.0f - cosTheta);
+    return f0 + (glm::max(Vec3f(1.0f - roughness), f0) - f0) * Math::pow5(1.0f - cosTheta);
 }

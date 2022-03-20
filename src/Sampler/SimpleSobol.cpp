@@ -20,11 +20,6 @@ float SimpleSobolSampler::get1()
     return std::min(r, Math::OneMinusEpsilon);
 }
 
-Vec2f SimpleSobolSampler::get2()
-{
-    return Vec2f(get1(), get1());
-}
-
 void SimpleSobolSampler::setPixel(int x, int y)
 {
     dim = 0;

@@ -94,7 +94,7 @@ Spectrum traceCameraPath(const TriPathIntegParam &param, ScenePtr scene, Vec3f p
             }
         }
 
-        auto bsdfSample = surf.material->sample(surf.ns, wo, sampler->get1(), sampler->get2());
+        auto bsdfSample = surf.material->sample(surf.ns, wo, sampler->get3());
         if (!bsdfSample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
@@ -262,7 +262,7 @@ void TriPathIntegrator::traceLightPath(SamplerPtr sampler)
                 }
             }
         }
-        auto sample = surf.material->sample(surf.ns, wo, sampler->get1(), sampler->get2(), TransportMode::Importance);
+        auto sample = surf.material->sample(surf.ns, wo, sampler->get3(), TransportMode::Importance);
         if (!sample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();

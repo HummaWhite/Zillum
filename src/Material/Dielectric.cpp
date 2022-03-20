@@ -1,8 +1,8 @@
 #include "../../include/Core/Material.h"
 
-bool refract(Vec3f &Wt, const Vec3f &Wi, const Vec3f &N, float eta)
+bool refract(Vec3f &wt, const Vec3f &wi, const Vec3f &n, float eta)
 {
-    float cosTi = glm::dot(N, Wi);
+    float cosTi = glm::dot(n, wi);
     if (cosTi < 0)
         eta = 1.0f / eta;
     float sin2Ti = glm::max<float>(0.0f, 1.0f - cosTi * cosTi);
@@ -14,7 +14,7 @@ bool refract(Vec3f &Wt, const Vec3f &Wi, const Vec3f &N, float eta)
     float cosTt = glm::sqrt(1.0f - sin2Tt);
     if (cosTi < 0)
         cosTt = -cosTt;
-    Wt = glm::normalize(-Wi / eta + N * (cosTi / eta - cosTt));
+    wt = glm::normalize(-wi / eta + n * (cosTi / eta - cosTt));
     return true;
 }
 
@@ -39,141 +39,142 @@ float fresnelDielectric(float cosTi, float eta)
     return (rPa * rPa + rPe * rPe) * 0.5f;
 }
 
-Spectrum Dielectric::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum Dielectric::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
 {
     if (approxDelta)
         return Spectrum(0.0f);
 
-    auto H = glm::normalize(Wo + Wi);
-    float HoWo = Math::absDot(H, Wo);
-    float HoWi = Math::absDot(H, Wi);
+    auto h = glm::normalize(wo + wi);
+    float hCosWo = Math::absDot(h, wo);
+    float hCosWi = Math::absDot(h, wi);
 
-    if (Math::sameHemisphere(N, Wo, Wi))
+    if (Math::sameHemisphere(n, wo, wi))
     {
-        float refl = fresnelDielectric(Math::absDot(H, Wi), ior);
-        return (HoWo * HoWi < 1e-7f) ? Spectrum(0.0f) : baseColor * distrib.d(N, H) * distrib.g(N, Wo, Wi) / (4.0f * HoWo * HoWi) * refl;
+        float refl = fresnelDielectric(Math::absDot(h, wi), ior);
+        return (hCosWo * hCosWi < 1e-7f) ? Spectrum(0.0f) : baseColor * distrib.d(n, h) * distrib.g(n, wo, wi) / (4.0f * hCosWo * hCosWi) * refl;
     }
     else
     {
-        float eta = glm::dot(N, Wi) > 0 ? ior : 1.0f / ior;
-        float sqrtDenom = glm::dot(H, Wo) + eta * glm::dot(H, Wi);
+        float eta = glm::dot(n, wi) > 0 ? ior : 1.0f / ior;
+        float sqrtDenom = glm::dot(h, wo) + eta * glm::dot(h, wi);
         float denom = sqrtDenom * sqrtDenom;
-        float dHdWi = HoWi / denom;
+        float dHdWi = hCosWi / denom;
 
-        denom *= Math::absDot(N, Wi) * Math::absDot(N, Wo);
-        float refl = fresnelDielectric(glm::dot(H, Wi), eta);
+        denom *= Math::absDot(n, wi) * Math::absDot(n, wo);
+        float refl = fresnelDielectric(glm::dot(h, wi), eta);
         float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
 
         return (denom < 1e-7f) ?
             Spectrum(0.0f) :
-            baseColor * glm::abs(distrib.d(N, H) * distrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * (1.0f - refl) * factor;
+            baseColor * glm::abs(distrib.d(n, h) * distrib.g(n, wo, wi) * hCosWo * hCosWi) / denom * (1.0f - refl) * factor;
     }
 }
 
-float Dielectric::pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+float Dielectric::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
 {
     if (approxDelta)
         return 0;
 
-    if (Math::sameHemisphere(N, Wo, Wi))
+    if (Math::sameHemisphere(n, wo, wi))
     {
-        auto H = glm::normalize(Wo + Wi);
-        if (glm::dot(Wo, H) < 0)
+        auto h = glm::normalize(wo + wi);
+        if (glm::dot(wo, h) < 0)
             return 0;
 
-        float refl = fresnelDielectric(Math::absDot(H, Wi), ior);
-        return distrib.pdf(N, H, Wo) / (4.0f * Math::absDot(H, Wo)) * refl;
+        float refl = fresnelDielectric(Math::absDot(h, wi), ior);
+        return distrib.pdf(n, h, wo) / (4.0f * Math::absDot(h, wo)) * refl;
     }
     else
     {
-        float eta = glm::dot(N, Wo) > 0 ? ior : 1.0f / ior;
-        auto H = glm::normalize(Wo + Wi * eta);
-        if (Math::sameHemisphere(H, Wo, Wi))
+        float eta = glm::dot(n, wo) > 0 ? ior : 1.0f / ior;
+        auto h = glm::normalize(wo + wi * eta);
+        if (Math::sameHemisphere(h, wo, wi))
             return 0;
 
-        float trans = 1.0f - fresnelDielectric(Math::absDot(H, Wo), eta);
-        float dHdWi = Math::absDot(H, Wi) / Math::square(glm::dot(H, Wo) + eta * glm::dot(H, Wi));
-        return distrib.pdf(N, H, Wo) * dHdWi * trans;
+        float trans = 1.0f - fresnelDielectric(Math::absDot(h, wo), eta);
+        float dHdWi = Math::absDot(h, wi) / Math::square(glm::dot(h, wo) + eta * glm::dot(h, wi));
+        return distrib.pdf(n, h, wo) * dHdWi * trans;
     }
 }
 
-std::optional<BSDFSample> Dielectric::sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)
+std::optional<BSDFSample> Dielectric::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
 {
     if (approxDelta)
     {
-        float refl = fresnelDielectric(glm::dot(N, Wo), ior), trans = 1 - refl;
+        float refl = fresnelDielectric(glm::dot(n, wo), ior);
+        float trans = 1 - refl;
 
-        if (u1 < refl)
+        if (u.x < refl)
         {
-            Vec3f Wi = -glm::reflect(Wo, N);
-            return BSDFSample(Wi, 1.0f, BXDF::SpecRefl, baseColor);
+            Vec3f wi = -glm::reflect(wo, n);
+            return BSDFSample(wi, 1.0f, BXDF::SpecRefl, baseColor);
         }
         else
         {
-            float eta = (glm::dot(N, Wo) > 0.0f) ? ior : 1.0f / ior;
-            Vec3f Wi;
-            bool refr = refract(Wi, Wo, N, ior);
+            float eta = (glm::dot(n, wo) > 0.0f) ? ior : 1.0f / ior;
+            Vec3f wi;
+            bool refr = refract(wi, wo, n, ior);
             if (!refr)
                 return std::nullopt;
 
             float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
-            return BSDFSample(Wi, 1.0f, BXDF::SpecTrans, baseColor * factor, eta);
+            return BSDFSample(wi, 1.0f, BXDF::SpecTrans, baseColor * factor, eta);
         }
     }
     else
     {
-        Vec3f H = distrib.sampleWm(N, Wo, u2);
-        if (glm::dot(N, H) < 0.0f)
-            H = -H;
-        float refl = fresnelDielectric(glm::dot(H, Wo), ior);
+        Vec3f h = distrib.sampleWm(n, wo, { u.y, u.z });
+        if (glm::dot(n, h) < 0.0f)
+            h = -h;
+        float refl = fresnelDielectric(glm::dot(h, wo), ior);
         float trans = 1.0f - refl;
 
-        if (u1 < refl)
+        if (u.x < refl)
         {
-            auto Wi = -glm::reflect(Wo, H);
-            if (!Math::sameHemisphere(N, Wo, Wi))
+            auto wi = -glm::reflect(wo, h);
+            if (!Math::sameHemisphere(n, wo, wi))
                 return std::nullopt;
 
-            float p = distrib.pdf(N, H, Wo) / (4.0f * Math::absDot(H, Wo));
-            float HoWo = Math::absDot(H, Wo);
-            float HoWi = Math::absDot(H, Wi);
+            float p = distrib.pdf(n, h, wo) / (4.0f * Math::absDot(h, wo));
+            float hCosWo = Math::absDot(h, wo);
+            float hCosWi = Math::absDot(h, wi);
 
-            Spectrum r = (HoWo * HoWi < 1e-7f) ?
+            Spectrum r = (hCosWo * hCosWi < 1e-7f) ?
                 Spectrum(0.0f) :
-                baseColor * distrib.d(N, H) * distrib.g(N, Wo, Wi) / (4.0f * HoWo * HoWi);
+                baseColor * distrib.d(n, h) * distrib.g(n, wo, wi) / (4.0f * hCosWo * hCosWi);
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return BSDFSample(Wi, p, BXDF::GlosRefl, r);
+            return BSDFSample(wi, p, BXDF::GlosRefl, r);
         }
         else
         {
-            float eta = (glm::dot(H, Wo) > 0.0f) ? ior : 1.0f / ior;
+            float eta = (glm::dot(h, wo) > 0.0f) ? ior : 1.0f / ior;
 
-            Vec3f Wi;
-            bool refr = refract(Wi, Wo, H, ior);
-            if (!refr || Math::sameHemisphere(N, Wo, Wi) || Math::absDot(N, Wi) < 1e-10f)
+            Vec3f wi;
+            bool refr = refract(wi, wo, h, ior);
+            if (!refr || Math::sameHemisphere(n, wo, wi) || Math::absDot(n, wi) < 1e-10f)
                 return std::nullopt;
 
-            float HoWo = Math::absDot(H, Wo);
-            float HoWi = Math::absDot(H, Wi);
+            float hCosWo = Math::absDot(h, wo);
+            float hCosWi = Math::absDot(h, wi);
 
-            float sqrtDenom = glm::dot(H, Wo) + eta * glm::dot(H, Wi);
+            float sqrtDenom = glm::dot(h, wo) + eta * glm::dot(h, wi);
             float denom = sqrtDenom * sqrtDenom;
-            float dHdWi = HoWi / denom;
+            float dHdWi = hCosWi / denom;
             float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
 
-            denom *= Math::absDot(N, Wi) * Math::absDot(N, Wo);
+            denom *= Math::absDot(n, wi) * Math::absDot(n, wo);
 
             Spectrum r = (denom < 1e-7f) ?
                 Spectrum(0.0f) :
-                baseColor * glm::abs(distrib.d(N, H) * distrib.g(N, Wo, Wi) * HoWo * HoWi) / denom * factor;
+                baseColor * glm::abs(distrib.d(n, h) * distrib.g(n, wo, wi) * hCosWo * hCosWi) / denom * factor;
 
-            float p = distrib.pdf(N, H, Wo) * dHdWi;
+            float p = distrib.pdf(n, h, wo) * dHdWi;
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return BSDFSample(Wi, p, BXDF::GlosTrans, r, eta);
+            return BSDFSample(wi, p, BXDF::GlosTrans, r, eta);
         }
     }
 }

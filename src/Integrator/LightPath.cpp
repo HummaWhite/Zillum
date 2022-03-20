@@ -117,7 +117,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
             }
         }
 
-        auto sample = surf.material->sample(surf.ns, wo, sampler->get1(), sampler->get2(), TransportMode::Importance);
+        auto sample = surf.material->sample(surf.ns, wo, sampler->get3(), TransportMode::Importance);
         if (!sample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
@@ -133,7 +133,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
         if (bounce >= mParam.maxDepth && !mParam.russianRoulette)
             break;
 
-        float cosWi = deltaBsdf ? 1.0f : Math::satDot(surf.ns, wi);
+        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
         throughput *= bsdf * cosWi / bsdfPdf;

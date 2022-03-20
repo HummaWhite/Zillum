@@ -27,7 +27,7 @@ enum class CameraType
 
 struct CameraIiSample
 {
-	Vec3f Wi;
+	Vec3f wi;
 	Spectrum Ii;
 	float dist;
 	Vec2f uv;

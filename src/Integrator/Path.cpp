@@ -31,7 +31,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
             }
         }
 
-        auto bsdfSample = surf.material->sample(surf.ns, wo, sampler->get1(), sampler->get2());
+        auto bsdfSample = surf.material->sample(surf.ns, wo, sampler->get3());
         if (!bsdfSample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();

@@ -62,25 +62,25 @@ LiSample Scene::sampleLiOneLight(const Vec3f &x, const Vec2f &u1, const Vec2f &u
     if (!liSample)
         return InvalidLiSample;
 
-    auto [Wi, weight, dist, pdf] = liSample.value();
+    auto [wi, weight, dist, pdf] = liSample.value();
 
-    auto lightRay = Ray(x, Wi).offset();
+    auto lightRay = Ray(x, wi).offset();
     float testDist = dist - 1e-4f - 1e-6f;
 
     if (mBvh->testIntersec(lightRay, testDist) || pdf < 1e-8f)
         return InvalidLiSample;
 
     pdf *= pdfSample;
-    return { Wi, weight / pdf, pdf };
+    return { wi, weight / pdf, pdf };
 }
 
 LiSample Scene::sampleLiEnv(const Vec3f &x, const Vec2f &u1, const Vec2f &u2)
 {
-    auto [Wi, weight, pdf] = mEnv->sampleLi(u1, u2);
-    auto ray = Ray(x, Wi).offset();
+    auto [wi, weight, pdf] = mEnv->sampleLi(u1, u2);
+    auto ray = Ray(x, wi).offset();
     if (quickIntersect(ray, 1e30f))
         return InvalidLiSample;
-    return { Wi, weight / pdf, pdf };
+    return { wi, weight / pdf, pdf };
 }
 
 LiSample Scene::sampleLiLightAndEnv(const Vec3f &x, const std::array<float, 5> &sample)
@@ -100,8 +100,8 @@ LiSample Scene::sampleLiLightAndEnv(const Vec3f &x, const std::array<float, 5> &
     Vec2f u1(sample[1], sample[2]);
     Vec2f u2(sample[3], sample[4]);
 
-    auto [Wi, coef, pdf] = sampleLight ? sampleLiOneLight(x, u1, u2) : sampleLiEnv(x, u1, u2);
-    return { Wi, coef / pdfSelect, pdf * pdfSelect };
+    auto [wi, coef, pdf] = sampleLight ? sampleLiOneLight(x, u1, u2) : sampleLiEnv(x, u1, u2);
+    return { wi, coef / pdfSelect, pdf * pdfSelect };
 }
 
 LeSample Scene::sampleLeOneLight(const std::array<float, 6> &sample)
@@ -109,18 +109,18 @@ LeSample Scene::sampleLeOneLight(const std::array<float, 6> &sample)
     auto lightSample = sampleOneLight({ sample[0], sample[1] });
     auto [light, pdfLight] = lightSample.value();
     auto [ray, Le, pdfPos, pdfDir] = light->sampleLe(*reinterpret_cast<const std::array<float, 4>*>(&sample[2]));
-    Vec3f Nl = light->normalGeom(ray.ori);
-    return { ray, Le * Math::satDot(Nl, ray.dir), pdfLight * pdfPos * pdfDir };
+    Vec3f nl = light->normalGeom(ray.ori);
+    return { ray, Le * Math::satDot(nl, ray.dir), pdfLight * pdfPos * pdfDir };
 }
 
 LeSample Scene::sampleLeEnv(const std::array<float, 6> &sample)
 {
-    auto [Wi, Le, pdfDir] = mEnv->sampleLi({ sample[0], sample[1] }, { sample[2], sample[3] });
+    auto [wi, Le, pdfDir] = mEnv->sampleLi({ sample[0], sample[1] }, { sample[2], sample[3] });
     Vec3f ori(Transform::toConcentricDisk({ sample[4], sample[5] }), 0.0f);
     
-    ori = mBound.centroid() + Transform::normalToWorld(Wi, ori * mBoundRadius);
+    ori = mBound.centroid() + Transform::normalToWorld(wi, ori * mBoundRadius);
     float pdfPos = Math::PiInv / (mBoundRadius * mBoundRadius);
-    return { { ori, Wi }, Le, pdfPos * pdfDir };
+    return { { ori, wi }, Le, pdfPos * pdfDir };
 }
 
 LeSample Scene::sampleLeLightAndEnv(const std::array<float, 7> &sample)
@@ -168,14 +168,14 @@ IiSample Scene::sampleIiCamera(Vec3f x, Vec2f u)
     auto sample = mCamera->sampleIi(x, u);
     if (!sample)
         return InvalidIiSample;
-    auto [Wi, imp, dist, uv, pdf] = sample.value();
+    auto [wi, imp, dist, uv, pdf] = sample.value();
 
-    auto camRay = Ray(x, Wi).offset();
+    auto camRay = Ray(x, wi).offset();
     float testDist = dist - 1e-4f - 1e-6f;
 
     if (mBvh->testIntersec(camRay, testDist) || pdf < 1e-8f)
         return InvalidIiSample;
-    return { Wi, imp / pdf, pdf };
+    return { wi, imp / pdf, pdf };
 }
 
 void Scene::buildScene()
@@ -229,8 +229,8 @@ void Scene::addLightMesh(const char *path, TransformPtr transform, const Spectru
 bool Scene::visible(Vec3f x, Vec3f y)
 {
     float dist = glm::distance(x, y) - 2e-5f;
-    Vec3f Wi = glm::normalize(y - x);
-    Ray ray(x + Wi * 1e-5f, Wi);
+    Vec3f wi = glm::normalize(y - x);
+    Ray ray(x + wi * 1e-5f, wi);
     return !mBvh->testIntersec(ray, dist);
 }
 
@@ -243,8 +243,8 @@ float Scene::g(Vec3f x, Vec3f y, Vec3f Nx, Vec3f Ny)
 {
     if (!visible(x, y))
         return 0.0f;
-    Vec3f W = y - x;
-    float r = glm::length(W);
-    W /= r;
-    return Math::satDot(Nx, W) * Math::satDot(Ny, -W) / (r * r);
+    Vec3f w = y - x;
+    float r = glm::length(w);
+    w /= r;
+    return Math::satDot(Nx, w) * Math::satDot(Ny, -w) / (r * r);
 }

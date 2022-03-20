@@ -12,7 +12,7 @@ std::optional<LightLiSample> Light::sampleLi(Vec3f ref, Vec2f u)
 
     float dist = glm::distance(ref, y);
     float pdf = dist * dist / (surfaceArea() * cosTheta);
-    return LightLiSample{Wi, Le({y, -Wi}), dist, pdf};
+    return LightLiSample{Wi, Le({ y, -Wi }), dist, pdf};
 }
 
 float Light::pdfLi(const Vec3f &ref, const Vec3f &y)

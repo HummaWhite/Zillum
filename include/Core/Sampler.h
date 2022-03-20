@@ -22,7 +22,9 @@ public:
 	Sampler(SamplerType type) : type(type) {}
 
 	virtual float get1() = 0;
-	virtual Vec2f get2() = 0;
+	virtual Vec2f get2() { return { get1(), get1() }; }
+    virtual Vec3f get3() { return { get2(), get1() }; }
+    virtual Vec4f get4() { return { get3(), get1() }; }
 
 	template<int N>
 	std::array<float, N> get()
@@ -52,7 +54,6 @@ public:
     IndependentSampler();
 
     float get1();
-    Vec2f get2();
 
     void setPixel(int x, int y) { rng.seed(globalRandomEngine()); }
     void nextSample() { rng.seed(globalRandomEngine()); }
@@ -74,7 +75,6 @@ public:
 		seed(seed), scramble(seed), randomScrambling(randomScrambling), Sampler(SamplerType::SimpleSobol) {}
 
     float get1();
-    Vec2f get2();
 
     void setPixel(int x, int y);
     void nextSample();

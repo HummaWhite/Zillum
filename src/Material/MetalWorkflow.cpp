@@ -1,58 +1,59 @@
 #include "../../include/Core/Material.h"
 
-Spectrum MetalWorkflow::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum MetalWorkflow::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
 {
-    Vec3f H = glm::normalize(Wi + Wo);
+    Vec3f h = glm::normalize(wi + wo);
     float alpha = roughness * roughness;
 
-    if (!Math::sameHemisphere(N, Wo, Wi))
+    if (!Math::sameHemisphere(n, wo, wi))
         return Spectrum(0.0f);
 
-    float NoL = Math::satDot(N, Wi);
-    float NoV = Math::satDot(N, Wo);
+    float NoL = Math::satDot(n, wi);
+    float NoV = Math::satDot(n, wo);
 
     Spectrum F0 = Math::lerp(Spectrum(0.04f), albedo, metallic);
 
-    Spectrum F = schlickF(Math::satDot(H, Wo), F0, roughness);
-    float D = distrib.d(N, H);
-    float G = distrib.g(N, Wo, Wi);
+    Spectrum f = schlickF(Math::satDot(h, wo), F0, roughness);
+    float d = distrib.d(n, h);
+    float g = distrib.g(n, wo, wi);
 
-    Spectrum ks = F;
+    Spectrum ks = f;
     Spectrum kd = Vec3f(1.0f) - ks;
     kd *= 1.0f - metallic;
 
     float denom = 4.0f * NoV * NoL;
     if (denom < 1e-7f)
         return Vec3f(0.0f);
-    Vec3f glossy = F * D * G / denom;
+    Vec3f glossy = f * d * g / denom;
 
     return kd * albedo * Math::PiInv + glossy;
 }
 
-float MetalWorkflow::pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+float MetalWorkflow::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
 {
-    float NoWi = glm::dot(N, Wi);
-    Vec3f H = glm::normalize(Wo + Wi);
+    float NoWi = glm::dot(n, wi);
+    Vec3f h = glm::normalize(wo + wi);
 
     float pdfDiff = NoWi * Math::PiInv;
-    float pdfSpec = distrib.pdf(N, H, Wo) / (4.0f * glm::dot(H, Wo));
+    float pdfSpec = distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
     return Math::lerp(pdfDiff, pdfSpec, 1.0f / (2.0f - metallic));
 }
 
-std::optional<BSDFSample> MetalWorkflow::sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)
+std::optional<BSDFSample> MetalWorkflow::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
 {
     float spec = 1.0f / (2.0f - metallic);
-    bool sampleDiff = u1 >= spec;
-
-    Vec3f Wi;
+    bool sampleDiff = u.x >= spec;
+    Vec2f u2(u.y, u.z);
+    
+    Vec3f wi;
     if (sampleDiff)
-        Wi = Math::sampleHemisphereCosine(N, u2).first;
+        wi = Math::sampleHemisphereCosine(n, u2).first;
     else
     {
-        auto H = distrib.sampleWm(N, Wo, u2);
-        Wi = glm::reflect(-Wo, H);
+        auto h = distrib.sampleWm(n, wo, u2);
+        wi = glm::reflect(-wo, h);
     }
-    if (glm::dot(N, Wi) <= 0)
+    if (glm::dot(n, wi) <= 0)
         return std::nullopt;
-    return BSDFSample(Wi, pdf(N, Wo, Wi, mode), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl, bsdf(N, Wo, Wi, mode));
+    return BSDFSample(wi, pdf(n, wo, wi, mode), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl, bsdf(n, wo, wi, mode));
 }

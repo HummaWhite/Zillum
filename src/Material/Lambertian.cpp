@@ -1,17 +1,17 @@
 #include "../../include/Core/Material.h"
 
-Spectrum Lambertian::bsdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+Spectrum Lambertian::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
 {
     return albedo * Math::PiInv;
 }
 
-float Lambertian::pdf(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, TransportMode mode)
+float Lambertian::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
 {
-    return glm::dot(N, Wi) * Math::PiInv;
+    return glm::dot(n, wi) * Math::PiInv;
 }
 
-std::optional<BSDFSample> Lambertian::sample(const Vec3f &N, const Vec3f &Wo, float u1, const Vec2f &u2, TransportMode mode)
+std::optional<BSDFSample> Lambertian::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
 {
-    auto [Wi, pdf] = Math::sampleHemisphereCosine(N, u2);
-    return BSDFSample(Wi, pdf, BXDF::Diffuse, albedo * Math::PiInv);
+    auto [wi, pdf] = Math::sampleHemisphereCosine(n, { u.y, u.z });
+    return BSDFSample(wi, pdf, BXDF::Diffuse, albedo * Math::PiInv);
 }
