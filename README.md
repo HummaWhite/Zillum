@@ -1,6 +1,6 @@
 # Zillum
 
-**Z**lek's CPU-based Global **Illum**ination Renderer, [GPU version](https://github.com/HummaWhite/ZillumGL)
+**Z**lek's CPU-based Global **Illum**ination Renderer, [[The GPU version]](https://github.com/HummaWhite/ZillumGL) [[Relevant blog posts]](https://hummawhite.github.io/posts)
 
 ![](https://hummawhite.github.io/img/pt_bdpt_lpt.png)
 
@@ -24,3 +24,4 @@
 - BSSRDF
 - Participating Media
 - ...
+
