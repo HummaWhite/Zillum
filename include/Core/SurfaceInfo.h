@@ -34,20 +34,16 @@ struct SurfaceInfo
 	MaterialPtr material;
 };
 
-struct SurfInteraction
+struct SurfaceIntr
 {
-	SurfInteraction(const SurfaceInfo &info, const Vec3f &wo, const Vec3f &wi) :
-		wo(wo), wi(wi), ns(info.ns), ng(info.ng), uv(info.uv) {}
+	SurfaceIntr(const Vec3f &n, const Vec3f &wo, const Vec2f &uv) :
+		n(n), wo(wo), uv(uv) {}
 
-	SurfInteraction(const Vec3f &wo, const Vec3f &wi, const Vec3f &ng) :
-		wo(wo), wi(wi), ns(ng), ng(ng) {}
+	SurfaceIntr(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, const Vec2f &uv) :
+		wo(wo), wi(wi), n(n), uv(uv) {}
 
-	SurfInteraction(const Vec3f &wo, const Vec3f &wi, const Vec3f &ns, const Vec3f &ng) :
-		wo(wo), wi(wi), ns(ns), ng(ng) {}
-
+	Vec3f n;
 	Vec3f wo;
 	Vec3f wi;
-	Vec3f ns;
-	Vec3f ng;
 	Vec2f uv;
 };

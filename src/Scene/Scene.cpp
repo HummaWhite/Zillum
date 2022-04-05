@@ -1,4 +1,5 @@
 #include "../../include/Core/Scene.h"
+#include "../../include/Utils/Error.h"
 
 Scene::Scene(const std::vector<HittablePtr> &hittables, EnvPtr environment, CameraPtr camera) :
     mHittables(hittables), mEnv(environment), mCamera(camera)
@@ -180,8 +181,11 @@ IiSample Scene::sampleIiCamera(Vec3f x, Vec2f u)
 
 void Scene::buildScene()
 {
+    Error::bracketLine<0>("Scene building");
     mBvh = std::make_shared<BVH>(mHittables);
+    Error::bracketLine<1>("BVH size = " + std::to_string(mBvh->size()) + ", depth = " + std::to_string(mBvh->depth()));
     setupLightSampleTable();
+    Error::bracketLine<1>("Lights num = " + std::to_string(mLights.size()));
     mBound = mBvh->box();
     mBoundRadius = glm::distance(mBound.pMin, mBound.pMax) * 0.5f;
 }
@@ -196,11 +200,14 @@ void Scene::addObjectMesh(const char *path, TransformPtr transform, MaterialPtr 
 {
     auto [vertices, texcoords, normals] = ObjReader::readFile(path);
     int faceCount = vertices.size() / 3;
+    bool hasTexcoord = texcoords.size() > 0;
     for (int i = 0; i < faceCount; i++)
     {
-        Vec3f v[] = {vertices[i * 3 + 0], vertices[i * 3 + 1], vertices[i * 3 + 2]};
-        Vec3f n[] = {normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]};
-        Vec2f t[3];
+        Vec3f v[] = { vertices[i * 3 + 0], vertices[i * 3 + 1], vertices[i * 3 + 2] };
+        Vec3f n[] = { normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2] };
+        Vec2f t[3] = { { 0.0f, 0.0f }, { 1.0f, 0.0f }, { 0.0f, 1.0f } };
+        if (hasTexcoord)
+            memcpy(t, &texcoords[i * 3], 3 * sizeof(Vec2f));
 
         auto tr = std::make_shared<MeshTriangle>(v, t, n);
         tr->setTransform(transform);
@@ -214,8 +221,8 @@ void Scene::addLightMesh(const char *path, TransformPtr transform, const Spectru
     int faceCount = vertices.size() / 3;
     for (int i = 0; i < faceCount; i++)
     {
-        Vec3f v[] = {vertices[i * 3 + 0], vertices[i * 3 + 1], vertices[i * 3 + 2]};
-        Vec3f n[] = {normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]};
+        Vec3f v[] = { vertices[i * 3 + 0], vertices[i * 3 + 1], vertices[i * 3 + 2] };
+        Vec3f n[] = { normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2] };
         Vec2f t[3];
 
         auto tr = std::make_shared<Light>(std::make_shared<MeshTriangle>(v, t, n), power, false);

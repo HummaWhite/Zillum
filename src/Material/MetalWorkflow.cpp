@@ -1,7 +1,8 @@
 #include "../../include/Core/Material.h"
 
-Spectrum MetalWorkflow::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+Spectrum MetalWorkflow::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     Vec3f h = glm::normalize(wi + wo);
     float alpha = roughness * roughness;
 
@@ -29,8 +30,9 @@ Spectrum MetalWorkflow::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, T
     return kd * albedo * Math::PiInv + glossy;
 }
 
-float MetalWorkflow::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+float MetalWorkflow::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     float NoWi = glm::dot(n, wi);
     Vec3f h = glm::normalize(wo + wi);
 
@@ -39,8 +41,10 @@ float MetalWorkflow::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, Trans
     return Math::lerp(pdfDiff, pdfSpec, 1.0f / (2.0f - metallic));
 }
 
-std::optional<BSDFSample> MetalWorkflow::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> MetalWorkflow::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
+    auto &n = intr.n;
+    auto &wo = intr.wo;
     float spec = 1.0f / (2.0f - metallic);
     bool sampleDiff = u.x >= spec;
     Vec2f u2(u.y, u.z);
@@ -55,5 +59,6 @@ std::optional<BSDFSample> MetalWorkflow::sample(const Vec3f &n, const Vec3f &wo,
     }
     if (glm::dot(n, wi) <= 0)
         return std::nullopt;
-    return BSDFSample(wi, pdf(n, wo, wi, mode), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl, bsdf(n, wo, wi, mode));
+    SurfaceIntr newIntr(n, wo, wi, intr.uv);
+    return BSDFSample(wi, pdf(newIntr, mode), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl, bsdf(newIntr, mode));
 }

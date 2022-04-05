@@ -17,7 +17,7 @@ struct Vertex
         pos(pos), normCam(camera->f()), camera(camera), type(VertexType::Camera) {}
 
     Vertex(const Vec3f &pos, const SurfaceInfo &surf, const Vec3f &wo) :
-        pos(pos), normShad(surf.ns), normGeom(surf.ng), dir(wo), bsdf(surf.material.get()), type(VertexType::Surface) {}
+        pos(pos), normShad(surf.ns), normGeom(surf.ng), dir(wo), uv(surf.uv), bsdf(surf.material.get()), type(VertexType::Surface) {}
 
     Vertex(const Vec3f &wi, Environment *env) : dir(wi), envLight(env), type(VertexType::EnvLight) {}
 
@@ -38,6 +38,7 @@ struct Vertex
         Vec3f normCam;
         Vec3f normLit;
     };
+    Vec2f uv;
 
     float pdfLitward;
     float pdfCamward;
@@ -113,7 +114,7 @@ float convertPdf(const Vertex &fr, const Vertex &to, float pdfSolidAngle)
 Spectrum bsdf(const Vertex &fr, const Vertex &to, TransportMode mode)
 {
     Vec3f wi = glm::normalize(to.pos - fr.pos);
-    return fr.bsdf->bsdf(fr.getNormal(), fr.dir, wi, mode);
+    return fr.bsdf->bsdf({ fr.getNormal(), fr.dir, wi, fr.uv }, mode);
 }
 
 // fr must be a source vertex, either radiance or importance
@@ -133,7 +134,7 @@ float threePointPdf(const Vertex &prev, const Vertex &fr, const Vertex &to, Tran
 {
     Vec3f wi = glm::normalize(to.pos - fr.pos);
     Vec3f wo = glm::normalize(prev.pos - fr.pos);
-    return convertPdf(fr, to, fr.bsdf->pdf(fr.getNormal(), wo, wi, mode));
+    return convertPdf(fr, to, fr.bsdf->pdf({ fr.getNormal(), wo, wi, fr.uv }, mode));
 }
 
 float pdfLightOrigin(const Vertex &light, const Vertex &ref, ScenePtr scene)
@@ -202,7 +203,7 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
         vertex.isDelta = deltaBsdf;
         path.addVertex(vertex);
 
-        auto sample = surf.material->sample(surf.ns, wo, sampler->get3(), TransportMode::Importance);
+        auto sample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
         if (!sample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
@@ -288,7 +289,7 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
         vertex.isDelta = deltaBsdf;
         path.addVertex(vertex);
 
-        auto sample = surf.material->sample(surf.ns, wo, sampler->get3(), TransportMode::Radiance);
+        auto sample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Radiance);
         if (!sample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
@@ -389,6 +390,9 @@ float MISWeight(Path &lightPath, Path &cameraPath, int s, int t, ScenePtr scene)
             tmpPdfCamwardVtPred = { vtPred->pdfCamward,
                 threePointPdf(*vs, *vt, *vtPred, TransportMode::Importance) };
     }
+
+    // if (s > 1 && t > 1)
+    //     return 0.0f;
 
     float sum = 0.0f;
     float r = 1.0f;
@@ -544,16 +548,18 @@ Spectrum connectPaths(Path &lightPath, Path &cameraPath, int s, int t,
         result = vs.throughput * bsdf(vs, vt, TransportMode::Importance) * gNoVisibility(vs, vt) *
             bsdf(vt, vs, TransportMode::Radiance) * vt.throughput;
     }
+    //return Spectrum(MISWeight(lightPath, cameraPath, s, t, scene));
     REPORT_RETURN_IF(Math::hasNan(result), Spectrum(0.0f), "BDPT nan subpath connection")
     if (Math::isBlack(result))
         return Spectrum(0.0f);
+    //return result;
 
     float weight = MISWeight(lightPath, cameraPath, s, t, scene);
+    //return RGB24::threeFourthWheel(weight);
+    //return Spectrum(weight);
     REPORT_IF(weight > 1.0f, "BDPT weight > 1 for (" << s << ", " << t << ")")
     REPORT_RETURN_IF(Math::isNan(weight), Spectrum(0.0f), "BDPT nan MIS weight")
     return result * weight;
-    //return Spectrum(weight);
-    //return RGB24::threeFourthWheel(weight);
 }
 
 Spectrum BDPTIntegrator::eval(Path &lightPath, Path &cameraPath, SamplerPtr sampler)

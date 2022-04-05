@@ -99,5 +99,6 @@ Spectrum ThinLensCamera::Ie(Ray ray)
 
     float tanFOVInv = 1.0f / glm::tan(glm::radians(mFOV * 0.5f));
     float cos2Theta = cosTheta * cosTheta;
-    return Spectrum(tanFOVInv * tanFOVInv * 0.25f) / ((mIsDelta ? 1.0f : mLensArea) * cos2Theta * cos2Theta);
+    float aspect = static_cast<float>(mFilm.width) / mFilm.height;
+    return Spectrum(tanFOVInv * tanFOVInv * 0.25f) / ((mIsDelta ? 1.0f : mLensArea) * cos2Theta * cos2Theta * aspect);
 }

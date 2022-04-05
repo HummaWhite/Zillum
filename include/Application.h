@@ -45,7 +45,7 @@ private:
 	int mLastCursorY;
 	bool mFirstCursorMove = true;
 
-	bool mToneMapping = true;
+	int mToneMapping = 1;
 	bool mCorrectGamma = true;
 
 	bool mAutoSaveImage = true;

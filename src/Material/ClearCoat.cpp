@@ -1,7 +1,8 @@
 #include "../../include/Core/Material.h"
 
-Spectrum Clearcoat::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+Spectrum Clearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     auto h = glm::normalize(wo + wi);
 
     float cosWo = Math::satDot(n, wo);
@@ -18,18 +19,21 @@ Spectrum Clearcoat::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, Trans
     return f * d * g * weight / denom;
 }
 
-float Clearcoat::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+float Clearcoat::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     auto h = glm::normalize(wo + wi);
     return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
 }
 
-std::optional<BSDFSample> Clearcoat::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> Clearcoat::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
-    auto h = distrib.sampleWm(n, wo, { u.y, u.z });
-    auto wi = glm::reflect(-wo, h);
+    auto h = distrib.sampleWm(intr.n, intr.wo, { u.y, u.z });
+    auto wi = glm::reflect(-intr.wo, h);
 
-    if (glm::dot(n, wi) < 0.0f)
+    if (glm::dot(intr.n, wi) < 0.0f)
         return std::nullopt;
-    return BSDFSample(wi, pdf(n, wo, wi, mode), BXDF::GlosRefl, bsdf(n, wo, wi, mode));
+    SurfaceIntr newIntr = intr;
+    newIntr.wi = wi;
+    return BSDFSample(wi, pdf(newIntr, mode), BXDF::GlosRefl, bsdf(newIntr, mode));
 }

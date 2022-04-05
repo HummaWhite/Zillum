@@ -24,14 +24,14 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
             auto [wi, coef, lightPdf] = scene->sampleLiLightAndEnv(pos, lightSample);
             if (lightPdf != 0)
             {
-                float bsdfPdf = mat->pdf(surf.ns, wo, wi);
+                float bsdfPdf = mat->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance);
                 float weight = param.MIS ? Math::biHeuristic(lightPdf, bsdfPdf) : 0.5f;
-                result += mat->bsdf(surf.ns, wo, wi, TransportMode::Radiance) * throughput *
+                result += mat->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance) * throughput *
                     Math::satDot(surf.ns, wi) * coef * weight;
             }
         }
 
-        auto bsdfSample = surf.material->sample(surf.ns, wo, sampler->get3());
+        auto bsdfSample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3());
         if (!bsdfSample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
@@ -47,7 +47,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
         if (!obj)
         {
             float weight = 1.0f;
-            if (!deltaBsdf && param.sampleDirect)
+            if (!type.isDelta() && param.sampleDirect)
             {
                 float envPdf = scene->mEnv->pdfLi(wi) * scene->pdfSampleEnv();
                 weight = (envPdf <= 0) ? 0 : param.MIS ? Math::biHeuristic(bsdfPdf, envPdf) : 0.5f;
@@ -60,7 +60,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
             float weight = 1.0f;
             auto light = dynamic_cast<Light*>(obj.get());
             auto hitPoint = newRay.get(dist);
-            if (!deltaBsdf && param.sampleDirect)
+            if (!type.isDelta() && param.sampleDirect)
             {
                 float lightPdf = light->pdfLi(pos, hitPoint) * scene->pdfSampleLight(light);
                 weight = (lightPdf <= 0) ? 0 : param.MIS ? Math::biHeuristic(bsdfPdf, lightPdf) : 0.5f;

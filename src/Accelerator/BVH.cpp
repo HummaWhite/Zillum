@@ -210,9 +210,10 @@ void BVH::quickBuild(std::vector<HittableInfo> &primInfo, const AABB &rootExtent
 	stack.push({ 0, rootExtent, rootExtent.maxExtent(), 0, static_cast<int>(primInfo.size()) - 1 });
 
 	constexpr int NumBuckets = 16;
-
+	int depth = 0;
 	while (!stack.empty())
 	{
+		mDepth = std::max(mDepth, depth);
 		auto [offset, nodeExtent, splitDim, l, r] = stack.top();
 		stack.pop();
 		int size = (r - l) * 2 + 1;
@@ -223,8 +224,10 @@ void BVH::quickBuild(std::vector<HittableInfo> &primInfo, const AABB &rootExtent
 		if (l == r)
 		{
 			node.bound = primInfo[l].bound;
+			depth--;
 			continue;
 		}
+		depth++;
 		int nBoxes = r - l + 1;
 		if (nBoxes == 2)
 		{

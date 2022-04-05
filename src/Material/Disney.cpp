@@ -1,7 +1,8 @@
 #include "../../include/Core/Material.h"
 
-Spectrum DisneyDiffuse::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+Spectrum DisneyDiffuse::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     float cosWo = Math::satDot(n, wo);
     float cosWi = Math::satDot(n, wi);
     Vec3f h = glm::normalize(wo + wi);
@@ -26,19 +27,21 @@ Spectrum DisneyDiffuse::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, T
     return diffuse;
 }
 
-float DisneyDiffuse::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+float DisneyDiffuse::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     return glm::dot(wi, n) * Math::PiInv;
 }
 
-std::optional<BSDFSample> DisneyDiffuse::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneyDiffuse::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
-    auto [wi, pdf] = Math::sampleHemisphereCosine(n, { u.y, u.z });
+    auto [wi, pdf] = Math::sampleHemisphereCosine(intr.n, { u.y, u.z });
     return BSDFSample(wi, pdf, BXDF::Diffuse, baseColor * Math::PiInv);
 }
 
-Spectrum DisneyMetal::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+Spectrum DisneyMetal::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     float cosWo = Math::satDot(n, wo);
     float cosWi = Math::satDot(n, wi);
     Vec3f h = glm::normalize(wo + wi);
@@ -56,24 +59,28 @@ Spectrum DisneyMetal::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, Tra
     return f * d * g / denom;
 }
 
-float DisneyMetal::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+float DisneyMetal::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     float cosWi = glm::dot(n, wi);
     Vec3f h = glm::normalize(wo + wi);
     return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
 }
 
-std::optional<BSDFSample> DisneyMetal::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneyMetal::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
-    Vec3f h = distrib.sampleWm(n, wo, { u.y, u.z });
-    Vec3f wi = glm::reflect(-wo, h);
-    if (glm::dot(n, wi) < 0.0f)
+    Vec3f h = distrib.sampleWm(intr.n, intr.wo, { u.y, u.z });
+    Vec3f wi = glm::reflect(-intr.wo, h);
+    if (glm::dot(intr.n, wi) < 0.0f)
         return std::nullopt;
-    return BSDFSample(wi, pdf(n, wo, wi, mode), BXDF::GlosRefl, bsdf(n, wo, wi, mode));
+    SurfaceIntr newIntr = intr;
+    newIntr.wi = wi;
+    return BSDFSample(wi, pdf(newIntr, mode), BXDF::GlosRefl, bsdf(newIntr, mode));
 }
 
-Spectrum DisneyClearcoat::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+Spectrum DisneyClearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     auto h = glm::normalize(wo + wi);
     float cosWo = Math::satDot(n, wo);
     float cosWi = Math::satDot(n, wi);
@@ -92,24 +99,28 @@ Spectrum DisneyClearcoat::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi,
     return f * d * g / denom;
 }
 
-float DisneyClearcoat::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+float DisneyClearcoat::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     auto h = glm::normalize(wo + wi);
     return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
 }
 
-std::optional<BSDFSample> DisneyClearcoat::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneyClearcoat::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
-    auto h = distrib.sampleWm(n, wo, { u.y, u.z });
-    auto wi = glm::reflect(-wo, h);
+    auto h = distrib.sampleWm(intr.n, intr.wo, { u.y, u.z });
+    auto wi = glm::reflect(-intr.wo, h);
 
-    if (glm::dot(n, wi) < 0.0f)
+    if (glm::dot(intr.n, wi) < 0.0f)
         return std::nullopt;
-    return BSDFSample(wi, pdf(n, wo, wi, mode), BXDF::GlosRefl, bsdf(n, wo, wi, mode));
+    SurfaceIntr newIntr = intr;
+    newIntr.wi = wi;
+    return BSDFSample(wi, pdf(newIntr, mode), BXDF::GlosRefl, bsdf(newIntr, mode));
 }
 
-Spectrum DisneySheen::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+Spectrum DisneySheen::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     Vec3f h = glm::normalize(wi + wo);
     float lum = Math::luminance(baseColor);
     Spectrum tintColor = lum > 0 ? baseColor / lum : Spectrum(1.0f);
@@ -117,15 +128,16 @@ Spectrum DisneySheen::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, Tra
     return sheenColor * schlickW(Math::absDot(h, wo));
 }
 
-float DisneySheen::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+float DisneySheen::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
+    const auto &[n, wo, wi, uv] = intr;
     return glm::dot(wi, n) * Math::PiInv;
 }
 
-std::optional<BSDFSample> DisneySheen::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneySheen::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
-    auto [wi, pdf] = Math::sampleHemisphereCosine(n, { u.y, u.z });
-    return BSDFSample(wi, pdf, BXDF::Diffuse, bsdf(n, wo, wi, mode));
+    auto [wi, pdf] = Math::sampleHemisphereCosine(intr.n, { u.y, u.z });
+    return BSDFSample(wi, pdf, BXDF::Diffuse, bsdf({ intr.n, intr.wo, wi, intr.uv }, mode));
 }
 
 // TODO: this implementation is not correct
@@ -168,26 +180,26 @@ DisneyBSDF::DisneyBSDF(
     piecewiseSampler = Piecewise1D(w);
 }
 
-Spectrum DisneyBSDF::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+Spectrum DisneyBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
     Spectrum r(0.0f);
     for (int i = 0; i < 5; i++)
-        r += components[i]->bsdf(n, wo, wi, mode) * weights[i];
+        r += components[i]->bsdf(intr, mode) * weights[i];
     return r;
 }
 
-float DisneyBSDF::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+float DisneyBSDF::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
     float p = 0.0f;
     for (int i = 0; i < 4; i++)
-        p += components[i]->pdf(n, wo, wi, mode) * weights[i];
+        p += components[i]->pdf(intr, mode) * weights[i];
     p /= piecewiseSampler.sum();
     return p;
 }
 
-std::optional<BSDFSample> DisneyBSDF::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneyBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
     // TODO: here needs two extra samples, causing sampling of each path not aligned
     int comp = piecewiseSampler.sample({ uniformFloat(), uniformFloat() });
-    return components[comp]->sample(n, wo, u, mode);
+    return components[comp]->sample(intr, u, mode);
 }

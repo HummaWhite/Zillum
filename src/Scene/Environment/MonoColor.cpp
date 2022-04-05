@@ -2,11 +2,11 @@
 
 EnvLiSample EnvSingleColor::sampleLi(const Vec2f &u1, const Vec2f &u2)
 {
-    auto Wi = Transform::planeToSphere(u1);
-    return { Wi, mRadiance, Math::PiInv * 0.25f };
+    auto wi = Transform::planeToSphere(u1);
+    return { wi, mRadiance, Math::PiInv * 0.25f };
 }
 
-float EnvSingleColor::pdfLi(const Vec3f &Wi)
+float EnvSingleColor::pdfLi(const Vec3f &wi)
 {
     return Math::PiInv * 0.25f;
 }

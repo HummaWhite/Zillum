@@ -9,7 +9,7 @@
 
 struct LightLiSample
 {
-	Vec3f Wi;
+	Vec3f wi;
 	Spectrum Li;
 	float dist;
 	float pdf;

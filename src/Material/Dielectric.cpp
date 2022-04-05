@@ -39,11 +39,12 @@ float fresnelDielectric(float cosTi, float eta)
     return (rPa * rPa + rPe * rPe) * 0.5f;
 }
 
-Spectrum Dielectric::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+Spectrum Dielectric::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
     if (approxDelta)
         return Spectrum(0.0f);
 
+    const auto &[n, wo, wi, uv] = intr;
     auto h = glm::normalize(wo + wi);
     float hCosWo = Math::absDot(h, wo);
     float hCosWi = Math::absDot(h, wi);
@@ -70,11 +71,12 @@ Spectrum Dielectric::bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, Tran
     }
 }
 
-float Dielectric::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode)
+float Dielectric::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
     if (approxDelta)
         return 0;
 
+    const auto &[n, wo, wi, uv] = intr;
     if (Math::sameHemisphere(n, wo, wi))
     {
         auto h = glm::normalize(wo + wi);
@@ -97,8 +99,10 @@ float Dielectric::pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, Transpor
     }
 }
 
-std::optional<BSDFSample> Dielectric::sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
+    auto &n = intr.n;
+    auto &wo = intr.wo;
     if (approxDelta)
     {
         float refl = fresnelDielectric(glm::dot(n, wo), ior);

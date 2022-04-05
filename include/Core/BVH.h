@@ -42,6 +42,7 @@ public:
 	std::pair<float, HittablePtr> closestHit(const Ray &ray);
 
 	int size() const { return mTreeSize; }
+	int depth() const { return mDepth; }
 	AABB box() const { return mTree[0].bound; }
 
 private:
@@ -51,6 +52,7 @@ private:
 	
 private:
 	int mTreeSize = 0;
+	int mDepth = 0;
 	BVHSplitMethod mSplitMethod;
 
 	std::vector<BVHNode> mTree;

@@ -109,7 +109,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
                 Vec3f pCam = pos + wi * dist;
                 if (mScene->visible(pos, pCam))
                 {
-                    Spectrum res = Ii * surf.material->bsdf(surf.ns, wo, wi, TransportMode::Importance) *
+                    Spectrum res = Ii * surf.material->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
                         throughput * Math::satDot(surf.ns, wi) / pdf;
                     if (!Math::hasNan(res) && !Math::isNan(pdf) && pdf > 1e-8f && !Math::isBlack(res))
                         addToFilmLocked(uvRaster, res);
@@ -117,7 +117,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
             }
         }
 
-        auto sample = surf.material->sample(surf.ns, wo, sampler->get3(), TransportMode::Importance);
+        auto sample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
         if (!sample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();

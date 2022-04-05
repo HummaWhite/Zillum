@@ -13,6 +13,7 @@
 #include "Math.h"
 #include "Transform.h"
 #include "PiecewiseDistrib.h"
+#include "Texture.h"
 
 enum class TransportMode
 {
@@ -36,9 +37,9 @@ class Material
 public:
 	Material(int bxdfType): mMatBxdf(bxdfType) {}
 
-	virtual Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode = TransportMode::Radiance) = 0;
-	virtual float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode = TransportMode::Radiance) = 0;
-	virtual std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual float pdf(const SurfaceIntr &intr, TransportMode mode = TransportMode::Radiance) = 0;
+	virtual std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode = TransportMode::Radiance) = 0;
 
 	const BXDF& bxdf() const { return mMatBxdf; }
 
@@ -52,15 +53,15 @@ class Lambertian:
 	public Material
 {
 public:
-	Lambertian(const Spectrum &albedo) :
+	Lambertian(const ColorMap3fPtr &albedo) :
 		albedo(albedo), Material(BXDF::Diffuse) {}
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
-	Spectrum albedo;
+	ColorMap3fPtr albedo;
 };
 
 class MetalWorkflow:
@@ -71,9 +72,9 @@ public:
 		albedo(albedo), metallic(metallic), roughness(roughness),
 		distrib(roughness, true), Material(BXDF::Diffuse | BXDF::GlosRefl) {}
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
 	bool approxDelta() const { return roughness <= 0.014f; }
@@ -92,9 +93,9 @@ public:
 	Clearcoat(float roughness, float weight):
 		distrib(roughness), weight(weight), Material(BXDF::GlosRefl) {}
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
 	GTR1Distrib distrib;
@@ -109,9 +110,9 @@ public:
 		baseColor(baseColor), ior(ior), distrib(roughness, false),
 		approxDelta(roughness < 0.014f), Material(BXDF::SpecRefl | BXDF::SpecTrans) {}
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
 	float ior;
@@ -127,9 +128,9 @@ public:
 	ThinDielectric(const Spectrum &baseColor, float ior):
 		baseColor(baseColor), ior(ior), Material(BXDF::SpecRefl | BXDF::SpecTrans) {}
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode) { return 0.0f; }
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode) { return 0.0f; }
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
 	Spectrum baseColor;
@@ -144,9 +145,9 @@ public:
 		baseColor(baseColor), roughness(roughness), subsurface(subsurface),
 		Material(BXDF::Diffuse) {}
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
 	Spectrum baseColor;
@@ -161,9 +162,9 @@ public:
 	DisneyMetal(const Spectrum &baseColor, float roughness, float anisotropic = 0.0f) :
 		baseColor(baseColor), distrib(roughness, true, anisotropic), Material(BXDF::GlosRefl) {}
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
 	Spectrum baseColor;
@@ -177,9 +178,9 @@ public:
 	DisneyClearcoat(float gloss) : alpha(glm::mix(0.1f, 0.001f, gloss)), distrib(alpha),
 		Material(BXDF::GlosRefl) {}
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
 	float alpha;
@@ -193,9 +194,9 @@ public:
 	DisneySheen(const Spectrum &baseColor, float tint) :
 		baseColor(baseColor), tint(tint), Material(BXDF::GlosRefl) {}
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
 	Spectrum baseColor;
@@ -222,9 +223,9 @@ public:
 		float ior = 1.5f
 	);
 
-	Spectrum bsdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	float pdf(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, TransportMode mode);
-	std::optional<BSDFSample> sample(const Vec3f &n, const Vec3f &wo, const Vec3f &u, TransportMode mode);
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
 
 private:
 	DisneyDiffuse diffuse;
@@ -237,5 +238,5 @@ private:
 	Material *components[5];
 };
 
-bool refract(Vec3f &Wt, const Vec3f &wi, const Vec3f &n, float eta);
+bool refract(Vec3f &wt, const Vec3f &wi, const Vec3f &n, float eta);
 float fresnelDielectric(float cosTi, float eta);

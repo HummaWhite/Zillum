@@ -14,7 +14,7 @@
 
 struct EnvLiSample
 {
-	Vec3f Wi;
+	Vec3f wi;
 	Spectrum Li;
 	float pdf;
 };
@@ -24,7 +24,7 @@ class Environment
 public:
 	virtual Spectrum radiance(const Vec3f &dir) = 0;
 	virtual EnvLiSample sampleLi(const Vec2f &u1, const Vec2f &u2) = 0;
-	virtual float pdfLi(const Vec3f &Wi) = 0;
+	virtual float pdfLi(const Vec3f &wi) = 0;
 	virtual float power() = 0;
 };
 
@@ -38,7 +38,7 @@ public:
 
 	Spectrum radiance(const Vec3f &dir) { return mRadiance; }
 	EnvLiSample sampleLi(const Vec2f &u1, const Vec2f &u2);
-	float pdfLi(const Vec3f &Wi);
+	float pdfLi(const Vec3f &wi);
 	float power() { return Math::luminance(mRadiance) * 2.0f * Math::square(Math::Pi); }
 
 private:
@@ -51,16 +51,16 @@ class EnvSphereMapHDR:
 public:
 	EnvSphereMapHDR(const char *filePath);
 
-	Spectrum radiance(const Vec3f &dir) { return mSphereMap.getSpherical(dir); }
+	Spectrum radiance(const Vec3f &dir) { return mSphereMap->getSpherical(dir); }
 	EnvLiSample sampleLi(const Vec2f &u1, const Vec2f &u2);
-	float pdfLi(const Vec3f &Wi);
+	float pdfLi(const Vec3f &wi);
 	float power() { return mDistrib.sum(); }
 
 private:
-	float getPortion(const Vec3f &Wi);
+	float getPortion(const Vec3f &wi);
 
 private:
-	Texture mSphereMap;
+	Texture3fPtr mSphereMap;
 	int mWidth, mHeight;
 	PiecewiseIndependent2D mDistrib;
 };

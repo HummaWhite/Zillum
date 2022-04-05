@@ -6,7 +6,7 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
     Error::bracketLine<0>(cmdParam);
 
     mCorrectGamma = true;
-    mToneMapping = true;
+    mToneMapping = 1;
     std::string integType;
     std::string samplerType;
     int width, height;
@@ -14,7 +14,8 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
     int spp;
     std::stringstream param(cmdParam);
 
-    param >> integType >> samplerType >> width >> height >> spp >> maxDepth;
+    param >> integType;
+    param >> samplerType >> width >> height >> spp >> maxDepth;
 
     this->mInstance = instance;
     this->mWindowWidth = width;
@@ -107,6 +108,10 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
         int pathsOnePass;
         param >> pathsOnePass;
         auto integ = std::make_shared<TriPathIntegrator>(mScene, spp, pathsOnePass);
+        integ->mParam.rrCameraPath = true;
+        integ->mParam.maxCameraDepth = maxDepth;
+        integ->mParam.rrLightPath = true;
+        integ->mParam.maxLightDepth = maxDepth;
         mIntegrator = integ;
         scramble = false;
     }
@@ -185,7 +190,7 @@ LRESULT Application::process(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
             mFirstCursorMove = true;
         }
         else if ((int)wParam == 'T')
-            mToneMapping = !mToneMapping;
+            mToneMapping = (mToneMapping + 1) % 3;
         else if ((int)wParam == 'G')
             mCorrectGamma = !mCorrectGamma;
         else if ((int)wParam == 'O')
@@ -279,8 +284,10 @@ void Application::writeBuffer()
         {
             auto result = resultBuffer(i, j) * mIntegrator->mResultScale;
             result = glm::clamp(result, Vec3f(0.0f), Vec3f(1e8f));
-            if (mToneMapping)
+            if (mToneMapping == 1)
                 result = ToneMapping::filmic(result);
+            else if (mToneMapping == 2)
+                result = RGB24::threeFourthWheel(Math::luminance(result));
             if (mCorrectGamma)
                 result = glm::pow(result, Vec3f(1.0f / 2.2f));
             mColorBuffer(i, j) = RGB24::swapRB(RGB24(result));

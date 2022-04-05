@@ -1,5 +1,10 @@
 #include "../../include/Core/Integrator.h"
 
+inline float remap(float p)
+{
+    return p < 1e-8f ? 1.0f : p * p;
+}
+
 float weightS0(float s1s0, float t1s0)
 {
     return 1.0f / (1.0f + s1s0 + t1s0);
@@ -33,17 +38,16 @@ float pdfToAngle(const Vec3f &fr, const Vec3f &to, const Vec3f &n, float pdfArea
 }
 
 Spectrum traceCameraPath(const TriPathIntegParam &param, ScenePtr scene, Vec3f pos, Vec3f wo, SurfaceInfo surf,
-                         Vec3f prevPos, Vec3f prevNorm, SamplerPtr sampler)
+    Vec3f prevPos, Vec3f prevNorm, SamplerPtr sampler, float primaryPdf)
 {
     Spectrum result(0.0f);
     Spectrum throughput(1.0f);
     float etaScale = 1.0f;
 
-    float s1s0 = 1.0f; // p(s=1) / p(s=0)
-    float t1s0 = 1.0f; // p(t=1) / p(s=0)
-    float t1s1 = t1s0; // p(t=1) / p(s=1)
+    float t1s0 = primaryPdf; // p(t=1) / p(s=0)
+    float t1s1 = primaryPdf; // p(t=1) / p(s=1)
 
-    for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
+    for (int bounce = 1; bounce <= param.maxCameraDepth; bounce++)
     {
         MaterialPtr mat = surf.material;
 
@@ -64,48 +68,44 @@ Spectrum traceCameraPath(const TriPathIntegParam &param, ScenePtr scene, Vec3f p
             auto light = std::get<0>(lightSource);
 
             auto LiSample = light->sampleLi(pos, sampler->get2());
-            if (!LiSample)
-                break;
-
-            Vec3f pLit = light->uniformSample(sampler->get2());
-            if (scene->visible(pos, pLit))
+            if (LiSample)
             {
-                Vec3f wi = glm::normalize(pLit - wi);
-                Spectrum Le = light->Le({pLit, -wi});
-                if (!Math::isBlack(Le))
+                auto [wi, Le, dist, pdfLi] = LiSample.value();
+                Vec3f pLit = pos + wi * dist;
+                if (scene->visible(pos, pLit))
                 {
-                    float bsdfPdf = mat->pdf(surf.ns, wo, wi);
-                    if (bsdfPdf > 0)
-                    {
-                        float pdfPLit = pdfSource / light->surfaceArea();
-                        float pdfToSurf = pdfToArea(pLit, pos, surf.ns, light->pdfLe({pLit, -wi}).pdfDir);
-                        float pdfToLight = pdfToArea(pos, pLit, light->normalGeom(pLit), bsdfPdf);
-                        float pdfToPrev = (bounce > 1) ? pdfToArea(pos, prevPos, prevNorm, mat->pdf(surf.ns, wi, wo, TransportMode::Importance)) : 1.0f;
-
-                        float weight = weightS1(s1s0 * pdfPLit / pdfToLight, t1s1 * pdfToSurf * pdfToPrev);
-                        if (weight > 1.0f)
-                            weight = 0.0f;
-
-                        result += Le * mat->bsdf(surf.ns, wo, wi, TransportMode::Radiance) *
-                            throughput * Math::satDot(surf.ns, wi) * weightS1(s1s0 * pdfPLit / pdfToLight, t1s1 * pdfToSurf * pdfToPrev) /
-                            light->pdfLi(pos, pLit);
-                    }
+                    float pdfPLit = remap(pdfSource / light->surfaceArea());
+                    float coefToSurf = remap(light->pdfLe({ pLit, -wi }).pdfDir * Math::absDot(surf.ns, wi));
+                    float coefToLight = remap(mat->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance) *
+                        Math::satDot(light->normalGeom(pLit), -wi));
+                    float coefToPrev = (bounce == 1) ? 1.0f :
+                        remap(mat->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Importance) * Math::absDot(prevNorm, wo));
+                    float dist2 = remap(dist * dist);
+                    float weight = weightS1(pdfPLit * dist2 / coefToLight, t1s1 * coefToSurf * coefToPrev / dist2);
+                    
+                    result += Le * mat->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance) * throughput * Math::absDot(surf.ns, wi) * weight /
+                        (pdfLi * pdfSource);
+                    // if (bounce == param.maxCameraDepth)
+                    //     result = Spectrum(weight);
                 }
             }
         }
 
-        auto bsdfSample = surf.material->sample(surf.ns, wo, sampler->get3());
+        auto bsdfSample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3());
         if (!bsdfSample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
 
-        float cosWi = type.isDelta() ? 1.0f : Math::absDot(surf.ns, wi);
+        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf) || cosWi < 1e-6f)
             break;
         throughput *= bsdf * cosWi / bsdfPdf;
 
         auto nextRay = Ray(pos, wi).offset();
         auto [dist, obj] = scene->closestHit(nextRay);
+        float pdfDirToNext = mat->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance);
+        float pdfDirToPrev = mat->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Importance);
+        // don't use bsdfPdf directly for MIS, we need to calculate again
 
         if (!obj)
         {
@@ -114,21 +114,19 @@ Spectrum traceCameraPath(const TriPathIntegParam &param, ScenePtr scene, Vec3f p
         }
         if (obj->type() == HittableType::Light)
         {
-            float weight = 1.0f;
-            auto light = dynamic_cast<Light *>(obj.get());
+            auto light = dynamic_cast<Light*>(obj.get());
             Vec3f pLit = nextRay.get(dist);
-            if (!deltaBsdf)
-            {
-                auto [pdfPos, pdfDir] = light->pdfLe({pLit, -wi});
-                float pdfPLit = pdfPos * scene->pdfSampleLight(light);
-                float pdfToLight = pdfToArea(pos, pLit, light->normalGeom(pLit), bsdfPdf);
-                float pdfToSurf = pdfToArea(pLit, pos, surf.ns, pdfDir);
+            auto [pdfPos, pdfDir] = light->pdfLe({ pLit, -wi });
+            float pdfPLit = remap(pdfPos * scene->pdfSampleLight(light));
+            float coefToLight = remap(pdfDirToNext * Math::satDot(light->normalGeom(pLit), -wi));
+            float coefToSurf = remap(pdfDir * Math::absDot(surf.ns, wi));
+            float coefToPrev = (bounce == 1) ? 1.0f : remap(pdfDirToPrev * Math::absDot(prevNorm, wo));
+            float dist2 = remap(dist * dist);
+            float weight = Math::isNan(t1s0) ? 0 : weightS0(pdfPLit * dist2 / coefToLight, t1s0 * coefToSurf * pdfPLit * coefToPrev / coefToLight);
 
-                if (pdfToLight < 1e-6f || Math::isNan(t1s0))
-                    weight = 0;
-                else
-                    weight = weightS0(s1s0 * pdfPLit / pdfToLight, t1s0 * pdfToSurf * pdfPLit / pdfToLight);
-            }
+            // if (bounce == param.maxCameraDepth)
+            //     result = Spectrum(weight);
+            //     result = light->Le({ pLit, -wi }) * throughput * weight;
             result += light->Le({ pLit, -wi }) * throughput * weight;
             break;
         }
@@ -147,12 +145,11 @@ Spectrum traceCameraPath(const TriPathIntegParam &param, ScenePtr scene, Vec3f p
             break;
 
         Vec3f nextPos = nextRay.get(dist);
-        auto nextObj = dynamic_cast<Object *>(obj.get());
+        auto nextObj = dynamic_cast<Object*>(obj.get());
         auto nextSurf = nextObj->surfaceInfo(nextPos);
 
-        float coef = 1.0f / pdfToArea(pos, nextPos, nextSurf.ns, bsdfPdf);
-        if (bounce > 1)
-            coef *= pdfToArea(pos, prevPos, prevNorm, mat->pdf(surf.ns, wi, wo, TransportMode::Importance));
+        float coef = ((bounce == 1) ? 1.0f : remap(pdfDirToPrev * Math::absDot(prevNorm, wo))) /
+            remap(pdfDirToNext * Math::absDot(nextSurf.ns, wi));
         t1s0 *= coef;
         t1s1 *= coef;
 
@@ -181,21 +178,6 @@ void TriPathIntegrator::traceLightPath(SamplerPtr sampler)
         return;
     auto areaLight = std::get<0>(lightSource);
 
-    Vec3f pLit = areaLight->uniformSample(sampler->get2());
-    auto ciSamp = mScene->mCamera->sampleIi(pLit, sampler->get2());
-    if (ciSamp)
-    {
-        auto [wi, Ii, dist, uvRaster, pdf] = ciSamp.value();
-        Vec3f pCam = pLit + wi * dist;
-        float pdfPos = 1.0f / areaLight->surfaceArea();
-        if (mScene->visible(pLit, pCam))
-        {
-            auto Le = areaLight->Le({pLit, wi});
-            auto contrib = Le;
-            addToFilmLocked(uvRaster, contrib);
-        }
-    }
-
     auto leSamp = areaLight->sampleLe(sampler->get<4>());
     Vec3f nl = areaLight->normalGeom(leSamp.ray.ori);
 
@@ -207,10 +189,10 @@ void TriPathIntegrator::traceLightPath(SamplerPtr sampler)
     prevSurf.ns = nl;
     prevPdfDir = leSamp.pdfDir;
 
-    float s0t1 = 1.0f / (leSamp.pdfPos * pdfSource);
+    float s0t1 = 1.0f / remap(leSamp.pdfPos * pdfSource);
     float s1t1 = 1.0f;
 
-    for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
+    for (int bounce = 1; bounce <= mParam.maxLightDepth; bounce++)
     {
         auto [distObj, hit] = mScene->closestHit(ray);
         if (!hit)
@@ -230,9 +212,9 @@ void TriPathIntegrator::traceLightPath(SamplerPtr sampler)
         }
         bool deltaBsdf = surf.material->bxdf().isDelta();
 
-        float pdfToPos = pdfToArea(prevPos, pos, surf.ns, prevPdfDir);
-        s0t1 /= pdfToPos;
-        s1t1 /= pdfToPos;
+        float coefToPos = remap(prevPdfDir * Math::absDot(surf.ns, wo));
+        s0t1 /= coefToPos;
+        s1t1 /= coefToPos / (bounce == 1 ? remap(distObj * distObj) : 1.0f);
 
         if (!deltaBsdf)
         {
@@ -243,26 +225,26 @@ void TriPathIntegrator::traceLightPath(SamplerPtr sampler)
                 Vec3f pCam = pos + wi * dist;
                 if (mScene->visible(pos, pCam))
                 {
-                    Spectrum res = Ii * surf.material->bsdf(surf.ns, wo, wi, TransportMode::Importance) *
-                        throughput * Math::satDot(surf.ns, wi) / pdf;
+                    Spectrum contrib = Ii * surf.material->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
+                        throughput * Math::absDot(surf.ns, wi) / pdf;
+                    float coefToSurf = remap(mScene->mCamera->pdfIe({ pCam, -wi }).pdfDir * Math::absDot(surf.ns, wi));
+                    float coefToPrev = remap(surf.material->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Radiance) *
+                        Math::absDot(prevSurf.ns, wo));
+                    float dist2 = remap(dist * dist);
 
-                    float pdfToPrev = pdfToArea(pos, prevPos, prevSurf.ns,
-                        surf.material->pdf(surf.ns, wi, wo, TransportMode::Radiance));
-                    float pdfToSurf = pdfToArea(pCam, pos, surf.ns,
-                        mScene->mCamera->pdfIe({ pCam, -wi }).pdfDir);
+                    float coef0 = coefToSurf * coefToPrev / dist2;
+                    float coef1 = ((bounce == 1) ? 1.0f : coefToPrev) * coefToSurf / dist2;
 
-                    float s0t1Coef = pdfToPrev * pdfToSurf;
-                    float s1t1Coef = pdfToSurf;
-                    if (bounce > 1)
-                        s1t1Coef *= pdfToPrev;
-
-                    float weight = weightT1(s0t1 * s0t1Coef, s1t1 * s1t1Coef);
+                    float weight = weightT1(s0t1 * coef0, s1t1 * coef1);
+                    Spectrum res = contrib * weight;
+                    //res = Spectrum(weight);
                     if (!Math::isNan(weight) && weight > 0)
-                        addToFilmLocked(uvRaster, res * weight);
+                    //if (bounce == mParam.maxLightDepth)
+                        addToFilmLocked(uvRaster, res);
                 }
             }
         }
-        auto sample = surf.material->sample(surf.ns, wo, sampler->get3(), TransportMode::Importance);
+        auto sample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
         if (!sample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
@@ -278,22 +260,22 @@ void TriPathIntegrator::traceLightPath(SamplerPtr sampler)
         if (bounce >= mParam.maxLightDepth && !mParam.rrLightPath)
             break;
 
-        float cosWi = deltaBsdf ? 1.0f : Math::satDot(surf.ns, wi);
+        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
 
-        float pdfToPrev = pdfToArea(pos, prevPos, prevSurf.ns, surf.material->pdf(surf.ns, wi, wo, TransportMode::Radiance));
-        s0t1 *= pdfToPrev;
-        if (bounce > 1)
-            s1t1 *= pdfToPrev;
+        float coefToPrev = remap(surf.material->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Radiance) *
+            Math::absDot(prevSurf.ns, wo));
+        s0t1 *= coefToPrev;
+        s1t1 *= (bounce == 1) ? 1.0f : coefToPrev;
+
+        prevPdfDir = surf.material->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance);
+        prevPos = pos;
+        prevSurf = surf;
 
         throughput *= bsdf * cosWi / bsdfPdf;
         ray = Ray(pos, wi).offset();
         wo = -wi;
-
-        prevPos = pos;
-        prevSurf = surf;
-        prevPdfDir = bsdfPdf;
     }
 }
 
@@ -307,14 +289,14 @@ void TriPathIntegrator::renderOnePass()
     for (int i = 0; i < MaxThreads; i++)
     {
         auto threadSampler = mSampler->copy();
-        threadSampler->nextSamples(pathsOnePass * i * 2);
+        threadSampler->nextSamples(pathsOnePass * i);
         threads[i] = std::thread(trace, this, pathsOnePass, threadSampler);
     }
     for (int i = 0; i < MaxThreads; i++)
         threads[i].join();
     delete[] threads;
 
-    mSampler->nextSamples(pathsOnePass * MaxThreads * 2);
+    mSampler->nextSamples(pathsOnePass * MaxThreads);
 
     mParam.spp += static_cast<float>(pathsOnePass) * MaxThreads / (film.width * film.height);
     mResultScale = 1.0f / mParam.spp;
@@ -334,7 +316,7 @@ void TriPathIntegrator::trace(int paths, SamplerPtr sampler)
         Vec2f uv = sampler->get2();
         Ray ray = mScene->mCamera->generateRay(uv * Vec2f(2.0f, -2.0f) + Vec2f(-1.0f, 1.0f), sampler);
         auto [dist, obj] = mScene->closestHit(ray);
-        Spectrum result;
+        Spectrum result(0.0f);
 
         if (obj == nullptr)
             result = mScene->mEnv->radiance(ray.dir);
@@ -349,13 +331,11 @@ void TriPathIntegrator::trace(int paths, SamplerPtr sampler)
             Vec3f pos = ray.get(dist);
             auto object = dynamic_cast<Object*>(obj.get());
             SurfaceInfo surf = object->surfaceInfo(pos);
-            result = traceCameraPath(mParam, mScene, pos, -ray.dir, surf, ray.ori, mScene->mCamera->f(), sampler);
+            auto [pdfPos, pdfDir] = mScene->mCamera->pdfIe(ray);
+            result = traceCameraPath(mParam, mScene, pos, -ray.dir, surf, ray.ori, mScene->mCamera->f(), sampler,
+                remap(pdfPos) / remap(pdfToArea(ray.ori, pos, surf.ns, pdfDir)));
         }
         addToFilmLocked(uv, result);
-        sampler->nextSample();
-    }
-    for (int i = 0; i < paths; i++)
-    {
         traceLightPath(sampler);
         sampler->nextSample();
     }

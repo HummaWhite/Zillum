@@ -19,10 +19,11 @@ Vec2f MeshTriangle::surfaceUV(const Vec3f &p)
     Vec3f oriP = triangle.getTransform()->getInversed(p);
 
     float areaInv = 1.0f / glm::length(glm::cross(vb - va, vc - va));
-    float u = glm::length(glm::cross(vb - oriP, vc - oriP)) * areaInv;
-    float v = glm::length(glm::cross(vc - oriP, va - oriP)) * areaInv;
+    float la = glm::length(glm::cross(vb - oriP, vc - oriP)) * areaInv;
+    float lb = glm::length(glm::cross(vc - oriP, va - oriP)) * areaInv;
+    float lc = glm::length(glm::cross(va - oriP, vb - oriP)) * areaInv;
 
-    return Vec2f(u, v);
+    return ta * la + tb * lb + tc * lc;
 }
 
 void MeshTriangle::setTransform(TransformPtr trans)
