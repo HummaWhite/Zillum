@@ -96,7 +96,7 @@ Spectrum traceCameraPath(const TriPathIntegParam &param, ScenePtr scene, Vec3f p
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
 
-        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ns, wi);
+        float cosWi = type.isDelta() ? 1.0f : Math::absDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf) || cosWi < 1e-6f)
             break;
         throughput *= bsdf * cosWi / bsdfPdf;
@@ -225,9 +225,10 @@ void TriPathIntegrator::traceLightPath(SamplerPtr sampler)
                 Vec3f pCam = pos + wi * dist;
                 if (mScene->visible(pos, pCam))
                 {
+                    float cosWi = Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
                     Spectrum contrib = Ii * surf.material->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
-                        throughput * Math::absDot(surf.ns, wi) / pdf;
-                    float coefToSurf = remap(mScene->mCamera->pdfIe({ pCam, -wi }).pdfDir * Math::absDot(surf.ns, wi));
+                        throughput * cosWi / pdf;
+                    float coefToSurf = remap(mScene->mCamera->pdfIe({ pCam, -wi }).pdfDir * Math::satDot(surf.ns, wi));
                     float coefToPrev = remap(surf.material->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Radiance) *
                         Math::absDot(prevSurf.ns, wo));
                     float dist2 = remap(dist * dist);
@@ -260,7 +261,6 @@ void TriPathIntegrator::traceLightPath(SamplerPtr sampler)
         if (bounce >= mParam.maxLightDepth && !mParam.rrLightPath)
             break;
 
-        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
 
@@ -273,6 +273,7 @@ void TriPathIntegrator::traceLightPath(SamplerPtr sampler)
         prevPos = pos;
         prevSurf = surf;
 
+        float cosWi = type.isDelta() ? 1.0f : glm::abs(glm::dot(surf.ng, wi) * glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
         throughput *= bsdf * cosWi / bsdfPdf;
         ray = Ray(pos, wi).offset();
         wo = -wi;

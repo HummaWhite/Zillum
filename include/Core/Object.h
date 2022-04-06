@@ -16,7 +16,8 @@ public:
 
 	SurfaceInfo surfaceInfo(const Vec3f &x)
 	{
-		return SurfaceInfo(shape->surfaceUV(x), shape->normalShading(x), shape->normalGeom(x), material);
+		Vec2f uv = shape->surfaceUV(x);
+		return SurfaceInfo({ uv.x, 1.0f - uv.y }, shape->normalShading(x), shape->normalGeom(x), material);
 	}
 
 	std::optional<float> closestHit(const Ray &r)

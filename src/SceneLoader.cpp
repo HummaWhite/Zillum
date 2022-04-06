@@ -306,7 +306,7 @@ ScenePtr originalBox()
     return scene;
 }
 
-ScenePtr fireplace(bool thin)
+ScenePtr fireplace(bool thin, bool lamp)
 {
     #define DIR "res/model/fireplace/"
     #define TEX DIR "textures/"
@@ -315,7 +315,7 @@ ScenePtr fireplace(bool thin)
 
     scene->addObjectMesh(DIR "bottle_cap.obj", transform, std::make_shared<Lambertian>(std::make_shared<SingleColorSpec>(Vec3f(0.46f, 0.0f, 0.0f))));
     scene->addObjectMesh(DIR "floor.obj", transform, std::make_shared<Lambertian>(TextureLoader::fromU8x3(TEX "wood.png", true)));
-    scene->addObjectMesh(DIR "frame.obj", transform, std::make_shared<Lambertian>(std::make_shared<SingleColorSpec>(Vec3f(1.0f))));
+    scene->addObjectMesh(DIR "frame.obj", transform, std::make_shared<Lambertian>(std::make_shared<SingleColorSpec>(Vec3f(0.259f, 0.251f, 0.141f))));
     scene->addObjectMesh(DIR "glass.obj", transform, std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
     scene->addObjectMesh(DIR "leaves.obj", transform, std::make_shared<Lambertian>(std::make_shared<SingleColorSpec>(Vec3f(1.0f))));
     scene->addObjectMesh(DIR "metal.obj", transform, std::make_shared<MetalWorkflow>(Spectrum(1.0f, 0.7f, 0.4f), 1.0f, 0.25f));
@@ -335,8 +335,9 @@ ScenePtr fireplace(bool thin)
     scene->addObjectMesh(DIR "window_base.obj", transform, std::make_shared<Lambertian>(std::make_shared<SingleColorSpec>(Vec3f(0.9f))));
     scene->addObjectMesh(DIR "window_frame.obj", transform, std::make_shared<Lambertian>(std::make_shared<SingleColorSpec>(Vec3f(1.0f))));
     scene->addObjectMesh(DIR "wood.obj", transform, std::make_shared<Lambertian>(TextureLoader::fromU8x3(TEX "wood5.png", true)));
-    scene->addLightMesh(DIR "light.obj", transform, Spectrum(10.0f));
-    scene->addLightMesh(DIR "light2.obj", transform, Spectrum(40.0f));
+    scene->addLightMesh(DIR "light.obj", transform, Spectrum(lamp ? 10.0f : 40.0f));
+    if (lamp)
+        scene->addLightMesh(DIR "light2.obj", transform, Spectrum(40.0f));
     #undef DIR
     #undef TEX
 
@@ -381,7 +382,7 @@ ScenePtr setupScene(int windowWidth, int windowHeight)
     //         std::make_shared<Lambertian>(Spectrum(1.0f, 0.5f, 0.2f))
     //         //std::make_shared<DisneyDiffuse>(Spectrum(1.0f, 0.5f, 0.2f), 1.0f, 1.0f)
     //     ));
-    auto scene = boxScene();
+    auto scene = fireplace(false, false);
     scene->mCamera->initFilm(windowWidth, windowHeight);
     return scene;
 }

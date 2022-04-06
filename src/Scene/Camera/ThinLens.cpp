@@ -3,7 +3,7 @@
 Vec2f ThinLensCamera::rasterPos(Ray ray)
 {
     float cosTheta = glm::dot(ray.dir, mFront);
-    float dFocus = (mIsDelta ? 1.0f : mFocalDist) / cosTheta;
+    float dFocus = mFocalDist / cosTheta;
     Vec3f pFocus = mTBNInv * (ray.get(dFocus) - mPos);
 
     Vec2f filmSize(mFilm.width, mFilm.height);

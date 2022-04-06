@@ -207,8 +207,6 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
         if (!sample)
             break;
         auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
-
-        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
         
@@ -225,6 +223,7 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
             path[bounce - 2].pdfLitward = threePointPdf(path[bounce], path[bounce - 1], path[bounce - 2],
                 TransportMode::Radiance);
 
+        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
         throughput *= bsdf * cosWi / bsdfPdf;
         pdfSolidAngle = bsdfPdf;
         ray = Ray(pos, wi).offset();

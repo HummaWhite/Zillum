@@ -98,7 +98,7 @@ void Application::init(const std::string &name, HINSTANCE instance, const char *
         integ->mParam.rrLightPath = true;
         integ->mParam.maxLightDepth = maxDepth;
         integ->mParam.maxConnectDepth = maxDepth;
-        integ->mParam.stochasticConnect = true;
+        integ->mParam.stochasticConnect = false;
         integ->mLightSampler = std::make_shared<SimpleSobolSampler>(0x12345678, true);
         mIntegrator = integ;
         scramble = false;

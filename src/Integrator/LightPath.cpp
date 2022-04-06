@@ -42,6 +42,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
     Ray ray;
     Vec3f wo;
     Spectrum throughput;
+    float correction = 1.0f;
 
     if (lightSource.index() == 0)
     {
@@ -109,8 +110,9 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
                 Vec3f pCam = pos + wi * dist;
                 if (mScene->visible(pos, pCam))
                 {
+                    float cosWi = Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
                     Spectrum res = Ii * surf.material->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
-                        throughput * Math::satDot(surf.ns, wi) / pdf;
+                        throughput * cosWi / pdf;
                     if (!Math::hasNan(res) && !Math::isNan(pdf) && pdf > 1e-8f && !Math::isBlack(res))
                         addToFilmLocked(uvRaster, res);
                 }
@@ -133,9 +135,10 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
         if (bounce >= mParam.maxDepth && !mParam.russianRoulette)
             break;
 
-        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ns, wi);
+        //float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf))
             break;
+        float cosWi = type.isDelta() ? 1.0f : glm::abs(glm::dot(wi, surf.ng) * glm::dot(wo, surf.ns) / glm::dot(wo, surf.ng));
         throughput *= bsdf * cosWi / bsdfPdf;
         ray = Ray(pos, wi).offset();
         wo = -wi;
