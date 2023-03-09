@@ -1,17 +1,16 @@
-#include "../../include/Core/Integrator.h"
+#include "Core/Integrator.h"
 
 #include <array>
 
-void Integrator::setModified()
-{
+void Integrator::setModified() {
     mModified = true;
     mFinished = false;
 }
 
-void Integrator::addToFilmLocked(const Vec2f &uv, const Spectrum &val)
-{
-    if (!Camera::inFilmBound(uv))
+void Integrator::addToFilmLocked(const Vec2f &uv, const Spectrum &val){
+    if (!Camera::inFilmBound(uv)) {
         return;
+    }
     auto &film = mScene->mCamera->film();
     auto &filmLocker = mScene->mCamera->filmLocker()(uv.x, uv.y);
     filmLocker.lock();
@@ -19,10 +18,10 @@ void Integrator::addToFilmLocked(const Vec2f &uv, const Spectrum &val)
     filmLocker.unlock();
 }
 
-void Integrator::addToDebugBuffer(int index, const Vec2f &uv, const Spectrum &val)
-{
-    if (!Camera::inFilmBound(uv))
+void Integrator::addToDebugBuffer(int index, const Vec2f &uv, const Spectrum &val) {
+    if (!Camera::inFilmBound(uv)) {
         return;
+    }
     auto &film = mDebugBuffers[index];
     auto &filmLocker = mDebugBufLockers[index](uv.x, uv.y);
     filmLocker.lock();
@@ -30,8 +29,7 @@ void Integrator::addToDebugBuffer(int index, const Vec2f &uv, const Spectrum &va
     filmLocker.unlock();
 }
 
-void Integrator::addToDebugBuffer(int index, const Vec2i &pixel, const Spectrum &val)
-{
+void Integrator::addToDebugBuffer(int index, const Vec2i &pixel, const Spectrum &val) {
     auto &film = mDebugBuffers[index];
     auto &filmLocker = mDebugBufLockers[index](pixel.x, pixel.y);
     filmLocker.lock();
@@ -40,43 +38,42 @@ void Integrator::addToDebugBuffer(int index, const Vec2i &pixel, const Spectrum 
 }
 
 PixelIndependentIntegrator::PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type) :
-    mMaxSpp(maxSpp), mLimitSpp(maxSpp != 0), Integrator(scene, type)
-{
+    mMaxSpp(maxSpp), mLimitSpp(maxSpp != 0), Integrator(scene, type) {
     auto film = scene->mCamera->film();
     mWidth = film.width;
     mHeight = film.height;
 }
 
-void PixelIndependentIntegrator::renderOnePass()
-{
-    if (mModified)
-    {
+void PixelIndependentIntegrator::renderOnePass() {
+    if (mModified) {
         mScene->mCamera->film().fill(Vec3f(0.0f));
         mCurspp = 0;
         mModified = false;
     }
-    if (mLimitSpp && mCurspp >= mMaxSpp)
-    {
+    if (mLimitSpp && mCurspp >= mMaxSpp) {
         mFinished = true;
         return;
     }
 
-    std::thread *threads = new std::thread[MaxThreads];
-    for (int i = 0; i < MaxThreads; i++)
-    {
+    //std::thread *threads = new std::thread[MaxThreads];
+    
+    std::vector<std::thread> threads;
+    for (int i = 0; i < MaxThreads; i++) {
         int start = (mWidth / MaxThreads) * i;
         int end = std::min(mWidth, (mWidth / MaxThreads) * (i + 1));
-        if (i == MaxThreads - 1)
+        if (i == MaxThreads - 1) {
             end = mWidth;
-
+        }
         auto threadSampler = (i == 0) ? mSampler : mSampler->copy();
-        threads[i] = std::thread(doTracing, this, start, end, threadSampler);
+        threads.push_back(std::thread(&PixelIndependentIntegrator::doTracing, this, start, end, threadSampler));
     }
     mSampler->nextSample();
 
-    for (int i = 0; i < MaxThreads; i++)
+    for (int i = 0; i < MaxThreads; i++) {
         threads[i].join();
-    delete[] threads;
+    }
+    //doTracing(0, mWidth, mSampler);
+    //mSampler->nextSample();
 
     mCurspp++;
     std::cout << "\r" << std::setw(4) << mCurspp << "/" << mMaxSpp << " spp  ";
@@ -86,14 +83,11 @@ void PixelIndependentIntegrator::renderOnePass()
     scaleResult();
 }
 
-void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sampler)
-{
+void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sampler) {
     float invW = 1.0f / mWidth;
     float invH = 1.0f / mHeight;
-    for (int x = start; x < end; x++)
-    {
-        for (int y = 0; y < mHeight; y++)
-        {
+    for (int x = start; x < end; x++) {
+        for (int y = 0; y < mHeight; y++) {
             mPixelPos = { x, y };
             sampler->setPixel(x, y);
             float sx = 2.0f * (x + 0.5f) * invW - 1.0f;
@@ -102,8 +96,7 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
             Ray ray = mScene->mCamera->generateRay({ sx, sy }, sampler);
             Spectrum result = tracePixel(ray, sampler);
 
-            if (Math::hasNan(result))
-            {
+            if (Math::hasNan(result)) {
                 Error::bracketLine<0>("nan discovered");
                 result = Spectrum(0.0f);
             }
@@ -112,9 +105,9 @@ void PixelIndependentIntegrator::doTracing(int start, int end, SamplerPtr sample
             resultBuffer(x, y) += result;
         }
     }
+    std::cout << "A";
 }
 
-void PixelIndependentIntegrator::scaleResult()
-{
+void PixelIndependentIntegrator::scaleResult() {
     mResultScale = 1.0f / mCurspp;
 }

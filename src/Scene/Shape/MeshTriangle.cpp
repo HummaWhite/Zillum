@@ -1,7 +1,6 @@
-#include "../../../include/Core/Shape.h"
+#include "Core/Shape.h"
 
-Vec3f MeshTriangle::normalShading(const Vec3f &p)
-{
+Vec3f MeshTriangle::normalShading(const Vec3f &p) {
     auto [va, vb, vc] = triangle.vertices();
     Vec3f oriP = triangle.getTransform()->getInversed(p);
 
@@ -13,8 +12,7 @@ Vec3f MeshTriangle::normalShading(const Vec3f &p)
     return glm::normalize(triangle.getTransform()->getInversedNormal(na * la + nb * lb + nc * lc));
 }
 
-Vec2f MeshTriangle::surfaceUV(const Vec3f &p)
-{
+Vec2f MeshTriangle::surfaceUV(const Vec3f &p) {
     auto [va, vb, vc] = triangle.vertices();
     Vec3f oriP = triangle.getTransform()->getInversed(p);
 
@@ -26,8 +24,7 @@ Vec2f MeshTriangle::surfaceUV(const Vec3f &p)
     return ta * la + tb * lb + tc * lc;
 }
 
-void MeshTriangle::setTransform(TransformPtr trans)
-{
+void MeshTriangle::setTransform(TransformPtr trans) {
     mTransform = trans;
     triangle.setTransform(trans);
 }

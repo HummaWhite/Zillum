@@ -1,9 +1,10 @@
 /version/
-/include/stb_image/
 /.vscode
 /res
 /screenshot
-/ext/
+/out
+/build
+.vs/
 *.exe
 *.o
 *.ps1

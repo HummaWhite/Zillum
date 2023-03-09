@@ -1,23 +1,32 @@
 #include "../../include/Core/Integrator.h"
 
+static float BSDFMollifyRadius = 1.0f;
+int sppLPT = 0;
+double accumTimeLPT = 0.0;
+
 void LightPathIntegrator::renderOnePass()
 {
+    auto &film = mScene->mCamera->film();
+    BSDFMollifyRadius = glm::pow(mResultScale, 0.1f);
+    Timer timer;
     std::thread *threads = new std::thread[MaxThreads];
     for (int i = 0; i < MaxThreads; i++)
     {
         auto threadSampler = mSampler->copy();
         threadSampler->nextSamples(mPathsOnePass * i);
-        threads[i] = std::thread(trace, this, threadSampler);
+        threads[i] = std::thread(&LightPathIntegrator::trace, this, threadSampler);
     }
     for (int i = 0; i < MaxThreads; i++)
         threads[i].join();
     delete[] threads;
 
+    accumTimeLPT += timer.get() / (mPathsOnePass * MaxThreads) * 1e9;
+
     mSampler->nextSamples(mPathsOnePass * MaxThreads);
     mPathCount += mPathsOnePass * MaxThreads;
-    auto &film = mScene->mCamera->film();
     mResultScale = static_cast<float>(film.width) * film.height / mPathCount;
     std::cout << "\r[LightPathIntegrator paths: " << mPathCount << ", spp: " << std::fixed << std::setprecision(3) << 1.0f / mResultScale << "]";
+    std::cout << accumTimeLPT / (++sppLPT);
 }
 
 void LightPathIntegrator::reset()
@@ -113,6 +122,9 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
                     float cosWi = Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
                     Spectrum res = Ii * surf.material->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
                         throughput * cosWi / pdf;
+                    // Vec3f bsdfCos = dynamic_cast<Mirror*>(surf.material.get()) ? Spectrum(Math::mollify(surf.ns, wo, wi, dist, BSDFMollifyRadius)) :
+                    //     surf.material->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) * cosWi;
+                    // Spectrum res = Ii * bsdfCos * throughput / pdf;
                     if (!Math::hasNan(res) && !Math::isNan(pdf) && pdf > 1e-8f && !Math::isBlack(res))
                         addToFilmLocked(uvRaster, res);
                 }

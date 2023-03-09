@@ -5,19 +5,17 @@
 #include <memory>
 #include <array>
 
-#include "../../ext/glmIncluder.h"
+#include "glmIncluder.h"
 #include "Math.h"
 
-enum class SamplerType
-{
+enum class SamplerType {
 	Independent, SimpleSobol
 };
 
 class Sampler;
 using SamplerPtr = std::shared_ptr<Sampler>;
 
-class Sampler
-{
+class Sampler {
 public:
 	Sampler(SamplerType type) : type(type) {}
 
@@ -27,8 +25,7 @@ public:
     virtual Vec4f get4() { return { get3(), get1() }; }
 
 	template<int N>
-	std::array<float, N> get()
-	{
+	std::array<float, N> get() {
 		auto ret = std::array<float, N>();
 		for (int i = 0; i < N; i++)
             ret[i] = get1();
@@ -47,9 +44,7 @@ private:
 	SamplerType type;
 };
 
-class IndependentSampler :
-    public Sampler
-{
+class IndependentSampler : public Sampler {
 public:
     IndependentSampler();
 
@@ -67,9 +62,7 @@ private:
 
 class SimpleHaltonSampler;
 
-class SimpleSobolSampler :
-    public Sampler
-{
+class SimpleSobolSampler : public Sampler {
 public:
     SimpleSobolSampler(uint32_t seed, bool randomScrambling) :
 		seed(seed), scramble(seed), randomScrambling(randomScrambling), Sampler(SamplerType::SimpleSobol) {}

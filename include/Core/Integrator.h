@@ -3,9 +3,10 @@
 #include <thread>
 #include <mutex>
 
-#include "../Utils/ObjReader.h"
-#include "../Utils/Error.h"
-#include "../Utils/Buffer2D.h"
+#include "Utils/ObjReader.h"
+#include "Utils/Error.h"
+#include "Utils/Buffer2D.h"
+#include "Utils/Timer.h"
 #include "Camera.h"
 #include "Texture.h"
 #include "Object.h"
@@ -20,19 +21,20 @@
 const int MaxThreads = std::thread::hardware_concurrency();
 const int TracingDepthLimit = 64;
 
-enum class IntegratorType
-{
+enum class IntegratorType {
 	AO,
 	LightPath,
 	Path,
-	AdjointPath,
+	TPT,
 	BDPT,
-	MLT,
-	PM
+	PSSMLT,
+	PM,
+	PPM,
+	SPPM,
+	VCM
 };
 
-class Integrator
-{
+class Integrator {
 public:
 	Integrator(ScenePtr scene, IntegratorType type) : mScene(scene), mType(type) {}
 	virtual void renderOnePass() = 0;
@@ -63,8 +65,7 @@ protected:
 
 using IntegratorPtr = std::shared_ptr<Integrator>;
 
-class PixelIndependentIntegrator : public Integrator
-{
+class PixelIndependentIntegrator : public Integrator {
 public:
 	PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type);
 	void renderOnePass();
@@ -86,8 +87,7 @@ protected:
 	Vec2i mPixelPos;
 };
 
-struct PathIntegParam
-{
+struct PathIntegParam {
 	bool russianRoulette = true;
 	int rrStartDepth = 3;
 	int maxDepth = 5;
@@ -96,8 +96,7 @@ struct PathIntegParam
 	float spp = 0;
 };
 
-class PathIntegrator : public PixelIndependentIntegrator
-{
+class PathIntegrator : public PixelIndependentIntegrator {
 public:
 	PathIntegrator(ScenePtr scene, int maxSpp) :
 		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::Path) {}
@@ -107,8 +106,7 @@ public:
 	PathIntegParam mParam;
 };
 
-class PathIntegrator2 : public Integrator
-{
+class PathIntegrator2 : public Integrator {
 public:
 	PathIntegrator2(ScenePtr scene, int maxSpp, int pathsOnePass) :
 		mMaxSpp(maxSpp), mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::Path) {}
@@ -126,14 +124,12 @@ private:
 	int mPathsOnePass;
 };
 
-struct LightPathIntegParam
-{
+struct LightPathIntegParam {
 	bool russianRoulette = true;
 	int maxDepth = 5;
 };
 
-class LightPathIntegrator : public Integrator
-{
+class LightPathIntegrator : public Integrator {
 public:
 	LightPathIntegrator(ScenePtr scene, int pathsOnePass) :
 		mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::LightPath) {}
@@ -153,8 +149,7 @@ private:
 	int mRRStartDepth = 3;
 };
 
-struct BDPTIntegParam
-{
+struct BDPTIntegParam {
 	bool rrLightPath = true;
 	bool rrCameraPath = true;
 	int rrLightStartDepth = 3;
@@ -171,8 +166,7 @@ struct BDPTIntegParam
 
 struct Path;
 
-class BDPTIntegrator : public PixelIndependentIntegrator
-{
+class BDPTIntegrator : public PixelIndependentIntegrator {
 public:
 	BDPTIntegrator(ScenePtr scene, int maxSpp) :
 		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::BDPT) {}
@@ -189,8 +183,7 @@ public:
 	SamplerPtr mLightSampler;
 };
 
-class BDPTIntegrator2 : public Integrator
-{
+class BDPTIntegrator2 : public Integrator {
 public:
 	BDPTIntegrator2(ScenePtr scene, int maxSpp, int pathsOnePass) :
 		mMaxSpp(maxSpp), mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::BDPT) {}
@@ -210,8 +203,7 @@ private:
 	int mPathsOnePass;
 };
 
-struct TriPathIntegParam
-{
+struct TriplePathIntegParam {
 	bool rrLightPath = true;
 	bool rrCameraPath = true;
 	int rrLightStartDepth = 3;
@@ -221,11 +213,10 @@ struct TriPathIntegParam
 	float spp = 0;
 };
 
-class TriPathIntegrator: public Integrator
-{
+class TriplePathIntegrator: public Integrator {
 public:
-	TriPathIntegrator(ScenePtr scene, int maxSpp, int pathsOnePass) :
-		mMaxSpp(maxSpp), mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::Path) {}
+	TriplePathIntegrator(ScenePtr scene, int maxSpp, int pathsOnePass) :
+		mMaxSpp(maxSpp), mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::TPT) {}
 	void renderOnePass();
 	void reset();
 
@@ -234,22 +225,20 @@ private:
 	void traceLightPath(SamplerPtr sampler);
 
 public:
-	TriPathIntegParam mParam;
+	TriplePathIntegParam mParam;
 
 private:
 	int mMaxSpp;
 	int mPathsOnePass;
 };
 
-struct AOIntegParam
-{
+struct AOIntegParam {
 	float radius = 0.5f;
 	int samplesOneTime = 1;
 	float spp = 0;
 };
 
-class AOIntegrator : public PixelIndependentIntegrator
-{
+class AOIntegrator : public PixelIndependentIntegrator {
 public:
 	AOIntegrator(ScenePtr scene, int maxSpp) :
 		PixelIndependentIntegrator(scene, maxSpp, IntegratorType::AO) {}
@@ -259,8 +248,7 @@ public:
 	AOIntegParam mParam;
 };
 
-class AOIntegrator2 : public Integrator
-{
+class AOIntegrator2 : public Integrator {
 public:
 	AOIntegrator2(ScenePtr scene, int maxSpp, int pathsOnePass) :
 		mMaxSpp(maxSpp), mPathsOnePass(pathsOnePass), Integrator(scene, IntegratorType::AO) {}

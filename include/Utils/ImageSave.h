@@ -3,12 +3,11 @@
 #include <functional>
 
 #include "Buffer2D.h"
-#include "../Core/Color.h"
-#include "../../ext/stbIncluder.h"
+#include "Core/Color.h"
+#include "stbIncluder.h"
 
 template<typename T>
-void saveImage(const std::string &name, Buffer2D<T> &buffer, std::function<RGB24(T&)> transformFunc)
-{
+void saveImage(const std::string &name, Buffer2D<T> &buffer, std::function<RGB24(T&)> transformFunc) {
     int w = buffer.width;
     int h = buffer.height;
     int size = w * h;
@@ -20,8 +19,7 @@ void saveImage(const std::string &name, Buffer2D<T> &buffer, std::function<RGB24
 }
 
 template<typename T>
-void saveImage(const std::string &name, T *buffer, int w, int h, std::function<RGB24(T&)> transformFunc)
-{
+void saveImage(const std::string &name, T *buffer, int w, int h, std::function<RGB24(T&)> transformFunc) {
     int size = w * h;
     RGB24 *data = new RGB24[size];
     for (int i = 0; i < size; i++)

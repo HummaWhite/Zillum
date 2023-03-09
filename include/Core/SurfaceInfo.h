@@ -3,27 +3,25 @@
 #include <iostream>
 #include <memory>
 
-#include "../../ext/glmIncluder.h"
+#include "glmIncluder.h"
 
 class Material;
 using MaterialPtr = std::shared_ptr<Material>;
 
-struct SurfaceInfo
-{
+struct SurfaceInfo {
 	SurfaceInfo() = default;
 
 	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, MaterialPtr mat) :
 		uv(uv), ns(ns), material(mat) {}
 
 	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, const Vec3f &ng, MaterialPtr mat) :
-		uv(uv), ns(ns), ng(ng), material(mat)
-	{
-		if (glm::dot(ng, ns) < 0)
+		uv(uv), ns(ns), ng(ng), material(mat) {
+		if (glm::dot(ng, ns) < 0) {
 			this->ng = -ng;
+		}
 	}
 
-	void flipNormal()
-	{
+	void flipNormal() {
 		ns = -ns;
 		ng = -ng;
 	}
@@ -34,8 +32,7 @@ struct SurfaceInfo
 	MaterialPtr material;
 };
 
-struct SurfaceIntr
-{
+struct SurfaceIntr {
 	SurfaceIntr(const Vec3f &n, const Vec3f &wo, const Vec2f &uv) :
 		n(n), wo(wo), uv(uv) {}
 

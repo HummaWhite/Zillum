@@ -3,12 +3,11 @@
 #include <iostream>
 #include <cmath>
 
-#include "../../ext/glmIncluder.h"
+#include "glmIncluder.h"
 
 const float RayOffset = 1e-4f;
 
-struct Ray
-{
+struct Ray {
 	Ray() = default;
 
 	Ray(const Vec3f &_ori, const Vec3f &_dir):

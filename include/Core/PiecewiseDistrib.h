@@ -5,8 +5,7 @@
 #include <array>
 #include <queue>
 
-class Piecewise1D
-{
+class Piecewise1D {
 public:
     Piecewise1D() = default;
     Piecewise1D(const std::vector<float> &distrib);
@@ -23,8 +22,7 @@ private:
     float sumDistrib;
 };
 
-class PiecewiseIndependent2D
-{
+class PiecewiseIndependent2D {
 public:
     PiecewiseIndependent2D() = default;
     PiecewiseIndependent2D(float *pdf, int width, int height);

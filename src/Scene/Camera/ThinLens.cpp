@@ -1,7 +1,6 @@
-#include "../../../include/Core/Camera.h"
+#include "Core/Camera.h"
 
-Vec2f ThinLensCamera::rasterPos(Ray ray)
-{
+Vec2f ThinLensCamera::rasterPos(Ray ray) {
     float cosTheta = glm::dot(ray.dir, mFront);
     float dFocus = mFocalDist / cosTheta;
     Vec3f pFocus = mTBNInv * (ray.get(dFocus) - mPos);
@@ -16,13 +15,11 @@ Vec2f ThinLensCamera::rasterPos(Ray ray)
     return (ndc + 1.0f) * 0.5f;
 }
 
-Ray ThinLensCamera::generateRay(SamplerPtr sampler)
-{
+Ray ThinLensCamera::generateRay(SamplerPtr sampler) {
     return generateRay(sampler->get2(), sampler);
 }
 
-Ray ThinLensCamera::generateRay(Vec2f uv, SamplerPtr sampler)
-{
+Ray ThinLensCamera::generateRay(Vec2f uv, SamplerPtr sampler) {
     Vec2f filmSize(mFilm.width, mFilm.height);
     auto texelSize = Vec2f(1.0f) / filmSize;
     auto biased = uv + texelSize * sampler->get2();
@@ -41,28 +38,29 @@ Ray ThinLensCamera::generateRay(Vec2f uv, SamplerPtr sampler)
     return { ori, dir };
 }
 
-float ThinLensCamera::pdfIi(Vec3f ref, Vec3f y)
-{
-    if (mIsDelta)
+float ThinLensCamera::pdfIi(Vec3f ref, Vec3f y) {
+    if (mIsDelta) {
         return 0.0f;
+    }
     auto Wi = glm::normalize(y - ref);
 
     float cosTheta = Math::satDot(mFront, -Wi);
-    if (cosTheta < 1e-8f)
+    if (cosTheta < 1e-8f) {
         return 0.0f;
+    }
     return Math::distSquare(ref, y) / (mLensArea * cosTheta);
 }
 
-std::optional<CameraIiSample> ThinLensCamera::sampleIi(Vec3f ref, Vec2f u)
-{
+std::optional<CameraIiSample> ThinLensCamera::sampleIi(Vec3f ref, Vec2f u) {
     Vec3f pLens(Transform::toConcentricDisk(u) * mLensRadius, 0.0f);
     Vec3f y = mPos + mTBNMat * pLens;
     float dist = glm::distance(ref, y);
 
     Vec3f wi = glm::normalize(y - ref);
     float cosTheta = Math::satDot(mFront, -wi);
-    if (cosTheta < 1e-6f)
+    if (cosTheta < 1e-6f) {
         return std::nullopt;
+    }
 
     Ray ray(y, -wi);
     Vec2f uv = rasterPos(ray);
@@ -71,31 +69,33 @@ std::optional<CameraIiSample> ThinLensCamera::sampleIi(Vec3f ref, Vec2f u)
     return CameraIiSample{ wi, Ie(ray), dist, uv, pdf };
 }
 
-CameraPdf ThinLensCamera::pdfIe(Ray ray)
-{
+CameraPdf ThinLensCamera::pdfIe(Ray ray) {
     float cosTheta = glm::dot(ray.dir, mFront);
-    if (cosTheta < 1e-6f)
+    if (cosTheta < 1e-6f) {
         return { 0.0f, 0.0f };
+    }
 
     Vec2f pRaster = rasterPos(ray);
 
-    if (!inFilmBound(pRaster))
+    if (!inFilmBound(pRaster)) {
         return { 0.0f, 0.0f };
+    }
 
     float pdfPos = mIsDelta ? 1.0f : 1.0f / mLensArea;
     float pdfDir = 1.0f / (cosTheta * cosTheta * cosTheta);
     return { pdfPos, pdfDir };
 }
 
-Spectrum ThinLensCamera::Ie(Ray ray)
-{
+Spectrum ThinLensCamera::Ie(Ray ray) {
     float cosTheta = glm::dot(ray.dir, mFront);
-    if (cosTheta < 1e-6f)
+    if (cosTheta < 1e-6f) {
         return Spectrum(0.0f);
+    }
         
     Vec2f pRaster = rasterPos(ray);
-    if (!inFilmBound(pRaster))
+    if (!inFilmBound(pRaster)) {
         return Spectrum(0.0f);
+    }
 
     float tanFOVInv = 1.0f / glm::tan(glm::radians(mFOV * 0.5f));
     float cos2Theta = cosTheta * cosTheta;

@@ -7,20 +7,17 @@
 #include <vector>
 #include <cstdio>
 
-#include "../../ext/glmIncluder.h"
-#include "../../ext/tiny_obj_loader.h"
+#include "glmIncluder.h"
+#include "tiny_obj_loader.h"
 
-namespace ObjReader
-{
-	struct VertexInfo
-	{
+namespace ObjReader {
+	struct VertexInfo {
 		std::vector<Vec3f> vertices;
 		std::vector<Vec2f> texcoords;
 		std::vector<Vec3f> normals;
 	};
 
-	static VertexInfo readFile(const char* filePath)
-	{
+	static VertexInfo readFile(const char* filePath) {
 		VertexInfo data;
 		std::cout << "Loading Obj: " << filePath << std::endl;
 
@@ -32,14 +29,13 @@ namespace ObjReader
 
 		bool hasTexcoord = attrib.texcoords.size() != 0;
 
-		for (const auto &shape : shapes)
-		{
-			for (auto idx : shape.mesh.indices)
-			{
+		for (const auto &shape : shapes) {
+			for (auto idx : shape.mesh.indices) {
 				data.vertices.push_back(*reinterpret_cast<Vec3f*>(attrib.vertices.data() + idx.vertex_index * 3));
 				data.normals.push_back(*reinterpret_cast<Vec3f*>(attrib.normals.data() + idx.normal_index * 3));
-				if (!hasTexcoord)
+				if (!hasTexcoord) {
 					continue;
+				}
 				data.texcoords.push_back(*reinterpret_cast<Vec2f*>(attrib.texcoords.data() + idx.texcoord_index * 2));
 			}
 		}

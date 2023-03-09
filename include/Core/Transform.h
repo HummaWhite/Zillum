@@ -5,12 +5,11 @@
 #include "Math.h"
 #include "AABB.h"
 
-class Transform
-{
+class Transform {
 public:
 	Transform(): matrix(1.0f), matInv(1.0f), matInvT(1.0f) {}
-	Transform(const Mat4f &transform):
-		matrix(transform), matInv(glm::inverse(transform)), matInvT(glm::transpose(matInv)) {}
+	Transform(const Mat4f &transform) : matrix(transform), matInv(glm::inverse(transform)),
+		matInvT(glm::transpose(matInv)) {}
 
 	void set(const Mat4f &transform) { *this = Transform(transform); }
 	Vec3f get(const Vec3f &v) { return Vec3f(matrix * glm::vec4(v, 1.0f)); }
@@ -32,7 +31,6 @@ public:
 
 using TransformPtr = std::shared_ptr<Transform>;
 
-namespace Math
-{
+namespace Math {
 	std::pair<Vec3f, float> sampleHemisphereCosine(const Vec3f &N, const Vec2f &u);
 }

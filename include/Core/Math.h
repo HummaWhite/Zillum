@@ -7,9 +7,9 @@
 #include <tuple>
 #include <cmath>
 
-#include "../../ext/glmIncluder.h"
-#include "../Utils/NamespaceDecl.h"
-#include "../Utils/RandomGenerator.h"
+#include "glmIncluder.h"
+#include "Utils/NamespaceDecl.h"
+#include "Utils/RandomGenerator.h"
 #include "Spectrum.h"
 
 NAMESPACE_BEGIN(Math)
@@ -20,45 +20,38 @@ const float PiInv = 1.0f / glm::pi<float>();
 const float OneMinusEpsilon = 0x1.fffffep-1;
 
 template<typename T>
-T pow5(const T &v)
-{
+T pow5(const T &v) {
     T v2 = v * v;
     return v2 * v2 * v;
 }
 
 template <typename T>
-T lerp(T x, T y, float a)
-{
+T lerp(T x, T y, float a) {
 	return x + (y - x) * a;
 }
 
 template <typename T>
-void print(T val, int precision, std::string info = "\n")
-{
+void print(T val, int precision, std::string info = "\n") {
 	std::cout << std::setprecision(precision) << val << info;
 }
 
 template <typename T>
-float vecElement(const T &v, int dim)
-{
+float vecElement(const T &v, int dim) {
 	return *((float *)(glm::value_ptr(v)) + dim);
 }
 
 template <typename T>
-T square(T v)
-{
+T square(T v) {
 	return v * v;
 }
 
 template <typename T>
-float lengthSquare(const T &v)
-{
+float lengthSquare(const T &v) {
 	return glm::dot(v, v);
 }
 
 template <typename T>
-float distSquare(const T &x, const T &y)
-{
+float distSquare(const T &x, const T &y) {
 	return lengthSquare(x - y);
 }
 
@@ -96,5 +89,7 @@ float luminance(const Spectrum &c);
 bool isBlack(const Spectrum &c);
 
 float diskArea(float radius);
+
+float mollify(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, float dist, float radius);
 
 NAMESPACE_END(Math)

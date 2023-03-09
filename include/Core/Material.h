@@ -5,7 +5,7 @@
 #include <random>
 #include <cmath>
 
-#include "../../ext/glmIncluder.h"
+#include "glmIncluder.h"
 #include "BXDF.h"
 #include "Microfacet.h"
 #include "SurfaceInfo.h"
@@ -15,13 +15,11 @@
 #include "PiecewiseDistrib.h"
 #include "Texture.h"
 
-enum class TransportMode
-{
+enum class TransportMode {
 	Radiance, Importance
 };
 
-struct BSDFSample
-{
+struct BSDFSample {
 	BSDFSample(const Vec3f &dir, float pdf, BXDF type, const Spectrum &bsdf, float eta = 1.0f):
 		dir(dir), pdf(pdf), type(type), bsdf(bsdf), eta(eta) {}
 
@@ -32,8 +30,7 @@ struct BSDFSample
 	Spectrum bsdf;
 };
 
-class Material
-{
+class Material {
 public:
 	Material(int bxdfType): mMatBxdf(bxdfType) {}
 
@@ -49,9 +46,7 @@ protected:
 
 using MaterialPtr = std::shared_ptr<Material>;
 
-class Lambertian:
-	public Material
-{
+class Lambertian: public Material {
 public:
 	Lambertian(const ColorMap3fPtr &albedo) :
 		albedo(albedo), Material(BXDF::Diffuse) {}
@@ -64,12 +59,23 @@ private:
 	ColorMap3fPtr albedo;
 };
 
-class MetalWorkflow:
-	public Material
-{
+class Mirror: public Material {
 public:
-	MetalWorkflow(const Spectrum &albedo, float metallic, float roughness) :
-		albedo(albedo), metallic(metallic), roughness(roughness),
+	Mirror(const ColorMap3fPtr &baseColor) :
+		baseColor(baseColor), Material(BXDF::SpecRefl) {}
+
+	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
+	float pdf(const SurfaceIntr &intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode);
+
+private:
+	ColorMap3fPtr baseColor;
+};
+
+class MetalWorkflow: public Material {
+public:
+	MetalWorkflow(const ColorMap3fPtr &baseColor, float metallic, float roughness) :
+		baseColor(baseColor), metallic(metallic), roughness(roughness),
 		distrib(roughness, true), Material(BXDF::Diffuse | BXDF::GlosRefl) {}
 
 	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
@@ -80,15 +86,13 @@ private:
 	bool approxDelta() const { return roughness <= 0.014f; }
 
 private:
-	Spectrum albedo;
+	ColorMap3fPtr baseColor;
 	float metallic;
 	float roughness;
 	GGXDistrib distrib;
 };
 
-class Clearcoat:
-	public Material
-{
+class Clearcoat: public Material {
 public:
 	Clearcoat(float roughness, float weight):
 		distrib(roughness), weight(weight), Material(BXDF::GlosRefl) {}
@@ -102,9 +106,7 @@ private:
 	float weight;
 };
 
-class Dielectric:
-	public Material
-{
+class Dielectric: public Material {
 public:
 	Dielectric(const Spectrum &baseColor, float roughness, float ior):
 		baseColor(baseColor), ior(ior), distrib(roughness, false),
@@ -121,9 +123,7 @@ private:
 	bool approxDelta;
 };
 
-class ThinDielectric:
-	public Material
-{
+class ThinDielectric: public Material {
 public:
 	ThinDielectric(const Spectrum &baseColor, float ior):
 		baseColor(baseColor), ior(ior), Material(BXDF::SpecRefl | BXDF::SpecTrans) {}
@@ -137,9 +137,7 @@ private:
 	float ior;
 };
 
-class DisneyDiffuse :
-	public Material
-{
+class DisneyDiffuse : public Material {
 public:
 	DisneyDiffuse(const Spectrum &baseColor, float roughness, float subsurface) :
 		baseColor(baseColor), roughness(roughness), subsurface(subsurface),
@@ -155,9 +153,7 @@ private:
 	float subsurface;
 };
 
-class DisneyMetal :
-	public Material
-{
+class DisneyMetal : public Material {
 public:
 	DisneyMetal(const Spectrum &baseColor, float roughness, float anisotropic = 0.0f) :
 		baseColor(baseColor), distrib(roughness, true, anisotropic), Material(BXDF::GlosRefl) {}
@@ -171,9 +167,7 @@ private:
 	GGXDistrib distrib;
 };
 
-class DisneyClearcoat :
-	public Material
-{
+class DisneyClearcoat : public Material {
 public:
 	DisneyClearcoat(float gloss) : alpha(glm::mix(0.1f, 0.001f, gloss)), distrib(alpha),
 		Material(BXDF::GlosRefl) {}
@@ -187,9 +181,7 @@ private:
 	GTR1Distrib distrib;
 };
 
-class DisneySheen :
-	public Material
-{
+class DisneySheen : public Material {
 public:
 	DisneySheen(const Spectrum &baseColor, float tint) :
 		baseColor(baseColor), tint(tint), Material(BXDF::GlosRefl) {}
@@ -203,9 +195,7 @@ private:
 	float tint;
 };
 
-class DisneyBSDF :
-	public Material
-{
+class DisneyBSDF : public Material {
 public:
 	DisneyBSDF(
 		const Spectrum &baseColor = Vec3f(1.0f),

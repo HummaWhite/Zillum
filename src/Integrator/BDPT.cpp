@@ -601,8 +601,12 @@ void BDPTIntegrator::scaleResult()
     mResultScale = 1.0f / mCurspp;
 }
 
+int sppBDPT = 0;
+double accumTimeBDPT = 0.0;
+
 void BDPTIntegrator2::renderOnePass()
 {
+    //const int MaxThreads = 1;
     if (mMaxSpp && mParam.spp >= mMaxSpp)
     {
         mFinished = true;
@@ -610,6 +614,9 @@ void BDPTIntegrator2::renderOnePass()
     }
     auto &film = mScene->mCamera->film();
     int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / MaxThreads;
+
+    Timer timer;
+
     std::thread *threads = new std::thread[MaxThreads];
     for (int i = 0; i < MaxThreads; i++)
     {
@@ -617,17 +624,20 @@ void BDPTIntegrator2::renderOnePass()
         auto lightSampler = mLightSampler->copy();
         cameraSampler->nextSamples(pathsOnePass * i);
         lightSampler->nextSamples(pathsOnePass * i);
-        threads[i] = std::thread(trace, this, pathsOnePass, lightSampler, cameraSampler);
+        threads[i] = std::thread(&BDPTIntegrator2::trace, this, pathsOnePass, lightSampler, cameraSampler);
     }
     for (int i = 0; i < MaxThreads; i++)
         threads[i].join();
     delete[] threads;
+
+    accumTimeBDPT += timer.get() / (pathsOnePass * MaxThreads) * 1e9;
 
     mSampler->nextSamples(pathsOnePass * MaxThreads);
     mLightSampler->nextSamples(pathsOnePass * MaxThreads);
     mParam.spp += static_cast<float>(pathsOnePass) * MaxThreads / (film.width * film.height);
     mResultScale = 1.0f / mParam.spp;
     std::cout << "\r[BDPTIntegrator2 spp: " << std::fixed << std::setprecision(3) << mParam.spp << "]";
+    std::cout << accumTimeBDPT / (++sppBDPT);
 }
 
 void BDPTIntegrator2::reset()

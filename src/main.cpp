@@ -1,16 +1,14 @@
 #include <windows.h>
 
-#include "../include/Application.h"
+#include "Zillum.h"
 
-Application app;
+Zillum app;
 
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	return app.process(hWnd, message, wParam, lParam);
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow)
-{
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
 	const char *name = "Zillum";
 
 	MSG				msg;
@@ -27,31 +25,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	wndClass.lpszMenuName	= nullptr;
 	wndClass.lpszClassName	= name;
 
-	if (!RegisterClassA(&wndClass))
-	{
+	if (!RegisterClassA(&wndClass)) {
 		MessageBoxA(nullptr, "This program requires Windows NT!", name, MB_ICONERROR);
 		return 0;
 	}
 
 	app.init(std::string(name), hInstance, szCmdLine);
 
-	while (true)
-	{
-		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-		{
-			if (msg.message == WM_QUIT) break;
-			else
-			{
+	while (true) {
+		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+			if (msg.message == WM_QUIT) {
+				break;
+			}
+			else {
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
 		}
-		else
-		{
-			if (!app.render())
+		else {
+			if (!app.render()) {
 				break;
+			}
 		}
 	}
-
 	return msg.wParam;
 }

@@ -3,17 +3,14 @@
 #include "Transform.h"
 #include "Math.h"
 
-class NormalDistrib
-{
+class NormalDistrib {
 public:
 	virtual float d(const Vec3f &n, const Vec3f &m) = 0;
 	virtual float pdf(const Vec3f &n, const Vec3f &m, const Vec3f &wo) = 0;
 	virtual Vec3f sampleWm(const Vec3f &n, const Vec3f &wo, const Vec2f &u) = 0;
 };
 
-class GGXDistrib:
-	public NormalDistrib
-{
+class GGXDistrib: public NormalDistrib {
 public:
 	GGXDistrib(float roughness, bool sampleVisible, float aniso = 0.0f);
 
@@ -27,9 +24,7 @@ private:
 	float alpha;
 };
 
-class GTR1Distrib:
-	public NormalDistrib
-{
+class GTR1Distrib: public NormalDistrib {
 public:
 	GTR1Distrib(float roughness) : alpha(roughness * roughness) {}
 

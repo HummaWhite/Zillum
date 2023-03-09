@@ -8,13 +8,11 @@
 #include "AABB.h"
 #include "Transform.h"
 
-enum class HittableType
-{
+enum class HittableType {
 	Object, Light, Shape
 };
 
-class Hittable
-{
+class Hittable {
 public:
 	Hittable(HittableType type) : mType(type) {}
 

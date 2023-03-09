@@ -3,8 +3,8 @@
 #include <iostream>
 #include <cmath>
 
-#include "../../ext/glmIncluder.h"
-#include "../Utils/NamespaceDecl.h"
+#include "glmIncluder.h"
+#include "Utils/NamespaceDecl.h"
 #include "Spectrum.h"
 
 NAMESPACE_BEGIN(ToneMapping)

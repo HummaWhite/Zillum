@@ -5,7 +5,7 @@
 #include <vector>
 #include <memory>
 
-#include "../Utils/ObjReader.h"
+#include "Utils/ObjReader.h"
 #include "Light.h"
 #include "Object.h"
 #include "Environment.h"
@@ -13,39 +13,33 @@
 #include "Shape.h"
 #include "BVH.h"
 
-enum class LightSampleStrategy
-{
+enum class LightSampleStrategy {
 	ByPower, Uniform
 };
 
-struct LightSample
-{
+struct LightSample {
 	LightPtr lt;
 	float pdf;
 };
 
-struct LightEnvSample
-{
+struct LightEnvSample {
 	std::variant<LightPtr, EnvPtr> sample;
 	float pdf;
 };
 
-struct LiSample
-{
+struct LiSample {
 	Vec3f Wi;
 	Spectrum weight;
 	float pdf;
 };
 
-struct LeSample
-{
+struct LeSample {
 	Ray emiRay;
 	Spectrum weight;
 	float pdf;
 };
 
-struct IiSample
-{
+struct IiSample {
 	Vec3f Wi;
 	Vec3f weight;
 	float pdf;
@@ -54,8 +48,7 @@ struct IiSample
 const LiSample InvalidLiSample = { Vec3f(0.0f), Spectrum(0.0f), 0.0f };
 const IiSample InvalidIiSample = { Vec3f(0.0f), Spectrum(0.0f), 0.0f };
 
-class Scene
-{
+class Scene {
 public:
 	Scene() = default;
 	Scene(const std::vector<HittablePtr> &hittables, EnvPtr environment, CameraPtr camera);

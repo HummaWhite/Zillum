@@ -5,7 +5,7 @@
 #include <memory>
 #include <mutex>
 
-#include "../Utils/Buffer2D.h"
+#include "Utils/Buffer2D.h"
 #include "Ray.h"
 #include "Sampler.h"
 #include "Transform.h"
@@ -20,13 +20,11 @@ const float CameraPitchSensitivity = 88.0f;
 using Film = Buffer2D<Spectrum>;
 using FilmLocker = Buffer2D<std::mutex>;
 
-enum class CameraType
-{
+enum class CameraType {
 	Pinhole, ThinLens, Ortho, Panorama
 };
 
-struct CameraIiSample
-{
+struct CameraIiSample {
 	Vec3f wi;
 	Spectrum Ii;
 	float dist;
@@ -34,22 +32,19 @@ struct CameraIiSample
 	float pdf;
 };
 
-struct CameraIeSample
-{
+struct CameraIeSample {
 	Ray ray;
 	Spectrum Ie;
 	float pdfPos;
 	float pdfDir;
 };
 
-struct CameraPdf
-{
+struct CameraPdf {
 	float pdfPos;
 	float pdfDir;
 };
 
-class Camera
-{
+class Camera {
 public:
 	Camera(CameraType type) : mType(type) {}
 
@@ -108,9 +103,7 @@ protected:
 
 using CameraPtr = std::shared_ptr<Camera>;
 
-class ThinLensCamera :
-	public Camera
-{
+class ThinLensCamera : public Camera {
 public:
 	ThinLensCamera(float FOV, float lensRadius = 0.0f, float focalDist = 1.0f) :
 		mFOV(FOV), mLensRadius(lensRadius), mFocalDist(focalDist), mLensArea(Math::diskArea(lensRadius)),
@@ -145,9 +138,7 @@ private:
 	bool mIsDelta;
 };
 
-class PanoramaCamera :
-	public Camera
-{
+class PanoramaCamera : public Camera {
 public:
 	PanoramaCamera() : Camera(CameraType::Panorama) {}
 

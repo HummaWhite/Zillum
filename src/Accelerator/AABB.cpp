@@ -1,4 +1,4 @@
-#include "../../include/Core/AABB.h"
+#include "Core/AABB.h"
 
 AABB::AABB(const Vec3f &va, const Vec3f &vb, const Vec3f &vc)
 {

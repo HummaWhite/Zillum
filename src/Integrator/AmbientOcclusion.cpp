@@ -39,7 +39,7 @@ void AOIntegrator2::renderOnePass()
     {
         auto threadSampler = mSampler->copy();
         threadSampler->nextSamples(pathsOnePass * i);
-        threads[i] = std::thread(trace, this, pathsOnePass, threadSampler);
+        threads[i] = std::thread(&AOIntegrator2::trace, this, pathsOnePass, threadSampler);
     }
     for (int i = 0; i < MaxThreads; i++)
         threads[i].join();

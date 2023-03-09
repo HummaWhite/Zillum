@@ -3,8 +3,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "../../ext/glmIncluder.h"
-
+#include "glmIncluder.h"
 #include "Math.h"
 #include "Ray.h"
 

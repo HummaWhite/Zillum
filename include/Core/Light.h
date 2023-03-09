@@ -7,31 +7,26 @@
 
 #include "Shape.h"
 
-struct LightLiSample
-{
+struct LightLiSample {
 	Vec3f wi;
 	Spectrum Li;
 	float dist;
 	float pdf;
 };
 
-struct LightLeSample
-{
+struct LightLeSample {
 	Ray ray;
 	Spectrum Le;
 	float pdfPos;
 	float pdfDir;
 };
 
-struct LightPdf
-{
+struct LightPdf {
 	float pdfPos;
 	float pdfDir;
 };
 
-class Light:
-	public Hittable
-{
+class Light : public Hittable {
 public:
 	Light(HittablePtr shape, const Spectrum &power, bool delta):
 		shape(shape), mPower(power), Hittable(HittableType::Light) {}
@@ -44,8 +39,7 @@ public:
 	Vec2f surfaceUV(const Vec3f &p) { return shape->surfaceUV(p); }
 	AABB bound() { return shape->bound(); }
 
-	void setTransform(TransformPtr trans) override
-	{
+	void setTransform(TransformPtr trans) override {
 		mTransform = trans;
 		shape->setTransform(trans);
 	}

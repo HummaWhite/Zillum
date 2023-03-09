@@ -4,23 +4,21 @@
 #include <memory>
 #include <array>
 
-#include "../../ext/glmIncluder.h"
-#include "../Utils/RandomGenerator.h"
+#include "glmIncluder.h"
+#include "Utils/RandomGenerator.h"
 #include "Light.h"
 #include "Ray.h"
 #include "Transform.h"
 #include "Texture.h"
 #include "PiecewiseDistrib.h"
 
-struct EnvLiSample
-{
+struct EnvLiSample {
 	Vec3f wi;
 	Spectrum Li;
 	float pdf;
 };
 
-class Environment
-{
+class Environment {
 public:
 	virtual Spectrum radiance(const Vec3f &dir) = 0;
 	virtual EnvLiSample sampleLi(const Vec2f &u1, const Vec2f &u2) = 0;
@@ -30,9 +28,7 @@ public:
 
 using EnvPtr = std::shared_ptr<Environment>;
 
-class EnvSingleColor:
-	public Environment
-{
+class EnvSingleColor : public Environment {
 public:
 	EnvSingleColor(const Spectrum &color) : mRadiance(color) {}
 
@@ -45,9 +41,7 @@ private:
 	Spectrum mRadiance;
 };
 
-class EnvSphereMapHDR:
-	public Environment
-{
+class EnvSphereMapHDR : public Environment {
 public:
 	EnvSphereMapHDR(const char *filePath);
 

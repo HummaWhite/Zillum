@@ -5,9 +5,7 @@
 #include "Hittable.h"
 #include "Math.h"
 
-class Sphere :
-	public Hittable
-{
+class Sphere : public Hittable {
 public:
 	Sphere(const Vec3f &center, float radius, bool intersectFromInside) :
 		center(center), radius(radius), intersectFromInside(intersectFromInside), Hittable(HittableType::Shape) {}
@@ -28,9 +26,7 @@ private:
 	bool intersectFromInside;
 };
 
-class Triangle :
-	public Hittable
-{
+class Triangle : public Hittable {
 public:
 	Triangle(const Vec3f &a, const Vec3f &b, const Vec3f &c) :
 		va(a), vb(b), vc(c), Hittable(HittableType::Shape) {}
@@ -49,9 +45,7 @@ protected:
 	Vec3f va, vb, vc;
 };
 
-class MeshTriangle :
-	public Hittable
-{
+class MeshTriangle : public Hittable {
 public:
 	MeshTriangle(Vec3f *vertices, Vec2f *uvs, Vec3f *normals): 
 		triangle(vertices[0], vertices[1], vertices[2]),
@@ -75,9 +69,7 @@ private:
 	Vec3f na, nb, nc;
 };
 
-class Quad :
-	public Hittable
-{
+class Quad : public Hittable {
 public:
 	Quad(const Vec3f &a, const Vec3f &b, const Vec3f &c) :
 		va(a), vb(b), vc(c), Hittable(HittableType::Shape) {}

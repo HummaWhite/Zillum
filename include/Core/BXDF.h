@@ -3,11 +3,9 @@
 #include "Math.h"
 #include "Spectrum.h"
 
-class BXDF
-{
+class BXDF {
 public:
-	enum
-	{
+	enum {
 		Diffuse			= 1 << 0,
 		GlosRefl		= 1 << 1,
 		SpecRefl		= 1 << 2,
@@ -21,39 +19,32 @@ public:
 	
 	int type() const { return mType; }
 
-	bool hasType(int type) const
-	{
+	bool hasType(int type) const {
 		return type & mType;
 	}
 
-	bool isDelta() const
-	{
+	bool isDelta() const {
 		return ((mType & SpecRefl) || (mType & SpecTrans)) &&
 			!(mType & GlosTrans || mType & GlosRefl || mType & Diffuse);
 	}
 
-	bool isReflection() const
-	{
+	bool isReflection() const {
 		return isReflection(mType);
 	}
 
-	bool isTransmission() const
-	{
+	bool isTransmission() const {
 		return isTransmission(mType);
 	}
 
-	static bool isDelta(int type)
-	{
+	static bool isDelta(int type) {
 		return (type & SpecRefl) || (type & SpecTrans);
 	}
 
-	static bool isReflection(int type)
-	{
+	static bool isReflection(int type) {
 		return (type & SpecRefl) || (type & GlosRefl);
 	}
 
-	static bool isTransmission(int type)
-	{
+	static bool isTransmission(int type) {
 		return (type & SpecTrans) || (type & GlosTrans);
 	}
 

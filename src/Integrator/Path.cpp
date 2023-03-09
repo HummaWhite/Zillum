@@ -31,6 +31,24 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
             }
         }
 
+        // {
+        //     auto lightSample = scene->sampleOneLight(sampler->get2());
+        //     if (lightSample)
+        //     {
+        //         auto [light, pdfSource] = lightSample.value();
+        //         auto LiSample = light->sampleLi(pos, sampler->get2());
+        //         if (LiSample)
+        //         {
+        //             auto [wi, Li, dist, pdf] = LiSample.value();
+        //             Vec3f pLit = pos + wi * dist;
+        //             float vis = scene->v(pos, pLit);
+        //             Vec3f bsdfCos = dynamic_cast<Mirror*>(mat.get()) ? Vec3f(mollify(surf.ns, wo, wi, dist)) :
+        //                 mat->bsdf({ surf.ns, wo, wi, surf.uv }) * Math::satDot(surf.ns, wi);
+        //             result += Li * bsdfCos * throughput / (pdfSource * pdf) * vis;
+        //         }
+        //     }
+        // }
+
         auto bsdfSample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3());
         if (!bsdfSample)
             break;
@@ -114,8 +132,12 @@ Spectrum PathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
     return Spectrum(0.0f);
 }
 
+double accumTime = 0.0;
+int spp = 0;
+
 void PathIntegrator2::renderOnePass()
 {
+    //BSDFMollifyRadius = glm::pow(1.0f + mParam.spp, -1.0f / 4.0f);
     if (mMaxSpp && mParam.spp >= mMaxSpp)
     {
         mFinished = true;
@@ -124,20 +146,26 @@ void PathIntegrator2::renderOnePass()
     auto &film = mScene->mCamera->film();
     int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / MaxThreads;
     std::thread *threads = new std::thread[MaxThreads];
+
+    Timer timer;
+
     for (int i = 0; i < MaxThreads; i++)
     {
         auto threadSampler = mSampler->copy();
         threadSampler->nextSamples(pathsOnePass * i);
-        threads[i] = std::thread(trace, this, pathsOnePass, threadSampler);
+        threads[i] = std::thread(&PathIntegrator2::trace, this, pathsOnePass, threadSampler);
     }
     for (int i = 0; i < MaxThreads; i++)
         threads[i].join();
     delete[] threads;
 
+    accumTime += timer.get() / (pathsOnePass * MaxThreads) * 1e9;
+
     mSampler->nextSamples(pathsOnePass * MaxThreads);
     mParam.spp += static_cast<float>(pathsOnePass) * MaxThreads / (film.width * film.height);
     mResultScale = 1.0f / mParam.spp;
     std::cout << "\r[PathIntegrator2 spp: " << std::fixed << std::setprecision(3) << mParam.spp << "]";
+    std::cout << accumTime / (++spp);
 }
 
 void PathIntegrator2::reset()
