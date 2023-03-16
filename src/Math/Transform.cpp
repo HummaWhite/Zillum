@@ -55,11 +55,11 @@ Vec2f Transform::toConcentricDisk(const Vec2f &uv) {
 }
 
 Vec3f Transform::localToWorld(const Vec3f &N, const Vec3f &dir) {
-    return Math::matrixToLocalFrame(N) * dir;
+    return Math::localToWorldFrame(N) * dir;
 }
 
 Vec3f Transform::worldToLocal(const Vec3f& n, const Vec3f& dir) {
-    return glm::inverse(Math::matrixToLocalFrame(n)) * dir;
+    return glm::inverse(Math::localToWorldFrame(n)) * dir;
 }
 
 namespace Math {

@@ -73,15 +73,16 @@ protected:
 	int type;
 };
 
+// Vec3f dir, Spectrum bsdf, float pdf, BSDFType type, float eta
 struct BSDFSample {
-	BSDFSample(const Vec3f &dir, float pdf, BSDFType type, const Spectrum &bsdf, float eta = 1.0f) :
+	BSDFSample(const Vec3f &dir, const Spectrum& bsdf, float pdf, BSDFType type, float eta = 1.0f) :
 		dir(dir), pdf(pdf), type(type), bsdf(bsdf), eta(eta) {}
 
 	Vec3f dir;
+	Spectrum bsdf;
 	float pdf;
 	BSDFType type;
 	float eta;
-	Spectrum bsdf;
 };
 
 class BSDF {
@@ -299,7 +300,6 @@ public:
 
 class LayeredBSDF : public BSDF {
 public:
-
 	Spectrum bsdf(const SurfaceIntr& intr, TransportMode mode);
 	float pdf(const SurfaceIntr& intr, TransportMode mode);
 	std::optional<BSDFSample> sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode);

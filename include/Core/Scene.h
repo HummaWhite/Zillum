@@ -71,6 +71,10 @@ public:
 
 	IiSample sampleIiCamera(Vec3f x, Vec2f u);
 
+	bool isLightOrEnv(HittablePtr obj);
+	float pdfL(HittablePtr obj, Vec3f refPos, Vec3f hitPos, Vec3f refToLight);
+	Spectrum L(HittablePtr obj, Vec3f refPos, Vec3f hitPos, Vec3f refToLight);
+
 	void buildScene();
 
 	std::pair<float, HittablePtr> closestHit(const Ray &ray) { return mBvh->closestHit(ray); }

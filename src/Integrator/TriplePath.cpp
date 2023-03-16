@@ -92,7 +92,7 @@ Spectrum traceCameraPath(const TriplePathIntegParam &param, ScenePtr scene, Vec3
         if (!bsdfSample) {
             break;
         }
-        auto [wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
+        auto [wi, bsdf, bsdfPdf, type, eta] = bsdfSample.value();
 
         float cosWi = type.isDelta() ? 1.0f : Math::absDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf) || cosWi < 1e-6f) {
@@ -259,7 +259,7 @@ void TriplePathIntegrator::traceLightPath(SamplerPtr sampler) {
         if (!sample) {
             break;
         }
-        auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
+        auto [wi, bsdf, bsdfPdf, type, eta] = sample.value();
 
         if (bounce >= mParam.rrLightStartDepth && mParam.rrLightPath) {
             float continueProb = glm::min<float>(1.0f, Math::maxComponent(bsdf / bsdfPdf));

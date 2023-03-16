@@ -10,5 +10,5 @@ float Mirror::pdf(const SurfaceIntr &intr, TransportMode mode) {
 
 std::optional<BSDFSample> Mirror::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) {
     Vec3f wi = glm::reflect(-intr.wo, intr.n);
-    return BSDFSample(wi, 1.0f, BSDFType::Delta | BSDFType::Reflection, baseColor.get(intr.uv));
+    return BSDFSample(wi, baseColor.get(intr.uv), 1.0f, BSDFType::Delta | BSDFType::Reflection);
 }

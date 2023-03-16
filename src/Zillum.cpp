@@ -13,11 +13,11 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
     int maxDepth;
     int spp;
     std::stringstream param(cmdParam);
-    //param = std::stringstream("-path2 sobol 1280 800 1000 8 0");
-    //param = std::stringstream("-lpath sobol 640 400 10000 8");
-    //param = std::stringstream("-tpath sobol 640 400 10000 8 0");
+    param = std::stringstream("-path2 sobol 1280 800 1000 8 0");
+    //param = std::stringstream("-lpath sobol 1280 800 10000 8");
+    //param = std::stringstream("-tpath sobol 1280 800 10000 8 0");
     //param = std::stringstream("-ao2 sobol 1280 800 1000 8 0 0.5");
-    param = std::stringstream("-bdpt2 sobol 1280 800 1000 8 0 0 0");
+    //param = std::stringstream("-bdpt2 sobol 1280 800 1000 8 0 0 0");
 
     param >> integType;
     param >> samplerType >> width >> height >> spp >> maxDepth;
@@ -99,7 +99,7 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
         integ->mParam.maxLightDepth = maxDepth;
         integ->mParam.maxConnectDepth = maxDepth;
         integ->mParam.stochasticConnect = false;
-        integ->mLightSampler = std::make_shared<SimpleSobolSampler>(0x12345678, true);
+        integ->mLightSampler = std::make_shared<SobolSampler>(0x12345678, true);
         mIntegrator = integ;
         scramble = false;
     }
@@ -133,7 +133,7 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
         mIntegrator->mSampler = std::make_shared<IndependentSampler>();
     }
     else {
-        mIntegrator->mSampler = std::make_shared<SimpleSobolSampler>(0, scramble);
+        mIntegrator->mSampler = std::make_shared<SobolSampler>(0, scramble);
     }
     mIntegrator->mThreads = 20;
 

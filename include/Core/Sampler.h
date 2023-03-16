@@ -62,9 +62,9 @@ private:
 
 class SimpleHaltonSampler;
 
-class SimpleSobolSampler : public Sampler {
+class SobolSampler : public Sampler {
 public:
-    SimpleSobolSampler(uint32_t seed, bool randomScrambling) :
+    SobolSampler(uint32_t seed, bool randomScrambling) :
 		seed(seed), scramble(seed), randomScrambling(randomScrambling), Sampler(SamplerType::SimpleSobol) {}
 
     float get1();

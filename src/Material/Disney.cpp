@@ -36,7 +36,7 @@ float DisneyDiffuse::pdf(const SurfaceIntr &intr, TransportMode mode)
 std::optional<BSDFSample> DisneyDiffuse::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
     auto [wi, pdf] = Math::sampleHemisphereCosine(intr.n, { u.y, u.z });
-    return BSDFSample(wi, pdf, BSDFType::Diffuse | BSDFType::Reflection, baseColor * Math::PiInv);
+    return BSDFSample(wi, baseColor * Math::PiInv, pdf, BSDFType::Diffuse | BSDFType::Reflection);
 }
 
 Spectrum DisneyMetal::bsdf(const SurfaceIntr &intr, TransportMode mode)
@@ -75,7 +75,7 @@ std::optional<BSDFSample> DisneyMetal::sample(const SurfaceIntr &intr, const Vec
         return std::nullopt;
     SurfaceIntr newIntr = intr;
     newIntr.wi = wi;
-    return BSDFSample(wi, pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection, bsdf(newIntr, mode));
+    return BSDFSample(wi, bsdf(newIntr, mode), pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection);
 }
 
 Spectrum DisneyClearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
@@ -115,7 +115,7 @@ std::optional<BSDFSample> DisneyClearcoat::sample(const SurfaceIntr &intr, const
         return std::nullopt;
     SurfaceIntr newIntr = intr;
     newIntr.wi = wi;
-    return BSDFSample(wi, pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection, bsdf(newIntr, mode));
+    return BSDFSample(wi, bsdf(newIntr, mode), pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection);
 }
 
 Spectrum DisneySheen::bsdf(const SurfaceIntr &intr, TransportMode mode)
@@ -137,7 +137,7 @@ float DisneySheen::pdf(const SurfaceIntr &intr, TransportMode mode)
 std::optional<BSDFSample> DisneySheen::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
     auto [wi, pdf] = Math::sampleHemisphereCosine(intr.n, { u.y, u.z });
-    return BSDFSample(wi, pdf, BSDFType::Diffuse | BSDFType::Reflection, bsdf({ intr.n, intr.wo, wi, intr.uv }, mode));
+    return BSDFSample(wi, bsdf({ intr.n, intr.wo, wi, intr.uv }, mode), pdf, BSDFType::Diffuse | BSDFType::Reflection);
 }
 
 // TODO: this implementation is not correct

@@ -24,34 +24,16 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
             if (lightPdf != 0)
             {
                 float bsdfPdf = mat->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance);
-                float weight = param.MIS ? Math::biHeuristic(lightPdf, bsdfPdf) : 0.5f;
+                float weight = param.MIS ? Math::powerHeuristic(lightPdf, bsdfPdf) : 0.5f;
                 result += mat->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance) * throughput *
                     Math::satDot(surf.ns, wi) * coef * weight;
             }
         }
 
-        // {
-        //     auto lightSample = scene->sampleOneLight(sampler->get2());
-        //     if (lightSample)
-        //     {
-        //         auto [light, pdfSource] = lightSample.value();
-        //         auto LiSample = light->sampleLi(pos, sampler->get2());
-        //         if (LiSample)
-        //         {
-        //             auto [wi, Li, dist, pdf] = LiSample.value();
-        //             Vec3f pLit = pos + wi * dist;
-        //             float vis = scene->v(pos, pLit);
-        //             Vec3f bsdfCos = dynamic_cast<Mirror*>(mat.get()) ? Vec3f(mollify(surf.ns, wo, wi, dist)) :
-        //                 mat->bsdf({ surf.ns, wo, wi, surf.uv }) * Math::satDot(surf.ns, wi);
-        //             result += Li * bsdfCos * throughput / (pdfSource * pdf) * vis;
-        //         }
-        //     }
-        // }
-
         auto bsdfSample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3());
         if (!bsdfSample)
             break;
-        auto [wi, bsdfPdf, type, eta, bsdf] = bsdfSample.value();
+        auto [wi, bsdf, bsdfPdf, type, eta] = bsdfSample.value();
 
         float cosWi = type.isDelta() ? 1.0f : Math::absDot(surf.ns, wi);
         if (bsdfPdf < 1e-8f || Math::isNan(bsdfPdf) || Math::isInf(bsdfPdf) || cosWi < 1e-6f)
@@ -61,28 +43,15 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
         auto newRay = Ray(pos, wi).offset();
         auto [dist, obj] = scene->closestHit(newRay);
 
-        if (!obj)
-        {
-            float weight = 1.0f;
-            if (!type.isDelta() && param.sampleDirect)
-            {
-                float envPdf = scene->mEnv->pdfLi(wi) * scene->pdfSampleEnv();
-                weight = (envPdf <= 0) ? 0 : param.MIS ? Math::biHeuristic(bsdfPdf, envPdf) : 0.5f;
+        if (scene->isLightOrEnv(obj)) {
+            float weight = 1.f;
+            auto hitPos = newRay.get(dist);
+
+            if (!type.isDelta() && param.sampleDirect) {
+                float lightPdf = scene->pdfL(obj, pos, hitPos, wi);
+                weight = (lightPdf <= 0) ? 0 : param.MIS ? Math::powerHeuristic(bsdfPdf, lightPdf) : .5f;
             }
-            result += scene->mEnv->radiance(wi) * throughput * weight;
-            break;
-        }
-        if (obj->type() == HittableType::Light)
-        {
-            float weight = 1.0f;
-            auto light = dynamic_cast<Light*>(obj.get());
-            auto hitPoint = newRay.get(dist);
-            if (!type.isDelta() && param.sampleDirect)
-            {
-                float lightPdf = light->pdfLi(pos, hitPoint) * scene->pdfSampleLight(light);
-                weight = (lightPdf <= 0) ? 0 : param.MIS ? Math::biHeuristic(bsdfPdf, lightPdf) : 0.5f;
-            }
-            result += light->Le({ hitPoint, -wi }) * throughput * weight;
+            result += scene->L(obj, pos, hitPos, wi);
             break;
         }
 

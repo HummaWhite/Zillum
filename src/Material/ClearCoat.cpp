@@ -35,5 +35,5 @@ std::optional<BSDFSample> Clearcoat::sample(const SurfaceIntr &intr, const Vec3f
         return std::nullopt;
     SurfaceIntr newIntr = intr;
     newIntr.wi = wi;
-    return BSDFSample(wi, pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection, bsdf(newIntr, mode));
+    return BSDFSample(wi, bsdf(newIntr, mode), pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection);
 }

@@ -12,6 +12,6 @@ std::optional<BSDFSample> ThinDielectric::sample(const SurfaceIntr &intr, const 
         trans = 1.0f - refl;
     }
     return (u.x < refl) ?
-        BSDFSample(glm::reflect(-intr.wo, intr.n), 1.0f, BSDFType::Delta | BSDFType::Reflection, baseColor) :
-        BSDFSample(-intr.wo, 1.0f, BSDFType::Delta | BSDFType::Transmission, baseColor);
+        BSDFSample(glm::reflect(-intr.wo, intr.n), baseColor, 1.0f, BSDFType::Delta | BSDFType::Reflection) :
+        BSDFSample(-intr.wo, baseColor, 1.0f, BSDFType::Delta | BSDFType::Transmission);
 }

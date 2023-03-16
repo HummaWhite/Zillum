@@ -61,5 +61,5 @@ std::optional<BSDFSample> MetalWorkflow::sample(const SurfaceIntr &intr, const V
         return std::nullopt;
     }
     SurfaceIntr newIntr(n, wo, wi, intr.uv);
-    return BSDFSample(wi, pdf(newIntr, mode), (sampleDiff ? BSDFType::Diffuse : BSDFType::Glossy) | BSDFType::Reflection, bsdf(newIntr, mode));
+    return BSDFSample(wi, bsdf(newIntr, mode), pdf(newIntr, mode), (sampleDiff ? BSDFType::Diffuse : BSDFType::Glossy) | BSDFType::Reflection);
 }

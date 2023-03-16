@@ -63,7 +63,7 @@ bool isNan(float v);
 bool hasNan(const Vec3f &v);
 bool isInf(float v);
 
-glm::mat3 matrixToLocalFrame(const Vec3f &N);
+glm::mat3 localToWorldFrame(const Vec3f &N);
 
 uint32_t inverseBits(uint32_t bits);
 float radicalInverse(uint32_t bits);
@@ -83,7 +83,7 @@ int cubeMapFace(const Vec3f &dir);
 float qpow(float x, int n);
 
 float heuristic(int nf, float pf, int ng, float pg, int pow);
-float biHeuristic(float pf, float pg);
+float powerHeuristic(float pf, float pg);
 
 float luminance(const Spectrum &c);
 bool isBlack(const Spectrum &c);

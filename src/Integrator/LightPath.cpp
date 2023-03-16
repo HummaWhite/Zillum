@@ -133,7 +133,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
         auto sample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
         if (!sample)
             break;
-        auto [wi, bsdfPdf, type, eta, bsdf] = sample.value();
+        auto [wi, bsdf, bsdfPdf, type, eta] = sample.value();
 
         if (bounce >= mRRStartDepth && mParam.russianRoulette)
         {

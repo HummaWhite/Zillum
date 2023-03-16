@@ -172,6 +172,37 @@ IiSample Scene::sampleIiCamera(Vec3f x, Vec2f u) {
     return { wi, imp / pdf, pdf };
 }
 
+bool Scene::isLightOrEnv(HittablePtr obj) {
+    return (!obj) || (obj->type() == HittableType::Light);
+}
+
+float Scene::pdfL(HittablePtr obj, Vec3f refPos, Vec3f hitPos, Vec3f refToLight) {
+    if (!obj) {
+        return mEnv->pdfLi(refToLight) * pdfSampleEnv();
+    }
+    else if (obj->type() == HittableType::Light) {
+        float weight = 1.0f;
+        auto light = dynamic_cast<Light*>(obj.get());
+        return light->pdfLi(refPos, hitPos) * pdfSampleLight(light);
+    }
+    else {
+        return 0.f;
+    }
+}
+
+Spectrum Scene::L(HittablePtr obj, Vec3f refPos, Vec3f hitPos, Vec3f refToLight) {
+    if (!obj) {
+        return mEnv->radiance(refToLight);
+    }
+    else if (obj->type() == HittableType::Light ) {
+        auto light = dynamic_cast<Light*>(obj.get());
+        return light->Le({ hitPos, -refToLight });
+    }
+    else {
+        return Spectrum(0.f);
+    }
+}
+
 void Scene::buildScene() {
     Error::bracketLine<0>("Scene building");
     mBvh = std::make_shared<BVH>(mHittables);

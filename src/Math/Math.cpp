@@ -44,7 +44,7 @@ bool isInf(float v) {
     return ((u & FloatBitMask::Exp) == FloatBitMask::Exp && (u & FloatBitMask::Val) == 0);
 }
 
-glm::mat3 matrixToLocalFrame(const Vec3f &N) {
+glm::mat3 localToWorldFrame(const Vec3f &N) {
     Vec3f T = (glm::abs(N.z) > 0.99f) ? Vec3f(0.0f, 1.0f, 0.0f) : Vec3f(0.0f, 0.0f, 1.0f);
     Vec3f B = glm::normalize(glm::cross(N, T));
     T = glm::normalize(glm::cross(B, N));
@@ -116,7 +116,7 @@ float heuristic(int nf, float pf, int ng, float pg, int pow) {
     return f / (f + g);
 }
 
-float biHeuristic(float pf, float pg) {
+float powerHeuristic(float pf, float pg) {
     return heuristic(1, pf, 1, pg, 2);
 }
 

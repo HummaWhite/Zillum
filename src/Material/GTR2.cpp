@@ -25,7 +25,7 @@ Vec3f GTR2Distrib::sampleWm(const Vec3f &n, const Vec3f &wo, const Vec2f &u)
 {
     if (visible)
     {
-        glm::mat3 TBN = Math::matrixToLocalFrame(n);
+        glm::mat3 TBN = Math::localToWorldFrame(n);
         glm::mat3 TBNInv = glm::inverse(TBN);
 
         Vec3f vh = glm::normalize((TBNInv * wo) * Vec3f(alpha, alpha, 1.0f));

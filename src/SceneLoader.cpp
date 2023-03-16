@@ -520,9 +520,9 @@ ScenePtr setupScene(int windowWidth, int windowHeight)
     //auto scene = fireplace(false, true);
     //auto scene = boxScene();
     //auto scene = staircase2();
-    //auto scene = originalBox();
+    auto scene = originalBox();
     //auto scene = bidirScene();
-    auto scene = cornellBox();
+    //auto scene = cornellBox();
     scene->mCamera->initFilm(windowWidth, windowHeight);
     return scene;
 }
