@@ -1,4 +1,4 @@
-#include "../../include/Core/Integrator.h"
+#include "Core/Integrator.h"
 
 static float BSDFMollifyRadius = 1.0f;
 int sppLPT = 0;
@@ -9,21 +9,21 @@ void LightPathIntegrator::renderOnePass()
     auto &film = mScene->mCamera->film();
     BSDFMollifyRadius = glm::pow(mResultScale, 0.1f);
     Timer timer;
-    std::thread *threads = new std::thread[MaxThreads];
-    for (int i = 0; i < MaxThreads; i++)
+    std::thread *threads = new std::thread[mThreads];
+    for (int i = 0; i < mThreads; i++)
     {
         auto threadSampler = mSampler->copy();
         threadSampler->nextSamples(mPathsOnePass * i);
         threads[i] = std::thread(&LightPathIntegrator::trace, this, threadSampler);
     }
-    for (int i = 0; i < MaxThreads; i++)
+    for (int i = 0; i < mThreads; i++)
         threads[i].join();
     delete[] threads;
 
-    accumTimeLPT += timer.get() / (mPathsOnePass * MaxThreads) * 1e9;
+    accumTimeLPT += timer.get() / (mPathsOnePass * mThreads) * 1e9;
 
-    mSampler->nextSamples(mPathsOnePass * MaxThreads);
-    mPathCount += mPathsOnePass * MaxThreads;
+    mSampler->nextSamples(mPathsOnePass * mThreads);
+    mPathCount += mPathsOnePass * mThreads;
     mResultScale = static_cast<float>(film.width) * film.height / mPathCount;
     std::cout << "\r[LightPathIntegrator paths: " << mPathCount << ", spp: " << std::fixed << std::setprecision(3) << 1.0f / mResultScale << "]";
     std::cout << accumTimeLPT / (++sppLPT);
@@ -104,11 +104,10 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
 
         if (glm::dot(surf.ns, wo) < 0)
         {
-            auto bxdf = surf.material->bxdf();
-            if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
+            if (!surf.material->type().hasType(BSDFType::Transmission))
                 surf.flipNormal();
         }
-        bool deltaBsdf = surf.material->bxdf().isDelta();
+        bool deltaBsdf = surf.material->type().isDelta();
 
         if (!deltaBsdf)
         {

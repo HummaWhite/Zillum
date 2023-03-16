@@ -114,7 +114,7 @@ LeSample Scene::sampleLeEnv(const std::array<float, 6> &sample) {
     auto [wi, Le, pdfDir] = mEnv->sampleLi({ sample[0], sample[1] }, { sample[2], sample[3] });
     Vec3f ori(Transform::toConcentricDisk({ sample[4], sample[5] }), 0.0f);
     
-    ori = mBound.centroid() + Transform::normalToWorld(wi, ori * mBoundRadius);
+    ori = mBound.centroid() + Transform::localToWorld(wi, ori * mBoundRadius);
     float pdfPos = Math::PiInv / (mBoundRadius * mBoundRadius);
     return { { ori, wi }, Le, pdfPos * pdfDir };
 }
@@ -187,7 +187,7 @@ void Scene::addLight(LightPtr light) {
     mHittables.push_back(light);
 }
 
-void Scene::addObjectMesh(const char *path, TransformPtr transform, MaterialPtr material) {
+void Scene::addObjectMesh(const char *path, const Transform& transform, BSDFPtr material) {
     auto [vertices, texcoords, normals] = ObjReader::readFile(path);
     int faceCount = vertices.size() / 3;
     bool hasTexcoord = texcoords.size() > 0;
@@ -206,15 +206,15 @@ void Scene::addObjectMesh(const char *path, TransformPtr transform, MaterialPtr 
     }
 }
 
-void Scene::addLightMesh(const char *path, TransformPtr transform, const Spectrum &power) {
+void Scene::addLightMesh(const char *path, const Transform& transform, const Spectrum &power) {
     auto [vertices, texcoords, normals] = ObjReader::readFile(path);
     int faceCount = vertices.size() / 3;
 
     float sumArea = 0.0f;
     for (int i = 0; i < faceCount; i++) {
-        Vec3f a = transform->get(vertices[i * 3 + 0]);
-        Vec3f b = transform->get(vertices[i * 3 + 1]);
-        Vec3f c = transform->get(vertices[i * 3 + 2]);
+        Vec3f a = transform.get(vertices[i * 3 + 0]);
+        Vec3f b = transform.get(vertices[i * 3 + 1]);
+        Vec3f c = transform.get(vertices[i * 3 + 2]);
         sumArea += glm::length(glm::cross(c - a, b - a));
     }
 
@@ -223,9 +223,9 @@ void Scene::addLightMesh(const char *path, TransformPtr transform, const Spectru
         Vec3f n[] = { normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2] };
         Vec2f t[3];
 
-        Vec3f a = transform->get(v[0]);
-        Vec3f b = transform->get(v[1]);
-        Vec3f c = transform->get(v[2]);
+        Vec3f a = transform.get(v[0]);
+        Vec3f b = transform.get(v[1]);
+        Vec3f c = transform.get(v[2]);
         Vec3f triPower = power * glm::length(glm::cross(c - a, b - a)) / sumArea;
 
         auto tr = std::make_shared<Light>(std::make_shared<MeshTriangle>(v, t, n), triPower, false);

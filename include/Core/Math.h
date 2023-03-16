@@ -63,7 +63,7 @@ bool isNan(float v);
 bool hasNan(const Vec3f &v);
 bool isInf(float v);
 
-glm::mat3 TBNMatrix(const Vec3f &N);
+glm::mat3 matrixToLocalFrame(const Vec3f &N);
 
 uint32_t inverseBits(uint32_t bits);
 float radicalInverse(uint32_t bits);

@@ -5,11 +5,11 @@
 
 #include "SurfaceInfo.h"
 #include "Shape.h"
-#include "Material.h"
+#include "BSDF.h"
 
 class Object: public Hittable {
 public:
-	Object(HittablePtr shape, MaterialPtr material):
+	Object(HittablePtr shape, BSDFPtr material):
 		shape(shape), material(material), Hittable(HittableType::Object) {}
 
 	SurfaceInfo surfaceInfo(const Vec3f &x) {
@@ -41,7 +41,7 @@ public:
 		return shape->surfaceUV(p);
 	}
 
-	void setTransform(TransformPtr trans) override {
+	void setTransform(const Transform& trans) override {
 		mTransform = trans;
 		shape->setTransform(trans);
 	}
@@ -52,7 +52,7 @@ public:
 
 protected:
 	HittablePtr shape;
-	MaterialPtr material;
+	BSDFPtr material;
 };
 
 using ObjectPtr = std::shared_ptr<Object>;

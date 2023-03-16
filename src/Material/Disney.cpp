@@ -1,4 +1,4 @@
-#include "../../include/Core/Material.h"
+#include "Core/BSDF.h"
 
 Spectrum DisneyDiffuse::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
@@ -36,7 +36,7 @@ float DisneyDiffuse::pdf(const SurfaceIntr &intr, TransportMode mode)
 std::optional<BSDFSample> DisneyDiffuse::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
     auto [wi, pdf] = Math::sampleHemisphereCosine(intr.n, { u.y, u.z });
-    return BSDFSample(wi, pdf, BXDF::Diffuse, baseColor * Math::PiInv);
+    return BSDFSample(wi, pdf, BSDFType::Diffuse | BSDFType::Reflection, baseColor * Math::PiInv);
 }
 
 Spectrum DisneyMetal::bsdf(const SurfaceIntr &intr, TransportMode mode)
@@ -75,7 +75,7 @@ std::optional<BSDFSample> DisneyMetal::sample(const SurfaceIntr &intr, const Vec
         return std::nullopt;
     SurfaceIntr newIntr = intr;
     newIntr.wi = wi;
-    return BSDFSample(wi, pdf(newIntr, mode), BXDF::GlosRefl, bsdf(newIntr, mode));
+    return BSDFSample(wi, pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection, bsdf(newIntr, mode));
 }
 
 Spectrum DisneyClearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
@@ -115,7 +115,7 @@ std::optional<BSDFSample> DisneyClearcoat::sample(const SurfaceIntr &intr, const
         return std::nullopt;
     SurfaceIntr newIntr = intr;
     newIntr.wi = wi;
-    return BSDFSample(wi, pdf(newIntr, mode), BXDF::GlosRefl, bsdf(newIntr, mode));
+    return BSDFSample(wi, pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection, bsdf(newIntr, mode));
 }
 
 Spectrum DisneySheen::bsdf(const SurfaceIntr &intr, TransportMode mode)
@@ -137,7 +137,7 @@ float DisneySheen::pdf(const SurfaceIntr &intr, TransportMode mode)
 std::optional<BSDFSample> DisneySheen::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
     auto [wi, pdf] = Math::sampleHemisphereCosine(intr.n, { u.y, u.z });
-    return BSDFSample(wi, pdf, BXDF::Diffuse, bsdf({ intr.n, intr.wo, wi, intr.uv }, mode));
+    return BSDFSample(wi, pdf, BSDFType::Diffuse | BSDFType::Reflection, bsdf({ intr.n, intr.wo, wi, intr.uv }, mode));
 }
 
 // TODO: this implementation is not correct
@@ -161,7 +161,7 @@ DisneyBSDF::DisneyBSDF(
     clearcoat(clearcoatGloss),
     sheen(baseColor, sheenTint),
     dielectric(baseColor, transmissionRoughness, ior),
-    Material(BXDF::Diffuse | BXDF::GlosRefl | BXDF::GlosTrans)
+    BSDF(BSDFType::Delta | BSDFType::Diffuse | BSDFType::Glossy | BSDFType::Reflection | BSDFType::Transmission)
 {
     weights[0] = (1.0f - metallic) * (1.0f - transmission);
     weights[1] = (1.0f - transmission * (1.0f - metallic));

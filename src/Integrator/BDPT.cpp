@@ -1,5 +1,5 @@
-#include "../../include/Core/Integrator.h"
-#include "../../include/Utils/TempAssignment.h"
+#include "Core/Integrator.h"
+#include "Utils/TempAssignment.h"
 
 enum class VertexType
 {
@@ -49,7 +49,7 @@ struct Vertex
     {
         Environment *envLight;
         Light *areaLight;
-        Material *bsdf;
+        BSDF *bsdf;
         Camera *camera;
     };
 
@@ -191,11 +191,10 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
 
         if (glm::dot(surf.ns, wo) < 0)
         {
-            auto bxdf = surf.material->bxdf();
-            if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
+            if (!surf.material->type().hasType(BSDFType::Transmission))
                 surf.flipNormal();
         }
-        bool deltaBsdf = surf.material->bxdf().isDelta();
+        bool deltaBsdf = surf.material->type().isDelta();
 
         vertex = Path::createSurface(pos, surf, wo);
         vertex.throughput = throughput;
@@ -276,11 +275,11 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
         auto surf = object->surfaceInfo(pos);
         if (glm::dot(surf.ns, wo) < 0)
         {
-            auto bxdf = surf.material->bxdf();
-            if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
+            auto bxdf = surf.material->type();
+            if (!surf.material->type().hasType(BSDFType::Transmission))
                 surf.flipNormal();
         }
-        bool deltaBsdf = surf.material->bxdf().isDelta();
+        bool deltaBsdf = surf.material->type().isDelta();
 
         vertex = Path::createSurface(pos, surf, wo);
         vertex.throughput = throughput;
@@ -606,35 +605,35 @@ double accumTimeBDPT = 0.0;
 
 void BDPTIntegrator2::renderOnePass()
 {
-    //const int MaxThreads = 1;
+    //const int mThreads = 1;
     if (mMaxSpp && mParam.spp >= mMaxSpp)
     {
         mFinished = true;
         return;
     }
     auto &film = mScene->mCamera->film();
-    int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / MaxThreads;
+    int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / mThreads;
 
     Timer timer;
 
-    std::thread *threads = new std::thread[MaxThreads];
-    for (int i = 0; i < MaxThreads; i++)
+    std::vector<std::thread> threads;
+    for (int i = 0; i < mThreads; i++)
     {
         auto cameraSampler = mSampler->copy();
         auto lightSampler = mLightSampler->copy();
         cameraSampler->nextSamples(pathsOnePass * i);
         lightSampler->nextSamples(pathsOnePass * i);
-        threads[i] = std::thread(&BDPTIntegrator2::trace, this, pathsOnePass, lightSampler, cameraSampler);
+        threads.emplace_back(std::thread(&BDPTIntegrator2::trace, this, pathsOnePass, lightSampler, cameraSampler));
     }
-    for (int i = 0; i < MaxThreads; i++)
-        threads[i].join();
-    delete[] threads;
+    for (auto& thread : threads) {
+        thread.join();
+    }
 
-    accumTimeBDPT += timer.get() / (pathsOnePass * MaxThreads) * 1e9;
+    accumTimeBDPT += timer.get() / (pathsOnePass * mThreads) * 1e9;
 
-    mSampler->nextSamples(pathsOnePass * MaxThreads);
-    mLightSampler->nextSamples(pathsOnePass * MaxThreads);
-    mParam.spp += static_cast<float>(pathsOnePass) * MaxThreads / (film.width * film.height);
+    mSampler->nextSamples(pathsOnePass * mThreads);
+    mLightSampler->nextSamples(pathsOnePass * mThreads);
+    mParam.spp += static_cast<float>(pathsOnePass) * mThreads / (film.width * film.height);
     mResultScale = 1.0f / mParam.spp;
     std::cout << "\r[BDPTIntegrator2 spp: " << std::fixed << std::setprecision(3) << mParam.spp << "]";
     std::cout << accumTimeBDPT / (++sppBDPT);

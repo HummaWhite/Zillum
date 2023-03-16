@@ -13,7 +13,11 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
     int maxDepth;
     int spp;
     std::stringstream param(cmdParam);
-    param = std::stringstream("-path2 sobol 800 800 1000 8 10000");
+    //param = std::stringstream("-path2 sobol 1280 800 1000 8 0");
+    //param = std::stringstream("-lpath sobol 640 400 10000 8");
+    //param = std::stringstream("-tpath sobol 640 400 10000 8 0");
+    //param = std::stringstream("-ao2 sobol 1280 800 1000 8 0 0.5");
+    param = std::stringstream("-bdpt2 sobol 1280 800 1000 8 0 0 0");
 
     param >> integType;
     param >> samplerType >> width >> height >> spp >> maxDepth;
@@ -131,6 +135,7 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
     else {
         mIntegrator->mSampler = std::make_shared<SimpleSobolSampler>(0, scramble);
     }
+    mIntegrator->mThreads = 20;
 
     mTimer.reset();
 }

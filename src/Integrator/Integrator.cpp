@@ -38,7 +38,7 @@ void Integrator::addToDebugBuffer(int index, const Vec2i &pixel, const Spectrum 
 }
 
 PixelIndependentIntegrator::PixelIndependentIntegrator(ScenePtr scene, int maxSpp, IntegratorType type) :
-    mMaxSpp(maxSpp), mLimitSpp(maxSpp != 0), Integrator(scene, type) {
+    mMaxSpp(maxSpp), mLimitSpp(maxSpp != 0), mPixelPos(0, 0), Integrator(scene, type) {
     auto film = scene->mCamera->film();
     mWidth = film.width;
     mHeight = film.height;
@@ -54,14 +54,12 @@ void PixelIndependentIntegrator::renderOnePass() {
         mFinished = true;
         return;
     }
-
-    //std::thread *threads = new std::thread[MaxThreads];
     
     std::vector<std::thread> threads;
-    for (int i = 0; i < MaxThreads; i++) {
-        int start = (mWidth / MaxThreads) * i;
-        int end = std::min(mWidth, (mWidth / MaxThreads) * (i + 1));
-        if (i == MaxThreads - 1) {
+    for (int i = 0; i < mThreads; i++) {
+        int start = (mWidth / mThreads) * i;
+        int end = std::min(mWidth, (mWidth / mThreads) * (i + 1));
+        if (i == mThreads - 1) {
             end = mWidth;
         }
         auto threadSampler = (i == 0) ? mSampler : mSampler->copy();
@@ -69,11 +67,9 @@ void PixelIndependentIntegrator::renderOnePass() {
     }
     mSampler->nextSample();
 
-    for (int i = 0; i < MaxThreads; i++) {
+    for (int i = 0; i < mThreads; i++) {
         threads[i].join();
     }
-    //doTracing(0, mWidth, mSampler);
-    //mSampler->nextSample();
 
     mCurspp++;
     std::cout << "\r" << std::setw(4) << mCurspp << "/" << mMaxSpp << " spp  ";

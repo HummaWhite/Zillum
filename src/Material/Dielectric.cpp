@@ -1,4 +1,4 @@
-#include "../../include/Core/Material.h"
+#include "Core/BSDF.h"
 
 bool refract(Vec3f &wt, const Vec3f &wi, const Vec3f &n, float eta)
 {
@@ -111,7 +111,7 @@ std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3
         if (u.x < refl)
         {
             Vec3f wi = -glm::reflect(wo, n);
-            return BSDFSample(wi, 1.0f, BXDF::SpecRefl, baseColor);
+            return BSDFSample(wi, 1.0f, BSDFType::Delta | BSDFType::Reflection, baseColor);
         }
         else
         {
@@ -122,7 +122,7 @@ std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3
                 return std::nullopt;
 
             float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
-            return BSDFSample(wi, 1.0f, BXDF::SpecTrans, baseColor * factor, eta);
+            return BSDFSample(wi, 1.0f, BSDFType::Delta | BSDFType::Transmission, baseColor * factor, eta);
         }
     }
     else
@@ -149,7 +149,7 @@ std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return BSDFSample(wi, p, BXDF::GlosRefl, r);
+            return BSDFSample(wi, p, BSDFType::Glossy | BSDFType::Reflection, r);
         }
         else
         {
@@ -178,7 +178,7 @@ std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return BSDFSample(wi, p, BXDF::GlosTrans, r, eta);
+            return BSDFSample(wi, p, BSDFType::Glossy | BSDFType::Transmission, r, eta);
         }
     }
 }

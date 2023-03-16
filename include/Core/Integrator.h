@@ -11,7 +11,7 @@
 #include "Texture.h"
 #include "Object.h"
 #include "Light.h"
-#include "Material.h"
+#include "BSDF.h"
 #include "Math.h"
 #include "Environment.h"
 #include "BVH.h"
@@ -52,6 +52,7 @@ public:
 public:
 	SamplerPtr mSampler;
 	float mResultScale = 1.0f;
+	int mThreads = 1;
 
 	std::vector<Film> mDebugBuffers;
 	std::vector<Buffer2D<std::mutex>> mDebugBufLockers;

@@ -78,8 +78,8 @@ public:
 
 	void addHittable(HittablePtr hittable) { mHittables.push_back(hittable); }
 	void addLight(LightPtr light);
-	void addObjectMesh(const char *path, TransformPtr transform, MaterialPtr material);
-	void addLightMesh(const char *path, TransformPtr transform, const Spectrum &power);
+	void addObjectMesh(const char *path, const Transform& transform, BSDFPtr material);
+	void addLightMesh(const char *path, const Transform& transform, const Spectrum &power);
 
 	bool visible(Vec3f x, Vec3f y);
 	float v(Vec3f x, Vec3f y);

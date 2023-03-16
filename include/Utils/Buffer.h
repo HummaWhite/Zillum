@@ -57,6 +57,10 @@ struct Buffer {
 		return data[index];
 	}
 
+	const T& operator [] (int index) const {
+		return data[index];
+	}
+
 	void* bufPtr() {
 		return (void*)data;
 	}

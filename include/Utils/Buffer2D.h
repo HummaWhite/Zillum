@@ -31,9 +31,19 @@ struct Buffer2D : Buffer<T> {
 		return this->data[j * width + i];
 	}
 
+	const T& operator () (int i, int j) const {
+		return this->data[j * width + i];
+	}
+
 	T& operator () (float u, float v) {
-		int iu = u * width;
-		int iv = v * height;
+		int iu = std::min(static_cast<int>(u * width), width - 1);
+		int iv = std::min(static_cast<int>(v * height), height - 1);
+		return this->data[iv * width + iu];
+	}
+
+	const T& operator () (float u, float v) const {
+		int iu = std::min(static_cast<int>(u * width), width - 1);
+		int iv = std::min(static_cast<int>(v * height), height - 1);
 		return this->data[iv * width + iu];
 	}
 

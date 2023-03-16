@@ -1,7 +1,7 @@
-#include "Core/Material.h"
+#include "Core/BSDF.h"
 
 Spectrum Lambertian::bsdf(const SurfaceIntr &intr, TransportMode mode) {
-    return albedo->get(intr.uv) * Math::PiInv;
+    return albedo.get(intr.uv) * Math::PiInv;
 }
 
 float Lambertian::pdf(const SurfaceIntr &intr, TransportMode mode) {
@@ -11,5 +11,5 @@ float Lambertian::pdf(const SurfaceIntr &intr, TransportMode mode) {
 
 std::optional<BSDFSample> Lambertian::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) {
     auto [wi, pdf] = Math::sampleHemisphereCosine(intr.n, { u.y, u.z });
-    return BSDFSample(wi, pdf, BXDF::Diffuse, albedo->get(intr.uv) * Math::PiInv);
+    return BSDFSample(wi, pdf, BSDFType::Diffuse | BSDFType::Reflection, albedo.get(intr.uv) * Math::PiInv);
 }

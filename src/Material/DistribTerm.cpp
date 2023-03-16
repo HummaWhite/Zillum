@@ -1,4 +1,4 @@
-#include "../../include/Core/Microfacet.h"
+#include "Core/Microfacet.h"
 
 float schlickG(float cosTheta, float alpha)
 {

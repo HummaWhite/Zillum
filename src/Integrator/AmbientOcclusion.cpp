@@ -1,4 +1,4 @@
-#include "../../include/Core/Integrator.h"
+#include "Core/Integrator.h"
 
 Spectrum traceOnePath(const AOIntegParam &param, ScenePtr scene, Ray ray, Vec3f n, SamplerPtr sampler)
 {
@@ -33,20 +33,20 @@ void AOIntegrator2::renderOnePass()
     }
 
     auto &film = mScene->mCamera->film();
-    int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / MaxThreads;
-    std::thread *threads = new std::thread[MaxThreads];
-    for (int i = 0; i < MaxThreads; i++)
+    int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / mThreads;
+    std::thread *threads = new std::thread[mThreads];
+    for (int i = 0; i < mThreads; i++)
     {
         auto threadSampler = mSampler->copy();
         threadSampler->nextSamples(pathsOnePass * i);
         threads[i] = std::thread(&AOIntegrator2::trace, this, pathsOnePass, threadSampler);
     }
-    for (int i = 0; i < MaxThreads; i++)
+    for (int i = 0; i < mThreads; i++)
         threads[i].join();
     delete[] threads;
 
-    mSampler->nextSamples(pathsOnePass * MaxThreads);
-    mParam.spp += static_cast<float>(pathsOnePass) * MaxThreads / (film.width * film.height);
+    mSampler->nextSamples(pathsOnePass * mThreads);
+    mParam.spp += static_cast<float>(pathsOnePass) * mThreads / (film.width * film.height);
     mResultScale = 1.0f / mParam.spp;
     std::cout << "\r[AOIntegrator2 spp: " << std::fixed << std::setprecision(3) << mParam.spp << "]";
 }

@@ -1,4 +1,4 @@
-#include "../../include/Core/Integrator.h"
+#include "Core/Integrator.h"
 
 Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Vec3f wo, SurfaceInfo surf, SamplerPtr sampler)
 {
@@ -8,15 +8,14 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
 
     for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
     {
-        MaterialPtr mat = surf.material;
+        BSDFPtr mat = surf.material;
 
         if (glm::dot(surf.ns, wo) <= 0)
         {
-            auto bxdf = mat->bxdf();
-            if (!bxdf.hasType(BXDF::GlosTrans) && !bxdf.hasType(BXDF::SpecTrans))
+            if (!mat->type().hasType(BSDFType::Transmission))
                 surf.flipNormal();
         }
-        bool deltaBsdf = mat->bxdf().isDelta();
+        bool deltaBsdf = mat->type().isDelta();
 
         auto lightSample = sampler->get<5>();
         if (!deltaBsdf && param.sampleDirect)
@@ -144,25 +143,25 @@ void PathIntegrator2::renderOnePass()
         return;
     }
     auto &film = mScene->mCamera->film();
-    int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / MaxThreads;
-    std::thread *threads = new std::thread[MaxThreads];
+    int pathsOnePass = mPathsOnePass ? mPathsOnePass : film.width * film.height / mThreads;
+    std::thread *threads = new std::thread[mThreads];
 
     Timer timer;
 
-    for (int i = 0; i < MaxThreads; i++)
+    for (int i = 0; i < mThreads; i++)
     {
         auto threadSampler = mSampler->copy();
         threadSampler->nextSamples(pathsOnePass * i);
         threads[i] = std::thread(&PathIntegrator2::trace, this, pathsOnePass, threadSampler);
     }
-    for (int i = 0; i < MaxThreads; i++)
+    for (int i = 0; i < mThreads; i++)
         threads[i].join();
     delete[] threads;
 
-    accumTime += timer.get() / (pathsOnePass * MaxThreads) * 1e9;
+    accumTime += timer.get() / (pathsOnePass * mThreads) * 1e9;
 
-    mSampler->nextSamples(pathsOnePass * MaxThreads);
-    mParam.spp += static_cast<float>(pathsOnePass) * MaxThreads / (film.width * film.height);
+    mSampler->nextSamples(pathsOnePass * mThreads);
+    mParam.spp += static_cast<float>(pathsOnePass) * mThreads / (film.width * film.height);
     mResultScale = 1.0f / mParam.spp;
     std::cout << "\r[PathIntegrator2 spp: " << std::fixed << std::setprecision(3) << mParam.spp << "]";
     std::cout << accumTime / (++spp);

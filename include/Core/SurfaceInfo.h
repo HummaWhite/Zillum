@@ -5,16 +5,16 @@
 
 #include "glmIncluder.h"
 
-class Material;
-using MaterialPtr = std::shared_ptr<Material>;
+class BSDF;
+using BSDFPtr = std::shared_ptr<BSDF>;
 
 struct SurfaceInfo {
 	SurfaceInfo() = default;
 
-	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, MaterialPtr mat) :
+	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, BSDFPtr mat) :
 		uv(uv), ns(ns), material(mat) {}
 
-	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, const Vec3f &ng, MaterialPtr mat) :
+	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, const Vec3f &ng, BSDFPtr mat) :
 		uv(uv), ns(ns), ng(ng), material(mat) {
 		if (glm::dot(ng, ns) < 0) {
 			this->ng = -ng;
@@ -29,7 +29,7 @@ struct SurfaceInfo {
 	Vec2f uv;
 	Vec3f ns;
 	Vec3f ng;
-	MaterialPtr material;
+	BSDFPtr material;
 };
 
 struct SurfaceIntr {
@@ -38,6 +38,9 @@ struct SurfaceIntr {
 
 	SurfaceIntr(const Vec3f &n, const Vec3f &wo, const Vec3f &wi, const Vec2f &uv) :
 		wo(wo), wi(wi), n(n), uv(uv) {}
+
+	SurfaceIntr toLocal() const {
+	}
 
 	Vec3f n;
 	Vec3f wo;

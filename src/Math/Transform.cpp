@@ -1,6 +1,6 @@
 #include "Core/Transform.h"
 
-AABB Transform::getTransformedBox(const AABB &box) {
+AABB Transform::getTransformedBox(const AABB &box) const {
     auto pMin = Vec3f(matrix * Vec4f(box.pMin, 1.0f));
     auto pMax = Vec3f(matrix * Vec4f(box.pMax, 1.0f));
 
@@ -54,15 +54,19 @@ Vec2f Transform::toConcentricDisk(const Vec2f &uv) {
     return Vec2f(r * glm::cos(phi), r * glm::sin(phi));
 }
 
-Vec3f Transform::normalToWorld(const Vec3f &N, const Vec3f &dir) {
-    return glm::normalize(Math::TBNMatrix(N) * dir);
+Vec3f Transform::localToWorld(const Vec3f &N, const Vec3f &dir) {
+    return Math::matrixToLocalFrame(N) * dir;
+}
+
+Vec3f Transform::worldToLocal(const Vec3f& n, const Vec3f& dir) {
+    return glm::inverse(Math::matrixToLocalFrame(n)) * dir;
 }
 
 namespace Math {
     std::pair<Vec3f, float> sampleHemisphereCosine(const Vec3f &N, const Vec2f &u) {
         Vec2f uv = Transform::toConcentricDisk(u);
         float z = glm::sqrt(1.0f - glm::dot(uv, uv));
-        Vec3f v = Transform::normalToWorld(N, Vec3f(uv, z));
+        Vec3f v = Transform::localToWorld(N, Vec3f(uv, z));
         return { v, PiInv * z };
     }
 }

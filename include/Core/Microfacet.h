@@ -10,9 +10,9 @@ public:
 	virtual Vec3f sampleWm(const Vec3f &n, const Vec3f &wo, const Vec2f &u) = 0;
 };
 
-class GGXDistrib: public NormalDistrib {
+class GTR2Distrib: public NormalDistrib {
 public:
-	GGXDistrib(float roughness, bool sampleVisible, float aniso = 0.0f);
+	GTR2Distrib(float roughness, bool sampleVisible, float aniso = 0.0f);
 
 	float d(const Vec3f &n, const Vec3f &m);
 	float pdf(const Vec3f &n, const Vec3f &m, const Vec3f &wo);

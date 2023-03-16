@@ -39,7 +39,7 @@ public:
 	Vec2f surfaceUV(const Vec3f &p) { return shape->surfaceUV(p); }
 	AABB bound() { return shape->bound(); }
 
-	void setTransform(TransformPtr trans) override {
+	void setTransform(const Transform& trans) override {
 		mTransform = trans;
 		shape->setTransform(trans);
 	}

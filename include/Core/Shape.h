@@ -18,7 +18,7 @@ public:
 	Vec2f surfaceUV(const Vec3f &p);
 	Vec3f getCenter() const { return center; }
 	float getRadius() const { return radius; }
-	AABB bound() { return mTransform->getTransformedBox(AABB(center, radius)); }
+	AABB bound() { return mTransform.getTransformedBox(AABB(center, radius)); }
 
 private:
 	Vec3f center;
@@ -61,7 +61,7 @@ public:
 	Vec2f surfaceUV(const Vec3f &p);
 	AABB bound() { return triangle.bound(); }
 
-	void setTransform(TransformPtr trans) override;
+	void setTransform(const Transform& trans) override;
 
 private:
 	Triangle triangle;

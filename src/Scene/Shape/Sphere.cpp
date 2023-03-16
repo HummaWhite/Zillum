@@ -1,8 +1,8 @@
 #include "Core/Shape.h"
 
 std::optional<float> Sphere::closestHit(const Ray &ray) {
-    Vec3f o = mTransform->getInversed(ray.ori);
-    Vec3f d = mTransform->getInversed(ray.ori + ray.dir) - o;
+    Vec3f o = mTransform.getInversed(ray.ori);
+    Vec3f d = mTransform.getInversed(ray.ori + ray.dir) - o;
     Vec3f c = center;
 
     float t = dot(d, c - o) / dot(d, d);
@@ -33,7 +33,7 @@ Vec3f Sphere::uniformSample(const Vec2f &u) {
 }
 
 Vec3f Sphere::normalGeom(const Vec3f &p) {
-    return mTransform->getInversedNormal(glm::normalize(p - center));
+    return mTransform.getInversedNormal(glm::normalize(p - center));
 }
 
 float Sphere::surfaceArea() {
@@ -41,6 +41,6 @@ float Sphere::surfaceArea() {
 }
 
 Vec2f Sphere::surfaceUV(const Vec3f &p) {
-    auto oriP = mTransform->getInversed(p);
+    auto oriP = mTransform.getInversed(p);
     return Transform::sphereToPlane(glm::normalize(oriP - center));
 }

@@ -1,4 +1,4 @@
-#include "../../include/Core/Material.h"
+#include "Core/BSDF.h"
 
 Spectrum MetalWorkflow::bsdf(const SurfaceIntr &intr, TransportMode mode) {
     const auto &[n, wo, wi, uv] = intr;
@@ -12,7 +12,7 @@ Spectrum MetalWorkflow::bsdf(const SurfaceIntr &intr, TransportMode mode) {
     float NoL = Math::satDot(n, wi);
     float NoV = Math::satDot(n, wo);
 
-    Spectrum base = baseColor->get(intr.uv);
+    Spectrum base = baseColor.get(intr.uv);
     Spectrum F0 = Math::lerp(Spectrum(0.04f), base, metallic);
 
     Spectrum f = schlickF(Math::satDot(h, wo), F0, roughness);
@@ -61,5 +61,5 @@ std::optional<BSDFSample> MetalWorkflow::sample(const SurfaceIntr &intr, const V
         return std::nullopt;
     }
     SurfaceIntr newIntr(n, wo, wi, intr.uv);
-    return BSDFSample(wi, pdf(newIntr, mode), sampleDiff ? BXDF::Diffuse : BXDF::GlosRefl, bsdf(newIntr, mode));
+    return BSDFSample(wi, pdf(newIntr, mode), (sampleDiff ? BSDFType::Diffuse : BSDFType::Glossy) | BSDFType::Reflection, bsdf(newIntr, mode));
 }

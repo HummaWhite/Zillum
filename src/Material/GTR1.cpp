@@ -1,4 +1,4 @@
-#include "../../include/Core/Microfacet.h"
+#include "Core/Microfacet.h"
 
 float GTR1Distrib::d(const Vec3f &n, const Vec3f &m)
 {
@@ -20,5 +20,5 @@ Vec3f GTR1Distrib::sampleWm(const Vec3f &n, const Vec3f &wo, const Vec2f &u)
     if (!Math::sameHemisphere(n, wo, m))
         m = -m;
 
-    return glm::normalize(Transform::normalToWorld(n, m));
+    return glm::normalize(Transform::localToWorld(n, m));
 }

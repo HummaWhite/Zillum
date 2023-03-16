@@ -26,12 +26,12 @@ public:
 
 	HittableType type() const { return mType; }
 
-	virtual void setTransform(TransformPtr trans) { mTransform = trans; }
-	virtual void setTransform(const glm::mat4 &trans) { mTransform->set(trans); }
-	TransformPtr getTransform() const { return mTransform; }
+	virtual void setTransform(const Transform& trans) { mTransform = trans; }
+	virtual void setTransform(const glm::mat4 &trans) { mTransform.set(trans); }
+	Transform& getTransform() { return mTransform; }
 
 protected:
-	TransformPtr mTransform = std::make_shared<Transform>();
+	Transform mTransform;
 	HittableType mType;
 };
 

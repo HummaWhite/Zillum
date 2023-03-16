@@ -1,4 +1,4 @@
-#include "../../include/Core/Material.h"
+#include "Core/BSDF.h"
 
 Spectrum Clearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
@@ -35,5 +35,5 @@ std::optional<BSDFSample> Clearcoat::sample(const SurfaceIntr &intr, const Vec3f
         return std::nullopt;
     SurfaceIntr newIntr = intr;
     newIntr.wi = wi;
-    return BSDFSample(wi, pdf(newIntr, mode), BXDF::GlosRefl, bsdf(newIntr, mode));
+    return BSDFSample(wi, pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection, bsdf(newIntr, mode));
 }
