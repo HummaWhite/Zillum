@@ -51,7 +51,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
                 float lightPdf = scene->pdfL(obj, pos, hitPos, wi);
                 weight = (lightPdf <= 0) ? 0 : param.MIS ? Math::powerHeuristic(bsdfPdf, lightPdf) : .5f;
             }
-            result += scene->L(obj, pos, hitPos, wi);
+            result += scene->L(obj, pos, hitPos, wi) * throughput * weight;
             break;
         }
 
