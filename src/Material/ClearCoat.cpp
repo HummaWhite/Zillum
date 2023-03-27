@@ -2,7 +2,7 @@
 
 Spectrum Clearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     auto h = glm::normalize(wo + wi);
 
     float cosWo = Math::satDot(n, wo);
@@ -21,7 +21,7 @@ Spectrum Clearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
 
 float Clearcoat::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     auto h = glm::normalize(wo + wi);
     return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
 }

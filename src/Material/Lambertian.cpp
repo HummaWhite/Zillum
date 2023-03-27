@@ -5,8 +5,7 @@ Spectrum Lambertian::bsdf(const SurfaceIntr &intr, TransportMode mode) {
 }
 
 float Lambertian::pdf(const SurfaceIntr &intr, TransportMode mode) {
-    const auto &[n, wo, wi, uv] = intr;
-    return glm::dot(n, wi) * Math::PiInv;
+    return glm::dot(intr.n, intr.wi) * Math::PiInv;
 }
 
 std::optional<BSDFSample> Lambertian::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) {

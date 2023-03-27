@@ -2,7 +2,7 @@
 
 Spectrum DisneyDiffuse::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     float cosWo = Math::satDot(n, wo);
     float cosWi = Math::satDot(n, wi);
     Vec3f h = glm::normalize(wo + wi);
@@ -29,7 +29,7 @@ Spectrum DisneyDiffuse::bsdf(const SurfaceIntr &intr, TransportMode mode)
 
 float DisneyDiffuse::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     return glm::dot(wi, n) * Math::PiInv;
 }
 
@@ -41,7 +41,7 @@ std::optional<BSDFSample> DisneyDiffuse::sample(const SurfaceIntr &intr, const V
 
 Spectrum DisneyMetal::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     float cosWo = Math::satDot(n, wo);
     float cosWi = Math::satDot(n, wi);
     Vec3f h = glm::normalize(wo + wi);
@@ -61,7 +61,7 @@ Spectrum DisneyMetal::bsdf(const SurfaceIntr &intr, TransportMode mode)
 
 float DisneyMetal::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     float cosWi = glm::dot(n, wi);
     Vec3f h = glm::normalize(wo + wi);
     return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
@@ -80,7 +80,7 @@ std::optional<BSDFSample> DisneyMetal::sample(const SurfaceIntr &intr, const Vec
 
 Spectrum DisneyClearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     auto h = glm::normalize(wo + wi);
     float cosWo = Math::satDot(n, wo);
     float cosWi = Math::satDot(n, wi);
@@ -101,7 +101,7 @@ Spectrum DisneyClearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
 
 float DisneyClearcoat::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     auto h = glm::normalize(wo + wi);
     return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
 }
@@ -120,7 +120,7 @@ std::optional<BSDFSample> DisneyClearcoat::sample(const SurfaceIntr &intr, const
 
 Spectrum DisneySheen::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     Vec3f h = glm::normalize(wi + wo);
     float lum = Math::luminance(baseColor);
     Spectrum tintColor = lum > 0 ? baseColor / lum : Spectrum(1.0f);
@@ -130,7 +130,7 @@ Spectrum DisneySheen::bsdf(const SurfaceIntr &intr, TransportMode mode)
 
 float DisneySheen::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     return glm::dot(wi, n) * Math::PiInv;
 }
 

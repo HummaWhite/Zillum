@@ -94,6 +94,7 @@ struct PathIntegParam {
 	int maxDepth = 5;
 	bool sampleDirect = true;
 	bool MIS = true;
+	float directWeight = .5f;
 	float spp = 0;
 };
 

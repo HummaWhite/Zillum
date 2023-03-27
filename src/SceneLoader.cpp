@@ -223,8 +223,58 @@ ScenePtr boxScene() {
     return scene;
 }
 
+BSDFPtr makeLayeredBSDF() {
+//#define baseColor Spectrum(.9f, .5f, .9f)
+#define baseColor Spectrum(1.f)
+    auto normalMap = TextureLoader::fromU8x3("res/texture/alien-metal_normal.png", false);
+
+    auto diffuse = new Lambertian(ColorMap(baseColor * .75f));
+    auto met = new MetalWorkflow(ColorMap(baseColor * .75f), 1.f, .2f);
+    auto dielec = new Dielectric(Spectrum(1.f), 0.2f, 1.5f);
+    auto dielec2 = new Dielectric(Spectrum(1.f), 0.f, 1.2f);
+    auto tdielec = new ThinDielectric(Spectrum(1.f), 1.5f);
+    auto tdielec2 = new ThinDielectric(Spectrum(1.f), 4.f);
+    auto fake = new FakeBSDF;
+
+    auto bdiffuse = new Lambertian(ColorMap(Spectrum(0.1f)));
+    auto bmet = new MetalWorkflow(ColorMap(Spectrum(.3f, .1f, .05f)), 1.f, .5f);
+
+    auto layeredBSDF = std::make_shared<LayeredBSDF>();
+    //layeredBSDF->addBSDF(fake);
+    layeredBSDF->addBSDF(dielec, nullptr);
+    //layeredBSDF->addBSDF(met, normalMap);
+    //layeredBSDF->addBSDF(diffuse, nullptr);
+    layeredBSDF->addBSDF(bmet, normalMap);
+    return layeredBSDF;
+#undef baseColor
+}
+
+ScenePtr materialTest() {
+    auto scene = std::make_shared<Scene>();
+
+    scene->addHittable(
+        std::make_shared<Object>(
+            std::make_shared<Sphere>(Vec3f(0.f, 4.0f, 0.f), 1.5f, true),
+            //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+            //std::make_shared<MetalWorkflow>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
+            makeLayeredBSDF()
+            ));
+
+    scene->mCamera = std::make_shared<ThinLensCamera>(20.0f, .1f, 11.f);
+    scene->mCamera->setPos({ 0.0f, -8.0f, 0.0f });
+    scene->mCamera->lookAt(Vec3f(0.0f, 10.0f, 0.0f));
+
+    //scene->mEnv = std::make_shared<EnvSingleColor>(Vec3f(0.0f));
+    scene->mEnv = std::make_shared<EnvSphereMapHDR>("res/texture/090.hdr");
+    scene->mLightAndEnvStrategy = LightSampleStrategy::ByPower;
+    scene->mLightSampleStrategy = LightSampleStrategy::ByPower;
+
+    return scene;
+}
+
 ScenePtr cornellBox() {
     auto scene = std::make_shared<Scene>();
+    
     scene->addHittable(
         std::make_shared<Object>(
             std::make_shared<Quad>(
@@ -275,7 +325,30 @@ ScenePtr cornellBox() {
             std::make_shared<Lambertian>(TextureLoader::fromU8x3("res/checker.png", true))
             ));
 
-     {
+    scene->addHittable(
+         std::make_shared<Object>(
+             std::make_shared<Sphere>(Vec3f(0.f, 4.0f, -0.5f), 1.5f, true),
+             //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+             //std::make_shared<MetalWorkflow>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
+             makeLayeredBSDF()
+         ));
+
+    /*
+    scene->addHittable(
+        std::make_shared<Object>(
+            std::make_shared<Quad>(
+                Vec3f(-1.0f, 4.0f, -1.0f),
+                Vec3f(1.0f, 4.0f, -1.0f),
+                Vec3f(-1.0f, 5.0f, 1.0f)),
+            //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+            //std::make_shared<MetalWorkflow>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
+            //layeredBSDF
+            std::make_shared<FakeBSDF>()
+            ));
+            */
+
+    /*
+    {
         auto model = glm::translate(Mat4f(1.0f), Vec3f(-1.0f, 4.0f, -1.2f));
         model = glm::rotate(model, glm::radians(17.5f), Vec3f(0.0f, 0.0f, 1.0f));
         model = glm::scale(model, Vec3f(1.8f, 1.8f, 3.6f));
@@ -298,16 +371,19 @@ ScenePtr cornellBox() {
             std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f)))
         );
     }
+    */
 
     scene->addLight(
         std::make_shared<Light>(
             std::make_shared<Quad>(
-                // Vec3f(-0.75f, 3.75f, 2.999f),
-                // Vec3f(0.75f, 3.75f, 2.999f),
-                // Vec3f(-0.75f, 2.25f, 2.999f)),
+                Vec3f(-0.75f, 3.75f, 2.999f),
+                Vec3f(0.75f, 3.75f, 2.999f),
+                Vec3f(-0.75f, 2.25f, 2.999f)),
+            /*
                 Vec3f(-0.025f, 3.025f, 2.999f),
                 Vec3f(0.025f, 3.025f, 2.999f),
                 Vec3f(-0.025f, 2.975f, 2.999f)),
+                */
             Spectrum(200.0f), false));
 
     scene->mCamera = std::make_shared<ThinLensCamera>(40.0f);
@@ -498,31 +574,13 @@ ScenePtr staircase2()
 
 ScenePtr setupScene(int windowWidth, int windowHeight)
 {
-    // const float level = -1.0f;
-    // const float size = 5.0f;
-    // scene->addHittable(
-    //     std::make_shared<Object>(
-    //     std::make_shared<Quad>(
-    //         Vec3f(-size * 2.0f, -size, level),
-    //         Vec3f(size * 2.0f, -size, level),
-    //         Vec3f(-size * 1.0f, size, level)),
-    //     std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f), 0.0f, 1.0f)));
-
-    // scene->addHittable(
-    //     std::make_shared<Object>(
-    //         std::make_shared<Sphere>(Vec3f(0.0f), 1.0f, true),
-    //         //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-    //         //std::make_shared<Clearcoat>(0.01f, 1.0f)
-    //         //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f, 0.5f, 0.2f), 0.0f, 1.0f)
-    //         std::make_shared<Lambertian>(Spectrum(1.0f, 0.5f, 0.2f))
-    //         //std::make_shared<DisneyDiffuse>(Spectrum(1.0f, 0.5f, 0.2f), 1.0f, 1.0f)
-    //     ));
     //auto scene = fireplace(false, true);
     //auto scene = boxScene();
     //auto scene = staircase2();
-    auto scene = originalBox();
+    //auto scene = originalBox();
     //auto scene = bidirScene();
     //auto scene = cornellBox();
+    auto scene = materialTest();
     scene->mCamera->initFilm(windowWidth, windowHeight);
     return scene;
 }

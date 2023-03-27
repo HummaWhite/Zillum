@@ -15,8 +15,30 @@
 #include "Texture.h"
 #include "Utils/EnumBitField.h"
 
-enum class TransportMode {
-	Radiance, Importance
+class TransportMode {
+public:
+	enum : uint8_t {
+		Radiance = 0, Importance = 1
+	};
+
+	TransportMode() = default;
+
+	TransportMode(uint8_t mode) : mode(mode) {}
+
+	bool operator == (uint8_t rhs) const {
+		return mode == rhs;
+	}
+
+	TransportMode operator ~ () const {
+		return { !mode };
+	}
+
+	bool isAdjoint() const {
+		return mode == Importance;
+	}
+
+private:
+	uint8_t mode;
 };
 
 class BSDFType {
@@ -69,12 +91,14 @@ private:
 		return !((type.type - (type.type & target)) & mask);
 	}
 
-protected:
+public:
 	int type;
 };
 
 // Vec3f dir, Spectrum bsdf, float pdf, BSDFType type, float eta
 struct BSDFSample {
+	BSDFSample() : type(BSDFType::AllMask) {}
+
 	BSDFSample(const Vec3f &dir, const Spectrum& bsdf, float pdf, BSDFType type, float eta = 1.0f) :
 		dir(dir), pdf(pdf), type(type), bsdf(bsdf), eta(eta) {}
 
@@ -100,6 +124,21 @@ protected:
 };
 
 using BSDFPtr = std::shared_ptr<BSDF>;
+
+class FakeBSDF : public BSDF {
+public:
+	FakeBSDF() : BSDF(BSDFType::Delta | BSDFType::Transmission) {}
+
+	Spectrum bsdf(const SurfaceIntr& intr, TransportMode mode) {
+		return Spectrum(0.f);
+	}
+	float pdf(const SurfaceIntr& intr, TransportMode mode) {
+		return 0.f;
+	}
+	std::optional<BSDFSample> sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode) {
+		return BSDFSample(-intr.wo, Spectrum(1.f), 1.f, BSDFType::Delta | BSDFType::Transmission);
+	}
+};
 
 class Lambertian: public BSDF {
 public:
@@ -165,7 +204,8 @@ class Dielectric: public BSDF {
 public:
 	Dielectric(const Spectrum &baseColor, float roughness, float ior):
 		baseColor(baseColor), ior(ior), distrib(roughness, false),
-		approxDelta(roughness < 0.014f), BSDF(BSDFType::Delta | BSDFType::Reflection | BSDFType::Transmission) {}
+		approxDelta(roughness < 0.014f),
+		BSDF((roughness < 0.014f ? BSDFType::Delta : BSDFType::Glossy) | BSDFType::Reflection | BSDFType::Transmission) {}
 
 	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
 	float pdf(const SurfaceIntr &intr, TransportMode mode);
@@ -283,31 +323,23 @@ private:
 	BSDF *components[5];
 };
 
-class SlabBSDF : public BSDF {
-public:
-	SlabBSDF(BSDF* top, BSDF* bottom) : top(top), bottom(bottom), BSDF(BSDFType::AllMask) {}
-
-	Spectrum bsdf(const SurfaceIntr& intr, TransportMode mode);
-	float pdf(const SurfaceIntr& intr, TransportMode mode);
-	std::optional<BSDFSample> sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode);
-
-public:
-	BSDF* top;
-	BSDF* bottom;
-	//Medium* medium = nullptr;
-	//float thickness;
-};
-
 class LayeredBSDF : public BSDF {
 public:
+	LayeredBSDF() : BSDF(BSDFType::None) {}
+
 	Spectrum bsdf(const SurfaceIntr& intr, TransportMode mode);
 	float pdf(const SurfaceIntr& intr, TransportMode mode);
 	std::optional<BSDFSample> sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode);
 
-	void addBSDF(BSDF* bsdf);
+	void addBSDF(BSDF* bsdf, Texture3fPtr normalMap);
+
+public:
+	std::vector<BSDF*> interfaces;
+	std::vector<Texture3fPtr> normalMaps;
+	int maxDepth = 7;
+	int pdfEvalTimes = 4;
 
 private:
-	std::vector<SlabBSDF> nestedSlabs;
 };
 
 bool refract(Vec3f &wt, const Vec3f &wi, const Vec3f &n, float eta);

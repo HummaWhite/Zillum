@@ -23,14 +23,15 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
             auto [wi, coef, lightPdf] = scene->sampleLiLightAndEnv(pos, lightSample);
             if (lightPdf != 0)
             {
-                float bsdfPdf = mat->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance);
-                float weight = param.MIS ? Math::powerHeuristic(lightPdf, bsdfPdf) : 0.5f;
-                result += mat->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance) * throughput *
-                    Math::satDot(surf.ns, wi) * coef * weight;
+                SurfaceIntr intr(surf.ns, wo, wi, surf.uv, sampler.get());
+                float bsdfPdf = mat->pdf(intr, TransportMode::Radiance);
+                float weight = param.MIS ? Math::powerHeuristic(lightPdf, bsdfPdf) : param.directWeight;
+                result += mat->bsdf(intr, TransportMode::Radiance) * throughput *
+                    Math::absDot(surf.ns, wi) * coef * weight;
             }
         }
 
-        auto bsdfSample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3());
+        auto bsdfSample = surf.material->sample({ surf.ns, wo, surf.uv, sampler.get() }, sampler->get3());
         if (!bsdfSample)
             break;
         auto [wi, bsdf, bsdfPdf, type, eta] = bsdfSample.value();
@@ -49,7 +50,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
 
             if (!type.isDelta() && param.sampleDirect) {
                 float lightPdf = scene->pdfL(obj, pos, hitPos, wi);
-                weight = (lightPdf <= 0) ? 0 : param.MIS ? Math::powerHeuristic(bsdfPdf, lightPdf) : .5f;
+                weight = (lightPdf <= 0) ? 0 : (param.MIS ? Math::powerHeuristic(bsdfPdf, lightPdf) : (1. - param.directWeight));
             }
             result += scene->L(obj, pos, hitPos, wi) * throughput * weight;
             break;

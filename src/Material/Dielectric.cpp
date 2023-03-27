@@ -44,7 +44,7 @@ Spectrum Dielectric::bsdf(const SurfaceIntr &intr, TransportMode mode)
     if (approxDelta)
         return Spectrum(0.0f);
 
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     auto h = glm::normalize(wo + wi);
     float hCosWo = Math::absDot(h, wo);
     float hCosWi = Math::absDot(h, wi);
@@ -76,7 +76,7 @@ float Dielectric::pdf(const SurfaceIntr &intr, TransportMode mode)
     if (approxDelta)
         return 0;
 
-    const auto &[n, wo, wi, uv] = intr;
+    const auto &[n, wo, wi, uv, spTemp] = intr;
     if (Math::sameHemisphere(n, wo, wi))
     {
         auto h = glm::normalize(wo + wi);
@@ -111,7 +111,7 @@ std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3
         if (u.x < refl)
         {
             Vec3f wi = -glm::reflect(wo, n);
-            return BSDFSample(wi, baseColor, 1.0f, BSDFType::Delta | BSDFType::Reflection);
+            return BSDFSample(wi, baseColor * refl, refl, BSDFType::Delta | BSDFType::Reflection);
         }
         else
         {
@@ -122,7 +122,7 @@ std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3
                 return std::nullopt;
 
             float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
-            return BSDFSample(wi, baseColor * factor, 1.0f, BSDFType::Delta | BSDFType::Transmission, eta);
+            return BSDFSample(wi, baseColor * factor * trans, trans, BSDFType::Delta | BSDFType::Transmission, eta);
         }
     }
     else
@@ -149,7 +149,7 @@ std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return BSDFSample(wi, r, p, BSDFType::Glossy | BSDFType::Reflection);
+            return BSDFSample(wi, r * refl, p * refl, BSDFType::Glossy | BSDFType::Reflection);
         }
         else
         {
@@ -178,7 +178,7 @@ std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return BSDFSample(wi, r, p, BSDFType::Glossy | BSDFType::Transmission, eta);
+            return BSDFSample(wi, r * trans, p * trans, BSDFType::Glossy | BSDFType::Transmission, eta);
         }
     }
 }
