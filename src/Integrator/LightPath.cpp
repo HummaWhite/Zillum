@@ -104,10 +104,10 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
 
         if (glm::dot(surf.ns, wo) < 0)
         {
-            if (!surf.material->type().hasType(BSDFType::Transmission))
+            if (!surf.bsdf->type().hasType(BSDFType::Transmission))
                 surf.flipNormal();
         }
-        bool deltaBsdf = surf.material->type().isDelta();
+        bool deltaBsdf = surf.bsdf->type().isDelta();
 
         if (!deltaBsdf)
         {
@@ -119,10 +119,10 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
                 if (mScene->visible(pos, pCam))
                 {
                     float cosWi = Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
-                    Spectrum res = Ii * surf.material->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
+                    Spectrum res = Ii * surf.bsdf->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
                         throughput * cosWi / pdf;
-                    // Vec3f bsdfCos = dynamic_cast<Mirror*>(surf.material.get()) ? Spectrum(Math::mollify(surf.ns, wo, wi, dist, BSDFMollifyRadius)) :
-                    //     surf.material->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) * cosWi;
+                    // Vec3f bsdfCos = dynamic_cast<MirrorBSDF*>(surf.bsdf.get()) ? Spectrum(Math::mollify(surf.ns, wo, wi, dist, BSDFMollifyRadius)) :
+                    //     surf.bsdf->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) * cosWi;
                     // Spectrum res = Ii * bsdfCos * throughput / pdf;
                     if (!Math::hasNan(res) && !Math::isNan(pdf) && pdf > 1e-8f && !Math::isBlack(res))
                         addToFilmLocked(uvRaster, res);
@@ -130,7 +130,7 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
             }
         }
 
-        auto sample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
+        auto sample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
         if (!sample)
             break;
         auto [wi, bsdf, bsdfPdf, type, eta] = sample.value();

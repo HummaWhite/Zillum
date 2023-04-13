@@ -41,7 +41,7 @@ Spectrum traceCameraPath(const TriplePathIntegParam &param, ScenePtr scene, Vec3
     float t1s1 = primaryPdf; // p(t=1) / p(s=1)
 
     for (int bounce = 1; bounce < TracingDepthLimit; bounce++) {
-        BSDFPtr mat = surf.material;
+        BSDFPtr mat = surf.bsdf;
 
         if (glm::dot(surf.ns, wo) <= 0) {
             if (!mat->type().hasType(BSDFType::Transmission)) {
@@ -88,7 +88,7 @@ Spectrum traceCameraPath(const TriplePathIntegParam &param, ScenePtr scene, Vec3
             }
         }
 
-        auto bsdfSample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3());
+        auto bsdfSample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3());
         if (!bsdfSample) {
             break;
         }
@@ -212,11 +212,11 @@ void TriplePathIntegrator::traceLightPath(SamplerPtr sampler) {
         auto surf = obj->surfaceInfo(pos);
 
         if (glm::dot(surf.ns, wo) < 0) {
-            if (!surf.material->type().hasType(BSDFType::Transmission)) {
+            if (!surf.bsdf->type().hasType(BSDFType::Transmission)) {
                 surf.flipNormal();
             }
         }
-        bool deltaBsdf = surf.material->type().isDelta();
+        bool deltaBsdf = surf.bsdf->type().isDelta();
 
         float coefToPos = remap(prevPdfDir * Math::absDot(surf.ns, wo));
         s0t1 /= coefToPos;
@@ -230,11 +230,11 @@ void TriplePathIntegrator::traceLightPath(SamplerPtr sampler) {
 
                 if (mScene->visible(pos, pCam)) {
                     float cosWi = Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
-                    Spectrum contrib = Ii * surf.material->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
+                    Spectrum contrib = Ii * surf.bsdf->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
                         throughput * cosWi / pdf;
 
                     float coefToSurf = remap(mScene->mCamera->pdfIe({ pCam, -wi }).pdfDir * Math::satDot(surf.ns, wi));
-                    float coefToPrev = remap(surf.material->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Radiance) *
+                    float coefToPrev = remap(surf.bsdf->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Radiance) *
                         Math::absDot(prevSurf.ns, wo));
 
                     float dist2 = remap(dist * dist);
@@ -255,7 +255,7 @@ void TriplePathIntegrator::traceLightPath(SamplerPtr sampler) {
                 }
             }
         }
-        auto sample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
+        auto sample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
         if (!sample) {
             break;
         }
@@ -277,13 +277,13 @@ void TriplePathIntegrator::traceLightPath(SamplerPtr sampler) {
             break;
         }
 
-        float coefToPrev = remap(surf.material->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Radiance) *
+        float coefToPrev = remap(surf.bsdf->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Radiance) *
             Math::absDot(prevSurf.ns, wo));
 
         s0t1 *= coefToPrev;
         s1t1 *= (bounce == 1) ? 1.0f : coefToPrev;
 
-        prevPdfDir = surf.material->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance);
+        prevPdfDir = surf.bsdf->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance);
         prevPos = pos;
         prevSurf = surf;
 

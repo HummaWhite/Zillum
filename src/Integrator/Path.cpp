@@ -1,6 +1,6 @@
 #include "Core/Integrator.h"
 
-Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Vec3f wo, SurfaceInfo surf, SamplerPtr sampler)
+Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Vec3f wo, SurfaceInfo surf, Sampler *sampler)
 {
     Spectrum result(0.0f);
     Spectrum throughput(1.0f);
@@ -8,7 +8,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
 
     for (int bounce = 1; bounce < TracingDepthLimit; bounce++)
     {
-        BSDFPtr mat = surf.material;
+        BSDFPtr mat = surf.bsdf;
 
         if (glm::dot(surf.ns, wo) <= 0)
         {
@@ -23,7 +23,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
             auto [wi, coef, lightPdf] = scene->sampleLiLightAndEnv(pos, lightSample);
             if (lightPdf != 0)
             {
-                SurfaceIntr intr(surf.ns, wo, wi, surf.uv, sampler.get());
+                SurfaceIntr intr(surf.ns, wo, wi, surf.uv, sampler);
                 float bsdfPdf = mat->pdf(intr, TransportMode::Radiance);
                 float weight = param.MIS ? Math::powerHeuristic(lightPdf, bsdfPdf) : param.directWeight;
                 result += mat->bsdf(intr, TransportMode::Radiance) * throughput *
@@ -31,7 +31,7 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
             }
         }
 
-        auto bsdfSample = surf.material->sample({ surf.ns, wo, surf.uv, sampler.get() }, sampler->get3());
+        auto bsdfSample = surf.bsdf->sample({ surf.ns, wo, surf.uv, sampler }, sampler->get3());
         if (!bsdfSample)
             break;
         auto [wi, bsdf, bsdfPdf, type, eta] = bsdfSample.value();
@@ -95,7 +95,7 @@ Spectrum PathIntegrator::tracePixel(Ray ray, SamplerPtr sampler)
         Vec3f pos = ray.get(dist);
         auto object = dynamic_cast<Object*>(obj.get());
         SurfaceInfo surf = object->surfaceInfo(pos);
-        return traceOnePath(mParam, mScene, pos, -ray.dir, surf, sampler);
+        return traceOnePath(mParam, mScene, pos, -ray.dir, surf, sampler.get());
     }
     Error::impossiblePath();
     return Spectrum(0.0f);
@@ -165,7 +165,7 @@ void PathIntegrator2::trace(int paths, SamplerPtr sampler)
             Vec3f pos = ray.get(dist);
             auto object = dynamic_cast<Object*>(obj.get());
             SurfaceInfo surf = object->surfaceInfo(pos);
-            result = traceOnePath(mParam, mScene, pos, -ray.dir, surf, sampler);
+            result = traceOnePath(mParam, mScene, pos, -ray.dir, surf, sampler.get());
         }
         if (!Math::isBlack(result))
             addToFilmLocked(uv, result);

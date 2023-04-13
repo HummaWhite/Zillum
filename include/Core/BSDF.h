@@ -140,9 +140,9 @@ public:
 	}
 };
 
-class Lambertian: public BSDF {
+class LambertBSDF: public BSDF {
 public:
-	Lambertian(const ColorMap<Vec3f> &albedo) :
+	LambertBSDF(const ColorMap<Vec3f> &albedo) :
 		albedo(albedo), BSDF(BSDFType::Diffuse) {}
 
 	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
@@ -153,9 +153,9 @@ private:
 	ColorMap<Vec3f> albedo;
 };
 
-class Mirror: public BSDF {
+class MirrorBSDF: public BSDF {
 public:
-	Mirror(const ColorMap<Vec3f> &baseColor) :
+	MirrorBSDF(const ColorMap<Vec3f> &baseColor) :
 		baseColor(baseColor), BSDF(BSDFType::Delta | BSDFType::Reflection) {}
 
 	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
@@ -166,9 +166,9 @@ private:
 	ColorMap<Vec3f> baseColor;
 };
 
-class MetalWorkflow: public BSDF {
+class MetallicWorkflowBSDF: public BSDF {
 public:
-	MetalWorkflow(const ColorMap<Vec3f> &baseColor, float metallic, float roughness) :
+	MetallicWorkflowBSDF(const ColorMap<Vec3f> &baseColor, float metallic, float roughness) :
 		baseColor(baseColor), metallic(metallic), roughness(roughness),
 		distrib(roughness, true), BSDF(BSDFType::Diffuse | BSDFType::Glossy | BSDFType::Reflection) {}
 
@@ -186,9 +186,9 @@ private:
 	GTR2Distrib distrib;
 };
 
-class Clearcoat: public BSDF {
+class ClearcoatBSDF: public BSDF {
 public:
-	Clearcoat(float roughness, float weight):
+	ClearcoatBSDF(float roughness, float weight):
 		distrib(roughness), weight(weight), BSDF(BSDFType::Glossy | BSDFType::Reflection) {}
 
 	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
@@ -200,9 +200,9 @@ private:
 	float weight;
 };
 
-class Dielectric: public BSDF {
+class DielectricBSDF: public BSDF {
 public:
-	Dielectric(const Spectrum &baseColor, float roughness, float ior):
+	DielectricBSDF(const Spectrum &baseColor, float roughness, float ior):
 		baseColor(baseColor), ior(ior), distrib(roughness, false),
 		approxDelta(roughness < 0.014f),
 		BSDF((roughness < 0.014f ? BSDFType::Delta : BSDFType::Glossy) | BSDFType::Reflection | BSDFType::Transmission) {}
@@ -218,9 +218,9 @@ private:
 	bool approxDelta;
 };
 
-class ThinDielectric: public BSDF {
+class ThinDielectricBSDF: public BSDF {
 public:
-	ThinDielectric(const Spectrum &baseColor, float ior):
+	ThinDielectricBSDF(const Spectrum &baseColor, float ior):
 		baseColor(baseColor), ior(ior), BSDF(BSDFType::Delta | BSDFType::Reflection | BSDFType::Transmission) {}
 
 	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode);
@@ -317,7 +317,7 @@ private:
 	DisneyMetal metal;
 	DisneyClearcoat clearcoat;
 	DisneySheen sheen;
-	Dielectric dielectric;
+	DielectricBSDF dielectric;
 	Piecewise1D piecewiseSampler;
 	float weights[5];
 	BSDF *components[5];
@@ -325,7 +325,26 @@ private:
 
 class LayeredBSDF : public BSDF {
 public:
-	LayeredBSDF() : BSDF(BSDFType::None) {}
+	LayeredBSDF(float thickness, float g, const ColorMap<Vec3f> &albedo) :
+		top(nullptr), bottom(nullptr), thickness(thickness), g(g), albedo(albedo), BSDF(BSDFType::None) {}
+
+	Spectrum bsdf(const SurfaceIntr& intr, TransportMode mode);
+	float pdf(const SurfaceIntr& intr, TransportMode mode);
+	std::optional<BSDFSample> sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode);
+
+public:
+	BSDF *top;
+	BSDF *bottom;
+	float thickness;
+	float g;
+	ColorMap<Vec3f> albedo;
+
+private:
+};
+
+class LayeredBSDF2 : public BSDF {
+public:
+	LayeredBSDF2() : BSDF(BSDFType::None) {}
 
 	Spectrum bsdf(const SurfaceIntr& intr, TransportMode mode);
 	float pdf(const SurfaceIntr& intr, TransportMode mode);

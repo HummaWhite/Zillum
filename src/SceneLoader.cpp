@@ -4,16 +4,16 @@ ScenePtr bidirScene() {
     auto scene = std::make_shared<Scene>();
     Transform transform(glm::rotate(Mat4f(1.0f), glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f)));
     scene->addObjectMesh("res/model/bidir/diffuse.obj", transform,
-        std::make_shared<Lambertian>(ColorMap(Spectrum(0.5f))));
+        std::make_shared<LambertBSDF>(ColorMap(Spectrum(0.5f))));
     scene->addObjectMesh("res/model/bidir/glass.obj", transform,
-        std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+        std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f));
     scene->addObjectMesh("res/model/bidir/lamp.obj", transform,
-        std::make_shared<MetalWorkflow>(ColorMap(Spectrum(0.8f, 0.356f, 0.135f)), 1.0f, 0.25f));
+        std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(0.8f, 0.356f, 0.135f)), 1.0f, 0.25f));
     scene->addObjectMesh("res/model/bidir/wood.obj", transform,
-        std::make_shared<Lambertian>(ColorMap(Spectrum(0.33f, 0.26f, 0.15f))));
+        std::make_shared<LambertBSDF>(ColorMap(Spectrum(0.33f, 0.26f, 0.15f))));
     scene->addObjectMesh("res/model/bidir/shell.obj", transform,
-        //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f), 1.0f, 0.014f)
-        std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f))));
+        //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f), 1.0f, 0.014f)
+        std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f))));
     scene->addLightMesh("res/model/bidir/light1.obj", transform, Spectrum(200.0f));
     scene->addLightMesh("res/model/bidir/light2.obj", transform, Spectrum(400.0f));
 
@@ -37,9 +37,9 @@ ScenePtr boxScene() {
                 Vec3f(-3.0f, 0.0f, -3.0f),
                 Vec3f(3.0f, 0.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, -3.0f)),
-            //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f)))
-            //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 0.1f)
+            //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f), 0.0f, 1.0f)
+            std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f)))
+            //std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 0.1f)
             ));
 
     scene->addHittable(
@@ -48,8 +48,8 @@ ScenePtr boxScene() {
                 Vec3f(-3.0f, 0.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, -3.0f),
                 Vec3f(-3.0f, 0.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f, 0.25f, 0.25f)))
+            //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
+            std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f, 0.25f, 0.25f)))
             ));
 
     scene->addHittable(
@@ -58,8 +58,8 @@ ScenePtr boxScene() {
                 Vec3f(3.0f, 6.0f, -3.0f),
                 Vec3f(3.0f, 0.0f, -3.0f),
                 Vec3f(3.0f, 6.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(ColorMap(Spectrum(0.25f, 0.25f, 1.0f)))
+            //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
+            std::make_shared<LambertBSDF>(ColorMap(Spectrum(0.25f, 0.25f, 1.0f)))
             ));
 
     scene->addHittable(
@@ -68,8 +68,8 @@ ScenePtr boxScene() {
                 Vec3f(3.0f, 6.0f, 3.0f),
                 Vec3f(3.0f, 0.0f, 3.0f),
                 Vec3f(-3.0f, 6.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f)))
+            //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f), 0.0f, 1.0f)
+            std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f)))
             ));
 
     scene->addHittable(
@@ -78,16 +78,16 @@ ScenePtr boxScene() {
                 Vec3f(-3.0f, 6.0f, -3.0f),
                 Vec3f(3.0f, 6.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f), 1.0f, 0.014f)
-            //std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 0.1f)
-            //std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f)))
-            std::make_shared<Lambertian>(TextureLoader::fromU8x3("res/checker.png", true))
+            //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f), 1.0f, 0.014f)
+            //std::make_shared<DielectricBSDF>(Vec3f(1.0f), 0.0f, 0.1f)
+            //std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f)))
+            std::make_shared<LambertBSDF>(TextureLoader::fromU8x3("res/checker.png", true))
             ));
 
     // scene->addHittable(
     //     std::make_shared<Object>(
     //         std::make_shared<Sphere>(Spectrum(-1.5f, 3.0f, -1.0f), 1.0f, true),
-    //         std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+    //         std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
     //     ));
 
     {
@@ -96,9 +96,9 @@ ScenePtr boxScene() {
         model = glm::scale(model, Vec3f(1.8f));
 
         // scene->addObjectMesh("res/model/cube.obj", std::make_shared<Transform>(model),
-        //     std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.14f)
-        //     //std::make_shared<Lambertian>(Spectrum(1.0f))
-        //     //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+        //     std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f, 0.8f, 0.6f), 1.0f, 0.14f)
+        //     //std::make_shared<LambertBSDF>(Spectrum(1.0f))
+        //     //std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
         // );
     }
     {
@@ -108,9 +108,9 @@ ScenePtr boxScene() {
         std::shared_ptr<Transform> trBoxLarge = std::make_shared<Transform>(model);
 
         // scene->addObjectMesh("res/model/cube.obj", trBoxLarge,
-        //     //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f), 1.0f, 0.14f)
-        //     //std::make_shared<Dielectric>(Vec3f(1.0f), 0.0f, 0.1f)
-        //     std::make_shared<Lambertian>(Spectrum(1.0f))
+        //     //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f), 1.0f, 0.14f)
+        //     //std::make_shared<DielectricBSDF>(Vec3f(1.0f), 0.0f, 0.1f)
+        //     std::make_shared<LambertBSDF>(Spectrum(1.0f))
         // );
     }
     {
@@ -118,7 +118,7 @@ ScenePtr boxScene() {
         // model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
         // model = glm::scale(model, Vec3f(1.0f));
         // scene->addObjectMesh("res/model/bunny.obj", std::make_shared<Transform>(model),
-        //     std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+        //     std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f));
 
         // auto model = glm::translate(Mat4f(1.0f), Vec3f(-0.75f, 4.0f, -1.0f));
         // model = glm::rotate(model, glm::radians(95.0f), Vec3f(0.0f, 0.0f, 1.0f));
@@ -126,16 +126,16 @@ ScenePtr boxScene() {
         // model = glm::rotate(model, glm::radians(110.0f), Vec3f(1.0f, 0.0f, 0.0f));
         // model = glm::scale(model, Vec3f(0.5f));
         // scene->addObjectMesh("res/model/Mesh003.obj", std::make_shared<Transform>(model),
-        //     std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+        //     std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f));
         // scene->addObjectMesh("res/model/Mesh004.obj", std::make_shared<Transform>(model),
-        //     std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
+        //     std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f));
 
         auto model = glm::translate(Mat4f(1.0f), Vec3f(1.5f, 4.0f, -2.5f));
         model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
         model = glm::scale(model, Vec3f(1.0f));
         scene->addObjectMesh(DIR "bunny.obj", { model },
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f, 0.7f, 0.4f)), 1.0f, 0.014f)
-            //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f, 0.7f, 0.4f)), 1.0f, 0.014f)
+            //std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
         );
     }
 
@@ -156,7 +156,7 @@ ScenePtr boxScene() {
         Transform transform(model);
         scene->addLightMesh(DIR "caustic/light_s.obj", transform, Spectrum(200.0f));
         scene->addObjectMesh(DIR "caustic/mirror.obj", transform,
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f)), 1.0f, 0.014f));
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f)), 1.0f, 0.014f));
     }
 
     {
@@ -166,7 +166,7 @@ ScenePtr boxScene() {
         Transform transform(model);
         scene->addLightMesh(DIR "caustic/light_s.obj", transform, Spectrum(100.0f));
         scene->addObjectMesh(DIR "caustic/mirror.obj", transform,
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f)), 1.0f, 0.014f));
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f)), 1.0f, 0.014f));
     }
 
     {
@@ -175,8 +175,8 @@ ScenePtr boxScene() {
         model = glm::rotate(model, glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f));
         model = glm::scale(model, Vec3f(1.0f));
         scene->addObjectMesh(DIR "cube.obj", { model },
-            std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-            //std::make_shared<Lambertian>(TextureLoader::fromU8x3("res/checker.png"))
+            std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
+            //std::make_shared<LambertBSDF>(TextureLoader::fromU8x3("res/checker.png"))
         );
     }
 
@@ -196,19 +196,19 @@ ScenePtr boxScene() {
     //     model = glm::scale(model, Vec3f(1.0f));
     //     auto transform = std::make_shared<Transform>(model);
     //     scene->addObjectMesh("res/model/penn/penn_white.obj", transform,
-    //         std::make_shared<MetalWorkflow>(Vec3f(1.0f), 1.0f, 0.5f));
+    //         std::make_shared<MetallicWorkflowBSDF>(Vec3f(1.0f), 1.0f, 0.5f));
     //     scene->addObjectMesh("res/model/penn/penn_red.obj", transform,
-    //         std::make_shared<MetalWorkflow>(RGB24(153, 0, 0).toVec3(), 1.0f, 0.5f));
+    //         std::make_shared<MetallicWorkflowBSDF>(RGB24(153, 0, 0).toVec3(), 1.0f, 0.5f));
     //     scene->addObjectMesh("res/model/penn/penn_blue.obj", transform,
-    //         std::make_shared<MetalWorkflow>(RGB24(1, 31, 91).toVec3(), 1.0f, 0.5f));
+    //         std::make_shared<MetallicWorkflowBSDF>(RGB24(1, 31, 91).toVec3(), 1.0f, 0.5f));
     //     scene->addObjectMesh("res/model/penn/alp_pos.obj", transform,
-    //         std::make_shared<MetalWorkflow>(RGB24(1, 31, 91).toVec3(), 1.0f, 0.5f));
+    //         std::make_shared<MetallicWorkflowBSDF>(RGB24(1, 31, 91).toVec3(), 1.0f, 0.5f));
     // }
 
     // scene->addHittable(
     //     std::make_shared<Object>(
     //         std::make_shared<Sphere>(Spectrum(-1.2f, 3.0f, -0.5f), 0.7f, true),
-    //         std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
+    //         std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
     //     ));
 
     scene->mCamera = std::make_shared<ThinLensCamera>(40.0f);
@@ -224,27 +224,27 @@ ScenePtr boxScene() {
 }
 
 BSDFPtr makeLayeredBSDF() {
-//#define baseColor Spectrum(.9f, .5f, .9f)
-#define baseColor Spectrum(1.f)
+#define baseColor Spectrum(.9f, .5f, .9f)
+//#define baseColor Spectrum(1.f)
     auto normalMap = TextureLoader::fromU8x3("res/texture/alien-metal_normal.png", false);
 
-    auto diffuse = new Lambertian(ColorMap(baseColor * .75f));
-    auto met = new MetalWorkflow(ColorMap(baseColor * .75f), 1.f, .2f);
-    auto dielec = new Dielectric(Spectrum(1.f), 0.2f, 1.5f);
-    auto dielec2 = new Dielectric(Spectrum(1.f), 0.f, 1.2f);
-    auto tdielec = new ThinDielectric(Spectrum(1.f), 1.5f);
-    auto tdielec2 = new ThinDielectric(Spectrum(1.f), 4.f);
+    auto diffuse = new LambertBSDF(ColorMap(baseColor * .75f));
+    auto met = new MetallicWorkflowBSDF(ColorMap(baseColor * .75f), 1.f, .2f);
+    auto dielec = new DielectricBSDF(Spectrum(1.f), 0.1f, 1.5f);
+    auto dielec2 = new DielectricBSDF(Spectrum(1.f), 0.f, 1.2f);
+    auto tdielec = new ThinDielectricBSDF(Spectrum(1.f), 1.5f);
+    auto tdielec2 = new ThinDielectricBSDF(Spectrum(1.f), 4.f);
     auto fake = new FakeBSDF;
 
-    auto bdiffuse = new Lambertian(ColorMap(Spectrum(0.1f)));
-    auto bmet = new MetalWorkflow(ColorMap(Spectrum(.3f, .1f, .05f)), 1.f, .5f);
+    auto bdiffuse = new LambertBSDF(ColorMap(Spectrum(0.1f)));
+    auto bmet = new MetallicWorkflowBSDF(ColorMap(Spectrum(.3f, .1f, .05f)), 1.f, .5f);
 
-    auto layeredBSDF = std::make_shared<LayeredBSDF>();
+    auto layeredBSDF = std::make_shared<LayeredBSDF2>();
     //layeredBSDF->addBSDF(fake);
     layeredBSDF->addBSDF(dielec, nullptr);
-    //layeredBSDF->addBSDF(met, normalMap);
-    //layeredBSDF->addBSDF(diffuse, nullptr);
     layeredBSDF->addBSDF(bmet, normalMap);
+    //layeredBSDF->addBSDF(diffuse, nullptr);
+    //layeredBSDF->addBSDF(bmet, nullptr);
     return layeredBSDF;
 #undef baseColor
 }
@@ -255,8 +255,8 @@ ScenePtr materialTest() {
     scene->addHittable(
         std::make_shared<Object>(
             std::make_shared<Sphere>(Vec3f(0.f, 4.0f, 0.f), 1.5f, true),
-            //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-            //std::make_shared<MetalWorkflow>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
+            //std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
+            //std::make_shared<MetallicWorkflowBSDF>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
             makeLayeredBSDF()
             ));
 
@@ -281,9 +281,9 @@ ScenePtr cornellBox() {
                 Vec3f(-3.0f, 0.0f, -3.0f),
                 Vec3f(3.0f, 0.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, -3.0f)),
-            //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f)))
-            //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 0.1f)
+            //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f), 0.0f, 1.0f)
+            std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f)))
+            //std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 0.1f)
             ));
 
     scene->addHittable(
@@ -292,8 +292,8 @@ ScenePtr cornellBox() {
                 Vec3f(-3.0f, 0.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, -3.0f),
                 Vec3f(-3.0f, 0.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f, 0.25f, 0.25f)))
+            //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f, 0.25f, 0.25f), 0.0f, 1.0f)
+            std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f, 0.25f, 0.25f)))
             ));
 
     scene->addHittable(
@@ -302,8 +302,8 @@ ScenePtr cornellBox() {
                 Vec3f(3.0f, 6.0f, -3.0f),
                 Vec3f(3.0f, 0.0f, -3.0f),
                 Vec3f(3.0f, 6.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(ColorMap(Spectrum(0.25f, 0.25f, 1.0f)))
+            //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(0.25f, 0.25f, 1.0f), 0.0f, 1.0f)
+            std::make_shared<LambertBSDF>(ColorMap(Spectrum(0.25f, 0.25f, 1.0f)))
             ));
 
     scene->addHittable(
@@ -312,8 +312,8 @@ ScenePtr cornellBox() {
                 Vec3f(3.0f, 6.0f, 3.0f),
                 Vec3f(3.0f, 0.0f, 3.0f),
                 Vec3f(-3.0f, 6.0f, 3.0f)),
-            //std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f), 0.0f, 1.0f)
-            std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f)))
+            //std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f), 0.0f, 1.0f)
+            std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f)))
             ));
 
     scene->addHittable(
@@ -322,14 +322,14 @@ ScenePtr cornellBox() {
                 Vec3f(-3.0f, 6.0f, -3.0f),
                 Vec3f(3.0f, 6.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, 3.0f)),
-            std::make_shared<Lambertian>(TextureLoader::fromU8x3("res/checker.png", true))
+            std::make_shared<LambertBSDF>(TextureLoader::fromU8x3("res/checker.png", true))
             ));
 
     scene->addHittable(
          std::make_shared<Object>(
              std::make_shared<Sphere>(Vec3f(0.f, 4.0f, -0.5f), 1.5f, true),
-             //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-             //std::make_shared<MetalWorkflow>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
+             //std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
+             //std::make_shared<MetallicWorkflowBSDF>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
              makeLayeredBSDF()
          ));
 
@@ -340,8 +340,8 @@ ScenePtr cornellBox() {
                 Vec3f(-1.0f, 4.0f, -1.0f),
                 Vec3f(1.0f, 4.0f, -1.0f),
                 Vec3f(-1.0f, 5.0f, 1.0f)),
-            //std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f)
-            //std::make_shared<MetalWorkflow>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
+            //std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
+            //std::make_shared<MetallicWorkflowBSDF>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
             //layeredBSDF
             std::make_shared<FakeBSDF>()
             ));
@@ -355,10 +355,10 @@ ScenePtr cornellBox() {
         Transform trBoxLarge(model);
 
         scene->addObjectMesh("res/model/cube.obj", trBoxLarge,
-            //std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f)))
-            std::make_shared<Mirror>(ColorMap(Spectrum(1.0f)))
-            //std::make_shared<Dielectric>(Vec3f(1.f), 0.f, 1.5f)
-            //std::make_shared<ThinDielectric>(Vec3f(1.f), 1.5f)
+            //std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f)))
+            std::make_shared<MirrorBSDF>(ColorMap(Spectrum(1.0f)))
+            //std::make_shared<DielectricBSDF>(Vec3f(1.f), 0.f, 1.5f)
+            //std::make_shared<ThinDielectricBSDF>(Vec3f(1.f), 1.5f)
         );
     }
 
@@ -368,7 +368,7 @@ ScenePtr cornellBox() {
         model = glm::scale(model, Vec3f(1.8f));
 
         scene->addObjectMesh("res/model/cube.obj", { model },
-            std::make_shared<Lambertian>(ColorMap(Spectrum(1.0f)))
+            std::make_shared<LambertBSDF>(ColorMap(Spectrum(1.0f)))
         );
     }
     */
@@ -407,7 +407,7 @@ ScenePtr originalBox() {
                 Vec3f(-3.0f, 0.0f, -3.0f),
                 Vec3f(3.0f, 0.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, -3.0f)),
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f)), 0.0f, 1.0f)
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f)), 0.0f, 1.0f)
             ));
 
     scene->addHittable(
@@ -416,7 +416,7 @@ ScenePtr originalBox() {
                 Vec3f(-3.0f, 0.0f, -3.0f),
                 Vec3f(-3.0f, 6.0f, -3.0f),
                 Vec3f(-3.0f, 0.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f, 0.0f, 0.0f)), 1.0f, roughness)
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f, 0.0f, 0.0f)), 1.0f, roughness)
             ));
 
     scene->addHittable(
@@ -425,7 +425,7 @@ ScenePtr originalBox() {
                 Vec3f(3.0f, 6.0f, -3.0f),
                 Vec3f(3.0f, 0.0f, -3.0f),
                 Vec3f(3.0f, 6.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(0.0f, 1.0f, 0.0f)), 1.0f, roughness)
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(0.0f, 1.0f, 0.0f)), 1.0f, roughness)
             ));
 
     scene->addHittable(
@@ -434,7 +434,7 @@ ScenePtr originalBox() {
                 Vec3f(3.0f, 6.0f, 3.0f),
                 Vec3f(3.0f, 0.0f, 3.0f),
                 Vec3f(-3.0f, 6.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f)), 0.0f, 1.0f)
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f)), 0.0f, 1.0f)
             ));
 
     scene->addHittable(
@@ -443,19 +443,19 @@ ScenePtr originalBox() {
                 Vec3f(-3.0f, 3.0f, -3.0f),
                 Vec3f(3.0f, 3.0f, -3.0f),
                 Vec3f(-3.0f, 3.0f, 3.0f)),
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f)), 1.0f, roughness)
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f)), 1.0f, roughness)
             ));
 
     scene->addHittable(
         std::make_shared<Object>(
             std::make_shared<Sphere>(Vec3f(1.0f, 1.5f, -2.0f), 1.2f, false),
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f)), 1.0f, 0.015f)
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f)), 1.0f, 0.015f)
         ));
 
     scene->addHittable(
         std::make_shared<Object>(
             std::make_shared<Sphere>(Vec3f(-1.2f, 1.8f, -1.0f), 1.0f, false),
-            std::make_shared<MetalWorkflow>(ColorMap(Spectrum(0.2f, 0.4f, 1.0f)), 0.0f, 0.12f)
+            std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(0.2f, 0.4f, 1.0f)), 0.0f, 0.12f)
         ));
 
     scene->addLight(
@@ -484,30 +484,30 @@ ScenePtr fireplace(bool thin, bool lamp) {
     auto scene = std::make_shared<Scene>();
     Transform transform(glm::rotate(Mat4f(1.0f), glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f)));
 
-    scene->addObjectMesh(DIR "bottle_cap.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.46f, 0.0f, 0.0f))));
-    scene->addObjectMesh(DIR "floor.obj", transform, std::make_shared<MetalWorkflow>(TextureLoader::fromU8x3(TEX "wood.png", true), 0.0f, 0.3f));
-    //scene->addObjectMesh(DIR "floor.obj", transform, std::make_shared<Lambertian>(TextureLoader::fromU8x3(TEX "wood.png", true)));
-    scene->addObjectMesh(DIR "frame.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.259f, 0.251f, 0.141f))));
-    scene->addObjectMesh(DIR "glass.obj", transform, std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.5f));
-    scene->addObjectMesh(DIR "leaves.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(DIR "metal.obj", transform, std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f, 0.7f, 0.4f)), 1.0f, 0.25f));
-    scene->addObjectMesh(DIR "mirror.obj", transform, std::make_shared<MetalWorkflow>(ColorMap(Spectrum(1.0f)), 1.0f, 0.014f));
-    scene->addObjectMesh(DIR "photo.obj", transform, std::make_shared<Lambertian>(TextureLoader::fromU8x3(TEX "picture8.png", true)));
-    scene->addObjectMesh(DIR "leaves.obj", transform, std::make_shared<Lambertian>(TextureLoader::fromU8x3(TEX "leaf.png", true)));
-    scene->addObjectMesh(DIR "plant_base.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.6f))));
-    scene->addObjectMesh(DIR "sofa.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.9f, 0.9f, 0.87f))));
-    scene->addObjectMesh(DIR "sofa_legs.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.1f))));
-    scene->addObjectMesh(DIR "soil.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.1f))));
-    scene->addObjectMesh(DIR "leaves.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(DIR "stem.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.16, 0.078f, 0.02f))));
-    scene->addObjectMesh(DIR "stove_base.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.05f))));
-    scene->addObjectMesh(DIR "stove_ceiling.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(DIR "unknown.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(DIR "wall.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.169f, 0.133f, 0.102f))));
-    scene->addObjectMesh(DIR "window_base.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(0.9f))));
-    scene->addObjectMesh(DIR "window_frame.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(DIR "wood.obj", transform, std::make_shared<MetalWorkflow>(TextureLoader::fromU8x3(TEX "wood5.png", true), 0.0f, 0.1f));
-    //scene->addObjectMesh(DIR "wood.obj", transform, std::make_shared<Lambertian>(TextureLoader::fromU8x3(TEX "wood5.png", true)));
+    scene->addObjectMesh(DIR "bottle_cap.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.46f, 0.0f, 0.0f))));
+    scene->addObjectMesh(DIR "floor.obj", transform, std::make_shared<MetallicWorkflowBSDF>(TextureLoader::fromU8x3(TEX "wood.png", true), 0.0f, 0.3f));
+    //scene->addObjectMesh(DIR "floor.obj", transform, std::make_shared<LambertBSDF>(TextureLoader::fromU8x3(TEX "wood.png", true)));
+    scene->addObjectMesh(DIR "frame.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.259f, 0.251f, 0.141f))));
+    scene->addObjectMesh(DIR "glass.obj", transform, std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f));
+    scene->addObjectMesh(DIR "leaves.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(DIR "metal.obj", transform, std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f, 0.7f, 0.4f)), 1.0f, 0.25f));
+    scene->addObjectMesh(DIR "mirror.obj", transform, std::make_shared<MetallicWorkflowBSDF>(ColorMap(Spectrum(1.0f)), 1.0f, 0.014f));
+    scene->addObjectMesh(DIR "photo.obj", transform, std::make_shared<LambertBSDF>(TextureLoader::fromU8x3(TEX "picture8.png", true)));
+    scene->addObjectMesh(DIR "leaves.obj", transform, std::make_shared<LambertBSDF>(TextureLoader::fromU8x3(TEX "leaf.png", true)));
+    scene->addObjectMesh(DIR "plant_base.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.6f))));
+    scene->addObjectMesh(DIR "sofa.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.9f, 0.9f, 0.87f))));
+    scene->addObjectMesh(DIR "sofa_legs.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.1f))));
+    scene->addObjectMesh(DIR "soil.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.1f))));
+    scene->addObjectMesh(DIR "leaves.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(DIR "stem.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.16, 0.078f, 0.02f))));
+    scene->addObjectMesh(DIR "stove_base.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.05f))));
+    scene->addObjectMesh(DIR "stove_ceiling.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(DIR "unknown.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(DIR "wall.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.169f, 0.133f, 0.102f))));
+    scene->addObjectMesh(DIR "window_base.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(0.9f))));
+    scene->addObjectMesh(DIR "window_frame.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(DIR "wood.obj", transform, std::make_shared<MetallicWorkflowBSDF>(TextureLoader::fromU8x3(TEX "wood5.png", true), 0.0f, 0.1f));
+    //scene->addObjectMesh(DIR "wood.obj", transform, std::make_shared<LambertBSDF>(TextureLoader::fromU8x3(TEX "wood5.png", true)));
     scene->addLightMesh(DIR "light.obj", transform, Spectrum(lamp ? 100.0f : 400.0f));
     if (lamp)
         scene->addLightMesh(DIR "light2.obj", transform, Spectrum(400.0f));
@@ -544,18 +544,18 @@ ScenePtr staircase2()
     auto scene = std::make_shared<Scene>();
     Transform transform(glm::rotate(Mat4f(1.0f), glm::radians(90.0f), Vec3f(1.0f, 0.0f, 0.0f)));
 
-    scene->addObjectMesh(MOD "Mesh000.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(MOD "Mesh001.obj", transform, std::make_shared<MetalWorkflow>(TextureLoader::fromU8x3(TEX "wood5.jpg", true), 0.0f, 0.3f));
-    scene->addObjectMesh(MOD "Mesh004.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(MOD "Mesh005.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(MOD "Mesh007.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(MOD "Mesh009.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(MOD "Mesh011.obj", transform, std::make_shared<MetalWorkflow>(TextureLoader::fromU8x3(TEX "Tiles.jpg", true), 0.0f, 0.1f));
-    scene->addObjectMesh(MOD "Mesh012.obj", transform, std::make_shared<Lambertian>(ColorMap(Vec3f(1.0f))));
-    scene->addObjectMesh(MOD "Mesh014.obj", transform, std::make_shared<Dielectric>(Spectrum(1.0f), 0.0f, 1.4f));
-    scene->addObjectMesh(MOD "Mesh016.obj", transform, std::make_shared<Lambertian>(TextureLoader::fromU8x3(TEX "wood5.jpg", true)));
-    scene->addObjectMesh(MOD "Mesh017.obj", transform, std::make_shared<Lambertian>(TextureLoader::fromU8x3(TEX "wood5.jpg", true)));
-    scene->addObjectMesh(MOD "Mesh018.obj", transform, std::make_shared<Lambertian>(TextureLoader::fromU8x3(TEX "Wallpaper.jpg", true)));
+    scene->addObjectMesh(MOD "Mesh000.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(MOD "Mesh001.obj", transform, std::make_shared<MetallicWorkflowBSDF>(TextureLoader::fromU8x3(TEX "wood5.jpg", true), 0.0f, 0.3f));
+    scene->addObjectMesh(MOD "Mesh004.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(MOD "Mesh005.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(MOD "Mesh007.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(MOD "Mesh009.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(MOD "Mesh011.obj", transform, std::make_shared<MetallicWorkflowBSDF>(TextureLoader::fromU8x3(TEX "Tiles.jpg", true), 0.0f, 0.1f));
+    scene->addObjectMesh(MOD "Mesh012.obj", transform, std::make_shared<LambertBSDF>(ColorMap(Vec3f(1.0f))));
+    scene->addObjectMesh(MOD "Mesh014.obj", transform, std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.4f));
+    scene->addObjectMesh(MOD "Mesh016.obj", transform, std::make_shared<LambertBSDF>(TextureLoader::fromU8x3(TEX "wood5.jpg", true)));
+    scene->addObjectMesh(MOD "Mesh017.obj", transform, std::make_shared<LambertBSDF>(TextureLoader::fromU8x3(TEX "wood5.jpg", true)));
+    scene->addObjectMesh(MOD "Mesh018.obj", transform, std::make_shared<LambertBSDF>(TextureLoader::fromU8x3(TEX "Wallpaper.jpg", true)));
     scene->addLightMesh(MOD "light.obj", transform, Spectrum(16000.0f, 14000.0f, 10000.0f));
     #undef DIR
     #undef TEX

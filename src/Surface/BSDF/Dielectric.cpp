@@ -39,7 +39,7 @@ float fresnelDielectric(float cosTi, float eta)
     return (rPa * rPa + rPe * rPe) * 0.5f;
 }
 
-Spectrum Dielectric::bsdf(const SurfaceIntr &intr, TransportMode mode)
+Spectrum DielectricBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode)
 {
     if (approxDelta)
         return Spectrum(0.0f);
@@ -71,7 +71,7 @@ Spectrum Dielectric::bsdf(const SurfaceIntr &intr, TransportMode mode)
     }
 }
 
-float Dielectric::pdf(const SurfaceIntr &intr, TransportMode mode)
+float DielectricBSDF::pdf(const SurfaceIntr &intr, TransportMode mode)
 {
     if (approxDelta)
         return 0;
@@ -99,7 +99,7 @@ float Dielectric::pdf(const SurfaceIntr &intr, TransportMode mode)
     }
 }
 
-std::optional<BSDFSample> Dielectric::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DielectricBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
 {
     auto &n = intr.n;
     auto &wo = intr.wo;

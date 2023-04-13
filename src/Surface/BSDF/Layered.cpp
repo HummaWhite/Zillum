@@ -8,66 +8,6 @@ struct PathVertex {
     float pdfRegular, pdfAdjoint;
 };
 
-/*
-float pdfTRT(const SurfaceIntr& intr, const std::vector<BSDF*>& BSDFs, TransportMode mode) {
-    int nBSDFs = BSDFs.size();
-    SurfaceIntr lintr = intr.swapInOut();
-    Sampler* sampler = intr.sampler;
-
-    std::vector<Vec3f> wo(nBSDFs);
-    std::vector<Vec3f> wi(nBSDFs);
-    std::vector<float> ratio(nBSDFs);
-
-    auto getWoId = [&](int layer) {
-        return (intr.cosWo() > 0) ? layer : nBSDFs - layer - 1;
-    };
-
-    auto getWiId = [&](int layer) {
-        return (intr.cosWi() > 0) ? layer : nBSDFs - layer - 1;
-    };
-
-    wo[0] = intr.wo;
-    wi[0] = intr.wi;
-    ratio[0] = 1.f;
-    float pdf = 0.f;
-
-    for (int i = 0; i < nBSDFs - 1; i++) {
-        int wiId = getWiId(i);
-        lintr.wi = wi[i];
-        auto woSample = BSDFs[wiId]->sample(lintr.swapInOut(), sampler->get3(), mode);
-        if (!woSample) {
-            return 0.f;
-        }
-        wo[i + 1] = -woSample->dir;
-
-        int woId = getWoId(i);
-        lintr.wo = wo[i];
-        auto wiSample = BSDFs[woId]->sample(lintr, sampler->get3(), mode);
-        if (!wiSample) {
-            return 0.f;
-        }
-        lintr.wi = wi[i + 1] = -wiSample->dir;
-
-        bool isDelta = BSDFs[wiId]->type().isDelta();
-        float pdf0 = BSDFs[wiId]->pdf(lintr, mode);
-        float pdf1 = BSDFs[wiId]->pdf(lintr.swapInOut(), mode);
-
-        if (pdf0 > 0) {
-            ratio[i + 1] = ratio[i] * pdf1 / pdf0;
-        }
-        lintr = lintr.swapInOut();
-    }
-
-    for (int i = 1; i < nBSDFs; i++) {
-        if (wi[i].z > 0 && wo[i].z > 0) {
-            pdf += BSDFs[getWiId(i)]->pdf({ lintr.n, wo[i], wi[i] }, mode) * ratio[i];
-        }
-    }
-    return pdf + .1f;
-    //return pdf;
-}
-*/
-
 std::optional<BSDFSample> generatePath(
     //const SurfaceIntr& intr,
     Vec3f wGiven,
@@ -136,7 +76,7 @@ std::optional<BSDFSample> generatePath(
     return BSDFSample(bSample.dir, throughput, pdf, BSDFType::Glossy | BSDFType::Reflection);
 }
 
-Spectrum LayeredBSDF::bsdf(const SurfaceIntr& intr, TransportMode mode) {
+Spectrum LayeredBSDF2::bsdf(const SurfaceIntr& intr, TransportMode mode) {
     auto [wo, wi] = intr.localDirections();
     if (wo.z < 0 || wi.z < 0) {
         return Spectrum(0.f);
@@ -184,7 +124,7 @@ Spectrum LayeredBSDF::bsdf(const SurfaceIntr& intr, TransportMode mode) {
     return eval;
 }
 
-float LayeredBSDF::pdf(const SurfaceIntr& intr, TransportMode mode) {
+float LayeredBSDF2::pdf(const SurfaceIntr& intr, TransportMode mode) {
     auto [wo, wi] = intr.localDirections();
     if (wo.z < 0 || wi.z < 0) {
         return 0.f;
@@ -229,7 +169,7 @@ float LayeredBSDF::pdf(const SurfaceIntr& intr, TransportMode mode) {
     return eval;
 }
 
-std::optional<BSDFSample> LayeredBSDF::sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode) {
+std::optional<BSDFSample> LayeredBSDF2::sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode) {
     auto localIntr = intr.localized();
     auto bSample = generatePath(localIntr.wo, intr.uv, interfaces, normalMaps, intr.sampler, maxDepth, mode);
     if (!bSample) {
@@ -244,7 +184,7 @@ std::optional<BSDFSample> LayeredBSDF::sample(const SurfaceIntr& intr, const Vec
     return BSDFSample(Transform::localToWorld(intr.n, bSample->dir), bsdf, pdf, bSample->type);
 }
 
-void LayeredBSDF::addBSDF(BSDF* bsdf, Texture3fPtr normalMap) {
+void LayeredBSDF2::addBSDF(BSDF* bsdf, Texture3fPtr normalMap) {
     interfaces.push_back(bsdf);
     normalMaps.push_back(normalMap);
     mType.type |= bsdf->type().type;

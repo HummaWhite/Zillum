@@ -1,6 +1,6 @@
 #include "Core/BSDF.h"
 
-Spectrum MetalWorkflow::bsdf(const SurfaceIntr &intr, TransportMode mode) {
+Spectrum MetallicWorkflowBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) {
     const auto &[n, wo, wi, uv, spTemp] = intr;
     Vec3f h = glm::normalize(wi + wo);
     float alpha = roughness * roughness;
@@ -32,7 +32,7 @@ Spectrum MetalWorkflow::bsdf(const SurfaceIntr &intr, TransportMode mode) {
     return kd * base * Math::PiInv + glossy;
 }
 
-float MetalWorkflow::pdf(const SurfaceIntr &intr, TransportMode mode) {
+float MetallicWorkflowBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) {
     const auto &[n, wo, wi, uv, spTemp] = intr;
     float NoWi = glm::dot(n, wi);
     Vec3f h = glm::normalize(wo + wi);
@@ -42,7 +42,7 @@ float MetalWorkflow::pdf(const SurfaceIntr &intr, TransportMode mode) {
     return Math::lerp(pdfDiff, pdfSpec, 1.0f / (2.0f - metallic));
 }
 
-std::optional<BSDFSample> MetalWorkflow::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) {
+std::optional<BSDFSample> MetallicWorkflowBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) {
     auto &n = intr.n;
     auto &wo = intr.wo;
     float spec = 1.0f / (2.0f - metallic);

@@ -15,7 +15,7 @@ struct Vertex {
         pos(pos), normCam(camera->f()), camera(camera), type(VertexType::Camera) {}
 
     Vertex(const Vec3f &pos, const SurfaceInfo &surf, const Vec3f &wo) :
-        pos(pos), normShad(surf.ns), normGeom(surf.ng), dir(wo), uv(surf.uv), bsdf(surf.material.get()), type(VertexType::Surface) {}
+        pos(pos), normShad(surf.ns), normGeom(surf.ng), dir(wo), uv(surf.uv), bsdf(surf.bsdf.get()), type(VertexType::Surface) {}
 
     Vertex(const Vec3f &wi, Environment *env) : dir(wi), envLight(env), type(VertexType::EnvLight) {}
 
@@ -179,11 +179,11 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
         auto surf = object->surfaceInfo(pos);
 
         if (glm::dot(surf.ns, wo) < 0) {
-            if (!surf.material->type().hasType(BSDFType::Transmission)) {
+            if (!surf.bsdf->type().hasType(BSDFType::Transmission)) {
                 surf.flipNormal();
             }
         }
-        bool deltaBsdf = surf.material->type().isDelta();
+        bool deltaBsdf = surf.bsdf->type().isDelta();
 
         vertex = Path::createSurface(pos, surf, wo);
         vertex.throughput = throughput;
@@ -191,7 +191,7 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
         vertex.isDelta = deltaBsdf;
         path.addVertex(vertex);
 
-        auto sample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
+        auto sample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
 
         if (!sample) {
             break;
@@ -267,12 +267,12 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
         auto object = dynamic_cast<Object*>(hit.get());
         auto surf = object->surfaceInfo(pos);
         if (glm::dot(surf.ns, wo) < 0) {
-            auto bxdf = surf.material->type();
-            if (!surf.material->type().hasType(BSDFType::Transmission)) {
+            auto bxdf = surf.bsdf->type();
+            if (!surf.bsdf->type().hasType(BSDFType::Transmission)) {
                 surf.flipNormal();
             }
         }
-        bool deltaBsdf = surf.material->type().isDelta();
+        bool deltaBsdf = surf.bsdf->type().isDelta();
 
         vertex = Path::createSurface(pos, surf, wo);
         vertex.throughput = throughput;
@@ -280,7 +280,7 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
         vertex.isDelta = deltaBsdf;
         path.addVertex(vertex);
 
-        auto sample = surf.material->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Radiance);
+        auto sample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Radiance);
         if (!sample) {
             break;
         }

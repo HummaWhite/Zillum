@@ -14,11 +14,11 @@ const Vec3f LocalUp = Vec3f(0.f, 0.f, 1.f);
 struct SurfaceInfo {
 	SurfaceInfo() = default;
 
-	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, BSDFPtr mat) :
-		uv(uv), ns(ns), material(mat) {}
+	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, BSDFPtr bsdf) :
+		uv(uv), ns(ns), bsdf(bsdf) {}
 
-	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, const Vec3f &ng, BSDFPtr mat) :
-		uv(uv), ns(ns), ng(ng), material(mat) {
+	SurfaceInfo(const Vec2f &uv, const Vec3f &ns, const Vec3f &ng, BSDFPtr bsdf) :
+		uv(uv), ns(ns), ng(ng), bsdf(bsdf) {
 		if (glm::dot(ng, ns) < 0) {
 			this->ng = -ng;
 		}
@@ -32,7 +32,7 @@ struct SurfaceInfo {
 	Vec2f uv;
 	Vec3f ns;
 	Vec3f ng;
-	BSDFPtr material;
+	BSDFPtr bsdf;
 };
 
 struct SurfaceIntr {

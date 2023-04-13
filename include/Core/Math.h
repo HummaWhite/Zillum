@@ -81,6 +81,7 @@ int maxExtent(const Vec3f &v);
 int cubeMapFace(const Vec3f &dir);
 
 float qpow(float x, int n);
+float sqrtc(float x);
 
 float heuristic(int nf, float pf, int ng, float pg, int pow);
 float powerHeuristic(float pf, float pg);

@@ -54,9 +54,9 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
         auto integ = std::make_shared<PathIntegrator2>(mScene, spp, pathsOnePass);
         integ->mParam.russianRoulette = maxDepth == 0;
         integ->mParam.maxDepth = maxDepth;
-        integ->mParam.MIS = false;
-        integ->mParam.directWeight = 1.f;
-        integ->mParam.sampleDirect = false;
+        integ->mParam.MIS = true;
+        integ->mParam.directWeight = 0.f;
+        integ->mParam.sampleDirect = true;
         mIntegrator = integ;
         scramble = false;
     }

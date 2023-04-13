@@ -110,6 +110,10 @@ float qpow(float x, int n) {
     return ret;
 }
 
+float sqrtc(float x) {
+    return glm::sqrt(glm::max(x, 0.f));
+}
+
 float heuristic(int nf, float pf, int ng, float pg, int pow) {
     float f = qpow(nf * pf, pow);
     float g = qpow(ng * pg, pow);

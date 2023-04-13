@@ -77,6 +77,6 @@ file(GLOB_RECURSE core_headers
 file(GLOB_RECURSE core_sources
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
-add_executable(${CMAKE_PROJECT_NAME} WIN32 ${core_headers} ${core_sources})
+add_executable(${CMAKE_PROJECT_NAME} ${core_headers} ${core_sources})
 
 target_link_libraries(${CMAKE_PROJECT_NAME} ${libraries})
