@@ -71,9 +71,12 @@ float radicalInverse(uint32_t bits);
 float satDot(const Vec3f &a, const Vec3f &b);
 float absDot(const Vec3f &a, const Vec3f &b);
 
+float saturate(float x);
+
 bool coin(float u);
 
 bool sameHemisphere(const Vec3f &N, const Vec3f &A, const Vec3f &B);
+bool sameHemisphere(const Vec3f &a, const Vec3f &b);
 
 float maxComponent(const Vec3f &v);
 float minComponent(const Vec3f &v);

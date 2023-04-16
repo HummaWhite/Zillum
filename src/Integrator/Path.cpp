@@ -23,15 +23,14 @@ Spectrum traceOnePath(const PathIntegParam &param, ScenePtr scene, Vec3f pos, Ve
             auto [wi, coef, lightPdf] = scene->sampleLiLightAndEnv(pos, lightSample);
             if (lightPdf != 0)
             {
-                SurfaceIntr intr(surf.ns, wo, wi, surf.uv, sampler);
-                float bsdfPdf = mat->pdf(intr, TransportMode::Radiance);
+                float bsdfPdf = surf.pdf(surf.ns, wo, wi, sampler);
                 float weight = param.MIS ? Math::powerHeuristic(lightPdf, bsdfPdf) : param.directWeight;
-                result += mat->bsdf(intr, TransportMode::Radiance) * throughput *
+                result += surf.f(surf.ns, wo, wi, sampler) * throughput *
                     Math::absDot(surf.ns, wi) * coef * weight;
             }
         }
 
-        auto bsdfSample = surf.bsdf->sample({ surf.ns, wo, surf.uv, sampler }, sampler->get3());
+        auto bsdfSample = surf.sample(surf.ns, wo, sampler);
         if (!bsdfSample)
             break;
         auto [wi, bsdf, bsdfPdf, type, eta] = bsdfSample.value();

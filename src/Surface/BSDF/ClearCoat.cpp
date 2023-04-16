@@ -1,16 +1,16 @@
 #include "Core/BSDF.h"
 
-Spectrum ClearcoatBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode)
+Spectrum ClearcoatBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
-    auto h = glm::normalize(wo + wi);
+    const auto &[wo, wi, uv, spTemp] = intr;
+    auto wh = glm::normalize(wo + wi);
 
-    float cosWo = Math::satDot(n, wo);
-    float cosWi = Math::satDot(n, wi);
+    float cosWo = Math::saturate(wo.z);
+    float cosWi = Math::saturate(wi.z);
 
-    float d = distrib.d(n, h);
-    auto f = schlickF(Math::absDot(h, wo), Vec3f(0.04f));
-    float g = smithG(n, wo, wi, 0.25f);
+    float d = distrib.d(wh);
+    auto f = schlickF(Math::absDot(wh, wo), Vec3f(0.04f));
+    float g = smithG(wo, wi, 0.25f);
 
     float denom = 4.0f * cosWo * cosWi;
     if (denom < 1e-7f)
@@ -19,19 +19,19 @@ Spectrum ClearcoatBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode)
     return f * d * g * weight / denom;
 }
 
-float ClearcoatBSDF::pdf(const SurfaceIntr &intr, TransportMode mode)
+float ClearcoatBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
-    auto h = glm::normalize(wo + wi);
-    return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
+    const auto &[wo, wi, uv, spTemp] = intr;
+    auto wh = glm::normalize(wo + wi);
+    return distrib.pdf(wh, wo) / (4.0f * glm::dot(wh, wo));
 }
 
-std::optional<BSDFSample> ClearcoatBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> ClearcoatBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const
 {
-    auto h = distrib.sampleWm(intr.n, intr.wo, { u.y, u.z });
+    auto h = distrib.sampleWm(intr.wo, { u.y, u.z });
     auto wi = glm::reflect(-intr.wo, h);
 
-    if (glm::dot(intr.n, wi) < 0.0f)
+    if (wi.z < 0.0f)
         return std::nullopt;
     SurfaceIntr newIntr = intr;
     newIntr.wi = wi;

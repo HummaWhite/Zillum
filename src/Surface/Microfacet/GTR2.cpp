@@ -9,26 +9,23 @@ GTR2Distrib::GTR2Distrib(float roughness, bool sampleVisible, float aniso)
     alpha = r2;
 }
 
-float GTR2Distrib::d(const Vec3f &n, const Vec3f &m)
+float GTR2Distrib::d(const Vec3f &m) const
 {
-    return ggx(glm::dot(n, m), alpha);
+    return ggx(m.z, alpha);
 }
 
-float GTR2Distrib::pdf(const Vec3f &n, const Vec3f &m, const Vec3f &wo)
+float GTR2Distrib::pdf(const Vec3f &m, const Vec3f &wo) const
 {
     if (!visible)
-        return d(n, m);
-    return d(n, m) * schlickG(glm::dot(n, wo), alpha) * Math::absDot(m, wo) / Math::absDot(n, wo);
+        return d(m);
+    return d(m) * schlickG(wo.z, alpha) * Math::absDot(m, wo) / glm::abs(wo.z);
 }
 
-Vec3f GTR2Distrib::sampleWm(const Vec3f &n, const Vec3f &wo, const Vec2f &u)
+Vec3f GTR2Distrib::sampleWm(const Vec3f &wo, const Vec2f &u) const
 {
     if (visible)
     {
-        glm::mat3 TBN = Math::localToWorldFrame(n);
-        glm::mat3 TBNInv = glm::inverse(TBN);
-
-        Vec3f vh = glm::normalize((TBNInv * wo) * Vec3f(alpha, alpha, 1.0f));
+        Vec3f vh = glm::normalize(wo * Vec3f(alpha, alpha, 1.0f));
 
         float lensq = vh.x * vh.x + vh.y * vh.y;
         Vec3f t1 = lensq > 0.0f ? Vec3f(-vh.y, vh.x, 0.0f) / glm::sqrt(lensq) : Vec3f(1.0f, 0.0f, 0.0f);
@@ -39,20 +36,18 @@ Vec3f GTR2Distrib::sampleWm(const Vec3f &n, const Vec3f &wo, const Vec2f &u)
         xi.y = (1.0f - s) * glm::sqrt(glm::max(0.0f, 1.0f - xi.x * xi.x)) + s * xi.y;
 
         Vec3f h = t1 * xi.x + t2 * xi.y + vh * glm::sqrt(glm::max(0.0f, 1.0f - glm::dot(xi, xi)));
-        h = glm::normalize(Vec3f(h.x * alpha, h.y * alpha, glm::max(0.0f, h.z)));
-        return glm::normalize(TBN * h);
+        return glm::normalize(Vec3f(h.x * alpha, h.y * alpha, glm::max(0.0f, h.z)));
     }
     else
     {
         Vec2f xi = Transform::toConcentricDisk(u);
 
         Vec3f h = Vec3f(xi.x, xi.y, glm::sqrt(glm::max(0.0f, 1.0f - xi.x * xi.x - xi.y * xi.y)));
-        h = glm::normalize(h * Vec3f(alpha, alpha, 1.0f));
-        return glm::normalize(Transform::localToWorld(n, h));
+        return glm::normalize(h * Vec3f(alpha, alpha, 1.0f));
     }
 }
 
-float GTR2Distrib::g(const Vec3f &n, const Vec3f &wo, const Vec3f &wi)
+float GTR2Distrib::g(const Vec3f &wo, const Vec3f &wi) const
 {
-    return smithG(n, wo, wi, alpha);
+    return smithG(wo, wi, alpha);
 }

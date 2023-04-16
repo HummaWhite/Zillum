@@ -69,4 +69,10 @@ namespace Math {
         Vec3f v = Transform::localToWorld(N, Vec3f(uv, z));
         return { v, PiInv * z };
     }
+
+    Vec3f sampleHemisphereCosine(const Vec2f& u) {
+        Vec2f uv = Transform::toConcentricDisk(u);
+        float z = glm::sqrt(1.0f - glm::dot(uv, uv));
+        return Vec3f(uv, z);
+    }
 }

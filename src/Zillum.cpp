@@ -14,10 +14,10 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
     int spp;
     std::stringstream param(cmdParam);
     param = std::stringstream("-path2 sobol 1000 1000 3200 8 0");
-    //param = std::stringstream("-lpath sobol 800 800 10000 8");
-    //param = std::stringstream("-tpath sobol 800 800 10000 8 0");
-    //param = std::stringstream("-ao2 sobol 800 800 1000 8 0 0.5");
-    //param = std::stringstream("-bdpt2 sobol 800 800 1000 8 0 0 0");
+    //param = std::stringstream("-lpath sobol 1000 1000 10000 8");
+    //param = std::stringstream("-tpath sobol 1000 1000 10000 8 0");
+    //param = std::stringstream("-ao2 sobol 1000 1000 1000 8 0 0.5");
+    //param = std::stringstream("-bdpt2 sobol 1000 1000 1000 8 0 0 0");
 
     param >> integType;
     param >> samplerType >> width >> height >> spp >> maxDepth;

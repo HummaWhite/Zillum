@@ -72,12 +72,20 @@ float absDot(const Vec3f &a, const Vec3f &b) {
     return glm::abs(glm::dot(a, b));
 }
 
+float saturate(float x) {
+    return glm::max(x, 0.f);
+}
+
 bool coin(float u) {
     return u < 0.5f;
 }
 
 bool sameHemisphere(const Vec3f &N, const Vec3f &A, const Vec3f &B) {
     return glm::dot(N, A) * glm::dot(N, B) > 0;
+}
+
+bool sameHemisphere(const Vec3f &a, const Vec3f &b) {
+    return a.z * b.z > 0;
 }
 
 float maxComponent(const Vec3f &v) {

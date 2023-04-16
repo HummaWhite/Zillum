@@ -39,12 +39,12 @@ void LightPathIntegrator::trace(SamplerPtr sampler)
 {
     for (int i = 0; i < mPathsOnePass; i++)
     {
-        traceOnePath(sampler);
+        traceOnePath(sampler.get());
         sampler->nextSample();
     }
 }
 
-void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
+void LightPathIntegrator::traceOnePath(Sampler* sampler)
 {
     auto [lightSource, pdfSource] = mScene->sampleLightAndEnv(sampler->get2(), sampler->get1());
 
@@ -119,23 +119,21 @@ void LightPathIntegrator::traceOnePath(SamplerPtr sampler)
                 if (mScene->visible(pos, pCam))
                 {
                     float cosWi = Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
-                    Spectrum res = Ii * surf.bsdf->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
+                    Spectrum res = Ii * surf.f(surf.ns, wo, wi, sampler, TransportMode::Importance) *
                         throughput * cosWi / pdf;
-                    // Vec3f bsdfCos = dynamic_cast<MirrorBSDF*>(surf.bsdf.get()) ? Spectrum(Math::mollify(surf.ns, wo, wi, dist, BSDFMollifyRadius)) :
-                    //     surf.bsdf->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) * cosWi;
-                    // Spectrum res = Ii * bsdfCos * throughput / pdf;
+                    
                     if (!Math::hasNan(res) && !Math::isNan(pdf) && pdf > 1e-8f && !Math::isBlack(res))
                         addToFilmLocked(uvRaster, res);
                 }
             }
         }
 
-        auto sample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
+        auto sample = surf.sample(surf.ns, wo, sampler, TransportMode::Importance);
         if (!sample)
             break;
         auto [wi, bsdf, bsdfPdf, type, eta] = sample.value();
 
-        if (bounce >= mRRStartDepth && mParam.russianRoulette)
+        if (bounce >= mParam.rrStartDepth && mParam.russianRoulette)
         {
             float continueProb = glm::min<float>(1.0f, Math::maxComponent(bsdf / bsdfPdf));
             float rr = sampler->get1();

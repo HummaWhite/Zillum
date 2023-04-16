@@ -1,29 +1,28 @@
 #include "Core/BSDF.h"
 
-Spectrum MetallicWorkflowBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
+Spectrum MetallicWorkflowBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const {
+    const auto &[wo, wi, uv, spTemp] = intr;
     Vec3f h = glm::normalize(wi + wo);
     float alpha = roughness * roughness;
 
-    if (!Math::sameHemisphere(n, wo, wi)) {
+    if (!Math::sameHemisphere(wo, wi)) {
         return Spectrum(0.0f);
     }
-
-    float NoL = Math::satDot(n, wi);
-    float NoV = Math::satDot(n, wo);
+    float cosWo = Math::saturate(wo.z);
+    float cosWi = Math::saturate(wi.z);
 
     Spectrum base = baseColor.get(intr.uv);
     Spectrum F0 = Math::lerp(Spectrum(0.04f), base, metallic);
 
     Spectrum f = schlickF(Math::satDot(h, wo), F0, roughness);
-    float d = distrib.d(n, h);
-    float g = distrib.g(n, wo, wi);
+    float d = distrib.d(h);
+    float g = distrib.g(wo, wi);
 
     Spectrum ks = f;
     Spectrum kd = Vec3f(1.0f) - ks;
     kd *= 1.0f - metallic;
 
-    float denom = 4.0f * NoV * NoL;
+    float denom = 4.0f * cosWo * cosWi;
     if (denom < 1e-7f) {
         return Vec3f(0.0f);
     }
@@ -32,18 +31,16 @@ Spectrum MetallicWorkflowBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode)
     return kd * base * Math::PiInv + glossy;
 }
 
-float MetallicWorkflowBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
-    float NoWi = glm::dot(n, wi);
+float MetallicWorkflowBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const {
+    const auto &[wo, wi, uv, spTemp] = intr;
     Vec3f h = glm::normalize(wo + wi);
 
-    float pdfDiff = NoWi * Math::PiInv;
-    float pdfSpec = distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
+    float pdfDiff = wi.z * Math::PiInv;
+    float pdfSpec = distrib.pdf(h, wo) / (4.0f * glm::dot(h, wo));
     return Math::lerp(pdfDiff, pdfSpec, 1.0f / (2.0f - metallic));
 }
 
-std::optional<BSDFSample> MetallicWorkflowBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) {
-    auto &n = intr.n;
+std::optional<BSDFSample> MetallicWorkflowBSDF::sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode) const {
     auto &wo = intr.wo;
     float spec = 1.0f / (2.0f - metallic);
     bool sampleDiff = u.x >= spec;
@@ -51,15 +48,15 @@ std::optional<BSDFSample> MetallicWorkflowBSDF::sample(const SurfaceIntr &intr, 
     
     Vec3f wi;
     if (sampleDiff) {
-        wi = Math::sampleHemisphereCosine(n, u2).first;
+        wi = Math::sampleHemisphereCosine({ u.y, u.z });
     }
     else {
-        auto h = distrib.sampleWm(n, wo, u2);
+        auto h = distrib.sampleWm(wo, { u.y, u.z });
         wi = glm::reflect(-wo, h);
     }
-    if (glm::dot(n, wi) <= 0) {
+    if (wi.z <= 0) {
         return std::nullopt;
     }
-    SurfaceIntr newIntr(n, wo, wi, intr.uv);
+    SurfaceIntr newIntr(wo, wi, intr.uv);
     return BSDFSample(wi, bsdf(newIntr, mode), pdf(newIntr, mode), (sampleDiff ? BSDFType::Diffuse : BSDFType::Glossy) | BSDFType::Reflection);
 }

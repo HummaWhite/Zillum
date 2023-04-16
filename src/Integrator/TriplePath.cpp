@@ -31,7 +31,7 @@ float pdfToAngle(const Vec3f &fr, const Vec3f &to, const Vec3f &n, float pdfArea
 }
 
 Spectrum traceCameraPath(const TriplePathIntegParam &param, ScenePtr scene, Vec3f pos, Vec3f wo, SurfaceInfo surf,
-    Vec3f prevPos, Vec3f prevNorm, SamplerPtr sampler, float primaryPdf
+    Vec3f prevPos, Vec3f prevNorm, Sampler* sampler, float primaryPdf
 ) {
     Spectrum result(0.0f);
     Spectrum throughput(1.0f);
@@ -66,11 +66,11 @@ Spectrum traceCameraPath(const TriplePathIntegParam &param, ScenePtr scene, Vec3
                     float pdfPLit = remap(pdfSource / light->surfaceArea());
                     float coefToSurf = remap(light->pdfLe({ pLit, -wi }).pdfDir * Math::absDot(surf.ns, wi));
 
-                    float coefToLight = remap(mat->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance) *
+                    float coefToLight = remap(surf.pdf(surf.ns, wo, wi, sampler, TransportMode::Radiance) *
                         Math::satDot(light->normalGeom(pLit), -wi));
 
                     float coefToPrev = (bounce == 1) ? 1.0f :
-                        remap(mat->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Importance) * Math::absDot(prevNorm, wo));
+                        remap(surf.pdf(surf.ns, wi, wo, sampler, TransportMode::Importance) * Math::absDot(prevNorm, wo));
 
                     float dist2 = remap(dist * dist);
                     float t1s0 = pdfPLit * dist2 / coefToLight;
@@ -80,7 +80,7 @@ Spectrum traceCameraPath(const TriplePathIntegParam &param, ScenePtr scene, Vec3
                         weight = 0;
                     }
                     
-                    result += Le * mat->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance) * throughput * Math::absDot(surf.ns, wi) * weight /
+                    result += Le * surf.f(surf.ns, wo, wi, sampler, TransportMode::Radiance) * throughput * Math::absDot(surf.ns, wi) * weight /
                         (pdfLi * pdfSource);
                     // if (bounce == param.maxCameraDepth)
                     //     result = Spectrum(weight);
@@ -102,8 +102,9 @@ Spectrum traceCameraPath(const TriplePathIntegParam &param, ScenePtr scene, Vec3
 
         auto nextRay = Ray(pos, wi).offset();
         auto [dist, obj] = scene->closestHit(nextRay);
-        float pdfDirToNext = mat->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Radiance);
-        float pdfDirToPrev = mat->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Importance);
+        
+        float pdfDirToNext = surf.pdf(surf.ns, wo, wi, sampler, TransportMode::Radiance);
+        float pdfDirToPrev = surf.pdf(surf.ns, wi, wo, sampler, TransportMode::Importance);;
         // don't use bsdfPdf directly for MIS, we need to calculate again
 
         if (!obj) {
@@ -168,7 +169,7 @@ Spectrum traceCameraPath(const TriplePathIntegParam &param, ScenePtr scene, Vec3
 
 const int LPTtoPT = 1;
 
-void TriplePathIntegrator::traceLightPath(SamplerPtr sampler) {
+void TriplePathIntegrator::traceLightPath(Sampler* sampler) {
     auto [lightSource, pdfSource] = mScene->sampleLightAndEnv(sampler->get2(), sampler->get1());
 
     Ray ray;
@@ -230,12 +231,12 @@ void TriplePathIntegrator::traceLightPath(SamplerPtr sampler) {
 
                 if (mScene->visible(pos, pCam)) {
                     float cosWi = Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
-                    Spectrum contrib = Ii * surf.bsdf->bsdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance) *
+                    
+                    Spectrum contrib = Ii * surf.f(surf.ns, wo, wi, sampler, TransportMode::Importance) * 
                         throughput * cosWi / pdf;
 
                     float coefToSurf = remap(mScene->mCamera->pdfIe({ pCam, -wi }).pdfDir * Math::satDot(surf.ns, wi));
-                    float coefToPrev = remap(surf.bsdf->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Radiance) *
-                        Math::absDot(prevSurf.ns, wo));
+                    float coefToPrev = remap(surf.pdf(surf.ns, wi, wo, sampler, TransportMode::Radiance) * Math::absDot(prevSurf.ns, wo));
 
                     float dist2 = remap(dist * dist);
 
@@ -255,7 +256,8 @@ void TriplePathIntegrator::traceLightPath(SamplerPtr sampler) {
                 }
             }
         }
-        auto sample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
+        
+        auto sample = surf.sample(surf.ns, wo, sampler, TransportMode::Importance);
         if (!sample) {
             break;
         }
@@ -277,13 +279,13 @@ void TriplePathIntegrator::traceLightPath(SamplerPtr sampler) {
             break;
         }
 
-        float coefToPrev = remap(surf.bsdf->pdf({ surf.ns, wi, wo, surf.uv }, TransportMode::Radiance) *
+        float coefToPrev = remap(surf.pdf(surf.ns, wi, wo, sampler, TransportMode::Radiance) *
             Math::absDot(prevSurf.ns, wo));
 
         s0t1 *= coefToPrev;
         s1t1 *= (bounce == 1) ? 1.0f : coefToPrev;
 
-        prevPdfDir = surf.bsdf->pdf({ surf.ns, wo, wi, surf.uv }, TransportMode::Importance);
+        prevPdfDir = surf.pdf(surf.ns, wo, wi, sampler, TransportMode::Importance);
         prevPos = pos;
         prevSurf = surf;
 
@@ -352,13 +354,13 @@ void TriplePathIntegrator::trace(int paths, SamplerPtr sampler) {
             auto object = dynamic_cast<Object*>(obj.get());
             SurfaceInfo surf = object->surfaceInfo(pos);
             auto [pdfPos, pdfDir] = mScene->mCamera->pdfIe(ray);
-            result = traceCameraPath(mParam, mScene, pos, -ray.dir, surf, ray.ori, mScene->mCamera->f(), sampler,
+            result = traceCameraPath(mParam, mScene, pos, -ray.dir, surf, ray.ori, mScene->mCamera->f(), sampler.get(),
                 remap(pdfPos) / remap(pdfToArea(ray.ori, pos, surf.ns, pdfDir)));
         }
         addToFilmLocked(uv, result);
 
         if (i % LPTtoPT == 0) {
-            traceLightPath(sampler);
+            traceLightPath(sampler.get());
         }
         sampler->nextSample();
     }

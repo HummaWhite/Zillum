@@ -32,4 +32,5 @@ public:
 
 namespace Math {
 	std::pair<Vec3f, float> sampleHemisphereCosine(const Vec3f &N, const Vec2f &u);
+	Vec3f sampleHemisphereCosine(const Vec2f& u);
 }

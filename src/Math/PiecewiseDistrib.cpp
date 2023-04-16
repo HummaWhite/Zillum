@@ -39,7 +39,7 @@ Piecewise1D::Piecewise1D(const std::vector<float> &distrib) {
     }
 }
 
-int Piecewise1D::sample(const Vec2f &u) {
+int Piecewise1D::sample(const Vec2f &u) const {
     int rx = u.x * table.size();
     float ry = u.y;
     return (ry <= table[rx].second / sumDistrib) ? rx : table[rx].first;
@@ -56,7 +56,7 @@ PiecewiseIndependent2D::PiecewiseIndependent2D(float *pdf, int width, int height
     colTable = Piecewise1D(colDistrib);
 }
 
-std::pair<int, int> PiecewiseIndependent2D::sample(const Vec2f &u1, const Vec2f &u2) {
+std::pair<int, int> PiecewiseIndependent2D::sample(const Vec2f &u1, const Vec2f &u2) const {
     int row = colTable.sample(u1);
     return std::pair<int, int>(rowTables[row].sample(u2), row);
 }

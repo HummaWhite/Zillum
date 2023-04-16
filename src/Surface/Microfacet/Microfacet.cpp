@@ -11,9 +11,9 @@ float smithG(float cosThetaO, float cosThetaI, float alpha)
     return schlickG(cosThetaO, alpha) * schlickG(cosThetaI, alpha);
 }
 
-float smithG(const Vec3f &N, const Vec3f &Wo, const Vec3f &Wi, float alpha)
+float smithG(const Vec3f &wo, const Vec3f &wi, float alpha)
 {
-    return smithG(Math::absDot(N, Wo), Math::absDot(N, Wi), alpha);
+    return smithG(glm::abs(wo.z), glm::abs(wi.z), alpha);
 }
 
 float ggx(float cosTheta, float alpha)

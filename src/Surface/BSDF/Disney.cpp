@@ -1,10 +1,10 @@
 #include "Core/BSDF.h"
 
-Spectrum DisneyDiffuse::bsdf(const SurfaceIntr &intr, TransportMode mode)
+Spectrum DisneyDiffuse::bsdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
-    float cosWo = Math::satDot(n, wo);
-    float cosWi = Math::satDot(n, wi);
+    const auto &[wo, wi, uv, spTemp] = intr;
+    float cosWo = Math::saturate(wo.z);
+    float cosWi = Math::saturate(wi.z);
     Vec3f h = glm::normalize(wo + wi);
     float hCosWi = glm::dot(h, wi);
     float hCosWi2 = hCosWi * hCosWi;
@@ -27,31 +27,30 @@ Spectrum DisneyDiffuse::bsdf(const SurfaceIntr &intr, TransportMode mode)
     return diffuse;
 }
 
-float DisneyDiffuse::pdf(const SurfaceIntr &intr, TransportMode mode)
+float DisneyDiffuse::pdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
-    return glm::dot(wi, n) * Math::PiInv;
+    return intr.wi.z * Math::PiInv;
 }
 
-std::optional<BSDFSample> DisneyDiffuse::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneyDiffuse::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const
 {
-    auto [wi, pdf] = Math::sampleHemisphereCosine(intr.n, { u.y, u.z });
-    return BSDFSample(wi, baseColor * Math::PiInv, pdf, BSDFType::Diffuse | BSDFType::Reflection);
+    Vec3f wi = Math::sampleHemisphereCosine({ u.y, u.z });
+    return BSDFSample(wi, baseColor * Math::PiInv, wi.z * Math::PiInv, BSDFType::Diffuse | BSDFType::Reflection);
 }
 
-Spectrum DisneyMetal::bsdf(const SurfaceIntr &intr, TransportMode mode)
+Spectrum DisneyMetal::bsdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
-    float cosWo = Math::satDot(n, wo);
-    float cosWi = Math::satDot(n, wi);
+    const auto &[wo, wi, uv, spTemp] = intr;
+    float cosWo = Math::saturate(wo.z);
+    float cosWi = Math::saturate(wi.z);
     Vec3f h = glm::normalize(wo + wi);
 
     if (cosWo < 1e-10f || cosWi < 1e-10f)
         return Spectrum(0.0f);
 
     Spectrum f = schlickF(Math::absDot(h, wo), baseColor);
-    float d = distrib.d(n, h);
-    float g = distrib.g(n, wo, wi);
+    float d = distrib.d(h);
+    float g = distrib.g(wo, wi);
 
     float denom = 4.0f * cosWi * cosWo;
     if (denom < 1e-7f)
@@ -59,38 +58,37 @@ Spectrum DisneyMetal::bsdf(const SurfaceIntr &intr, TransportMode mode)
     return f * d * g / denom;
 }
 
-float DisneyMetal::pdf(const SurfaceIntr &intr, TransportMode mode)
+float DisneyMetal::pdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
-    float cosWi = glm::dot(n, wi);
+    const auto &[wo, wi, uv, spTemp] = intr;
     Vec3f h = glm::normalize(wo + wi);
-    return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
+    return distrib.pdf(h, wo) / (4.0f * glm::dot(h, wo));
 }
 
-std::optional<BSDFSample> DisneyMetal::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneyMetal::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const
 {
-    Vec3f h = distrib.sampleWm(intr.n, intr.wo, { u.y, u.z });
+    Vec3f h = distrib.sampleWm(intr.wo, { u.y, u.z });
     Vec3f wi = glm::reflect(-intr.wo, h);
-    if (glm::dot(intr.n, wi) < 0.0f)
+    if (wi.z < 0.0f)
         return std::nullopt;
     SurfaceIntr newIntr = intr;
     newIntr.wi = wi;
     return BSDFSample(wi, bsdf(newIntr, mode), pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection);
 }
 
-Spectrum DisneyClearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
+Spectrum DisneyClearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
+    const auto &[wo, wi, uv, spTemp] = intr;
     auto h = glm::normalize(wo + wi);
-    float cosWo = Math::satDot(n, wo);
-    float cosWi = Math::satDot(n, wi);
+    float cosWo = Math::saturate(wo.z);
+    float cosWi = Math::saturate(wi.z);
 
     if (cosWo < 1e-6f || cosWi < 1e-6f)
         return Spectrum(0.0f);
 
     Spectrum r0(0.04f);
     Spectrum f = schlickF(Math::absDot(h, wo), r0);
-    float d = distrib.d(n, h);
+    float d = distrib.d(h);
     float g = schlickG(cosWi, alpha) * schlickG(cosWi, alpha);
 
     float denom = 4.0f * cosWo * cosWi;
@@ -99,28 +97,28 @@ Spectrum DisneyClearcoat::bsdf(const SurfaceIntr &intr, TransportMode mode)
     return f * d * g / denom;
 }
 
-float DisneyClearcoat::pdf(const SurfaceIntr &intr, TransportMode mode)
+float DisneyClearcoat::pdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
+    const auto &[wo, wi, uv, spTemp] = intr;
     auto h = glm::normalize(wo + wi);
-    return distrib.pdf(n, h, wo) / (4.0f * glm::dot(h, wo));
+    return distrib.pdf(h, wo) / (4.0f * glm::dot(h, wo));
 }
 
-std::optional<BSDFSample> DisneyClearcoat::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneyClearcoat::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const
 {
-    auto h = distrib.sampleWm(intr.n, intr.wo, { u.y, u.z });
+    auto h = distrib.sampleWm(intr.wo, { u.y, u.z });
     auto wi = glm::reflect(-intr.wo, h);
 
-    if (glm::dot(intr.n, wi) < 0.0f)
+    if (wi.z < 0.0f)
         return std::nullopt;
     SurfaceIntr newIntr = intr;
     newIntr.wi = wi;
     return BSDFSample(wi, bsdf(newIntr, mode), pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection);
 }
 
-Spectrum DisneySheen::bsdf(const SurfaceIntr &intr, TransportMode mode)
+Spectrum DisneySheen::bsdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
+    const auto &[wo, wi, uv, spTemp] = intr;
     Vec3f h = glm::normalize(wi + wo);
     float lum = Math::luminance(baseColor);
     Spectrum tintColor = lum > 0 ? baseColor / lum : Spectrum(1.0f);
@@ -128,16 +126,15 @@ Spectrum DisneySheen::bsdf(const SurfaceIntr &intr, TransportMode mode)
     return sheenColor * schlickW(Math::absDot(h, wo));
 }
 
-float DisneySheen::pdf(const SurfaceIntr &intr, TransportMode mode)
+float DisneySheen::pdf(const SurfaceIntr &intr, TransportMode mode) const
 {
-    const auto &[n, wo, wi, uv, spTemp] = intr;
-    return glm::dot(wi, n) * Math::PiInv;
+    return intr.wi.z * Math::PiInv;
 }
 
-std::optional<BSDFSample> DisneySheen::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneySheen::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const
 {
-    auto [wi, pdf] = Math::sampleHemisphereCosine(intr.n, { u.y, u.z });
-    return BSDFSample(wi, bsdf({ intr.n, intr.wo, wi, intr.uv }, mode), pdf, BSDFType::Diffuse | BSDFType::Reflection);
+    Vec3f wi = Math::sampleHemisphereCosine({ u.y, u.z });
+    return BSDFSample(wi, bsdf({ intr.wo, wi, intr.uv }, mode), wi.z * Math::PiInv, BSDFType::Diffuse | BSDFType::Reflection);
 }
 
 // TODO: this implementation is not correct
@@ -169,37 +166,58 @@ DisneyBSDF::DisneyBSDF(
     weights[3] = (1.0f - metallic) * transmission;
     weights[4] = (1.0f - metallic) * sheen;
 
-    components[0] = &diffuse;
-    components[1] = &metal;
-    components[2] = &this->clearcoat;
-    components[3] = &dielectric;
-    components[4] = &this->sheen;
-
     std::vector<float> w(4);
     std::copy(weights, weights + 4, w.data());
     piecewiseSampler = Piecewise1D(w);
 }
 
-Spectrum DisneyBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode)
+Spectrum DisneyBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const
 {
     Spectrum r(0.0f);
-    for (int i = 0; i < 5; i++)
-        r += components[i]->bsdf(intr, mode) * weights[i];
+    r += diffuse.bsdf(intr, mode) * weights[0];
+    r += metal.bsdf(intr, mode) * weights[1];
+    r += clearcoat.bsdf(intr, mode) * weights[2];
+    r += dielectric.bsdf(intr, mode) * weights[3];
+    r += sheen.bsdf(intr, mode) * weights[4];
     return r;
 }
 
-float DisneyBSDF::pdf(const SurfaceIntr &intr, TransportMode mode)
+float DisneyBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const
 {
     float p = 0.0f;
-    for (int i = 0; i < 4; i++)
-        p += components[i]->pdf(intr, mode) * weights[i];
-    p /= piecewiseSampler.sum();
+    p += diffuse.pdf(intr, mode) * weights[0];
+    p += metal.pdf(intr, mode) * weights[1];
+    p += clearcoat.pdf(intr, mode) * weights[2];
+    p += dielectric.pdf(intr, mode) * weights[3];
+    p += sheen.pdf(intr, mode) * weights[4];
     return p;
 }
 
-std::optional<BSDFSample> DisneyBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode)
+std::optional<BSDFSample> DisneyBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const
 {
-    // TODO: here needs two extra samples, causing sampling of each path not aligned
-    int comp = piecewiseSampler.sample({ uniformFloat(), uniformFloat() });
-    return components[comp]->sample(intr, u, mode);
+    int comp = piecewiseSampler.sample(intr.sampler->get2());
+    std::optional<BSDFSample> s;
+
+    switch (comp) {
+    case 0:
+        s = diffuse.sample(intr, u, mode);
+        break;
+    case 1:
+        s = metal.sample(intr, u, mode);
+        break;
+    case 2:
+        s = clearcoat.sample(intr, u, mode);
+        break;
+    case 3:
+        s = dielectric.sample(intr, u, mode);
+        break;
+    case 4:
+        s = sheen.sample(intr, u, mode);
+        break;
+    }
+    if (s) {
+        s->pdf *= weights[comp];
+        return s;
+    }
+    return std::nullopt;
 }

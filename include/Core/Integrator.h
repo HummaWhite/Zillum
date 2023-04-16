@@ -128,6 +128,7 @@ private:
 
 struct LightPathIntegParam {
 	bool russianRoulette = true;
+	int rrStartDepth = 3;
 	int maxDepth = 5;
 };
 
@@ -140,7 +141,7 @@ public:
 
 private:
 	void trace(SamplerPtr sampler);
-	void traceOnePath(SamplerPtr sampler);
+	void traceOnePath(Sampler* sampler);
 
 public:
 	LightPathIntegParam mParam;
@@ -148,7 +149,6 @@ public:
 private:
 	int mPathsOnePass;
 	uint64_t mPathCount = 0;
-	int mRRStartDepth = 3;
 };
 
 struct BDPTIntegParam {
@@ -224,7 +224,7 @@ public:
 
 private:
 	void trace(int paths, SamplerPtr sampler);
-	void traceLightPath(SamplerPtr sampler);
+	void traceLightPath(Sampler* sampler);
 
 public:
 	TriplePathIntegParam mParam;

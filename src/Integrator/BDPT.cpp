@@ -26,6 +26,20 @@ struct Vertex {
         return (type == VertexType::Surface) ? normShad : normGeom;
     }
 
+    Spectrum f(Vec3f wo, Vec3f wi, TransportMode mode) const {
+        Vec3f n = getNormal();
+        wo = Transform::worldToLocal(n, wo);
+        wi = Transform::worldToLocal(n, wi);
+        return bsdf->bsdf(SurfaceIntr(wo, wi, uv, sampler));
+    }
+
+    float pdf(Vec3f wo, Vec3f wi, TransportMode mode) const {
+        Vec3f n = getNormal();
+        wo = Transform::worldToLocal(n, wo);
+        wi = Transform::worldToLocal(n, wi);
+        return bsdf->pdf(SurfaceIntr(wo, wi, uv, sampler));
+    }
+
     Vec3f pos;
     Vec3f dir;
     Vec3f normShad;
@@ -48,6 +62,7 @@ struct Vertex {
         Camera *camera;
     };
 
+    Sampler* sampler;
     VertexType type;
 };
 
@@ -100,7 +115,7 @@ float convertPdf(const Vertex &fr, const Vertex &to, float pdfSolidAngle) {
 
 Spectrum bsdf(const Vertex &fr, const Vertex &to, TransportMode mode) {
     Vec3f wi = glm::normalize(to.pos - fr.pos);
-    return fr.bsdf->bsdf({ fr.getNormal(), fr.dir, wi, fr.uv }, mode);
+    return fr.f(fr.dir, wi, mode);
 }
 
 // fr must be a source vertex, either radiance or importance
@@ -120,7 +135,7 @@ float twoPointPdf(const Vertex &fr, const Vertex &to) {
 float threePointPdf(const Vertex &prev, const Vertex &fr, const Vertex &to, TransportMode mode) {
     Vec3f wi = glm::normalize(to.pos - fr.pos);
     Vec3f wo = glm::normalize(prev.pos - fr.pos);
-    return convertPdf(fr, to, fr.bsdf->pdf({ fr.getNormal(), wo, wi, fr.uv }, mode));
+    return convertPdf(fr, to, fr.pdf(wo, wi, mode));
 }
 
 float pdfLightOrigin(const Vertex &light, const Vertex &ref, ScenePtr scene) {
@@ -140,7 +155,7 @@ float pdfLight(const Vertex &light, const Vertex &ref, ScenePtr scene) {
     return light.areaLight->pdfLi(ref.pos, light.pos) * scene->pdfSampleLight(light.areaLight);
 }
 
-void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr sampler, Path &path) {
+void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, Sampler* sampler, Path &path) {
     auto [lightSource, pdfSource] = scene->sampleLightAndEnv(sampler->get2(), sampler->get1());
     // TODO: handle environment light
     if (lightSource.index() != 0) {
@@ -191,7 +206,7 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
         vertex.isDelta = deltaBsdf;
         path.addVertex(vertex);
 
-        auto sample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Importance);
+        auto sample = surf.sample(surf.ns, wo, sampler, TransportMode::Importance);
 
         if (!sample) {
             break;
@@ -217,7 +232,8 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
                 TransportMode::Radiance);
         }
 
-        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo) / glm::dot(surf.ng, wo));
+        float cosWi = type.isDelta() ? 1.0f : Math::satDot(surf.ng, wi) * glm::abs(glm::dot(surf.ns, wo)
+            / glm::dot(surf.ng, wo));
         throughput *= bsdf * cosWi / bsdfPdf;
         pdfSolidAngle = bsdfPdf;
         ray = Ray(pos, wi).offset();
@@ -225,7 +241,7 @@ void generateLightPath(const BDPTIntegParam &param, ScenePtr scene, SamplerPtr s
     }
 }
 
-void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, SamplerPtr sampler, Path &path) {
+void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sampler* sampler, Path &path) {
     auto camera = scene->mCamera;
     auto [pdfCamPos, pdfSolidAngle] = camera->pdfIe(ray);
 
@@ -280,7 +296,7 @@ void generateCameraPath(const BDPTIntegParam &param, ScenePtr scene, Ray ray, Sa
         vertex.isDelta = deltaBsdf;
         path.addVertex(vertex);
 
-        auto sample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3(), TransportMode::Radiance);
+        auto sample = surf.sample(surf.ns, wo, sampler, TransportMode::Radiance);
         if (!sample) {
             break;
         }
@@ -596,8 +612,8 @@ Spectrum BDPTIntegrator::eval(Path &lightPath, Path &cameraPath, SamplerPtr samp
 
 Spectrum BDPTIntegrator::tracePixel(Ray ray, SamplerPtr sampler) {
     Path lightPath, cameraPath;
-    generateLightPath(mParam, mScene, mLightSampler, lightPath);
-    generateCameraPath(mParam, mScene, ray, sampler, cameraPath);
+    generateLightPath(mParam, mScene, mLightSampler.get(), lightPath);
+    generateCameraPath(mParam, mScene, ray, sampler.get(), cameraPath);
     return eval(lightPath, cameraPath, sampler);
 }
 
@@ -656,11 +672,11 @@ void BDPTIntegrator2::trace(int paths, SamplerPtr lightSampler, SamplerPtr camer
 
 void BDPTIntegrator2::traceOnePath(SamplerPtr lightSampler, SamplerPtr cameraSampler) {
     Path lightPath, cameraPath;
-    generateLightPath(mParam, mScene, lightSampler, lightPath);
+    generateLightPath(mParam, mScene, lightSampler.get(), lightPath);
 
     Vec2f uv = cameraSampler->get2();
     Ray ray = mScene->mCamera->generateRay(uv * Vec2f(2.0f, -2.0f) + Vec2f(-1.0f, 1.0f), cameraSampler);
-    generateCameraPath(mParam, mScene, ray, cameraSampler, cameraPath);
+    generateCameraPath(mParam, mScene, ray, cameraSampler.get(), cameraPath);
 
     if (mParam.debug) {
         int s = mParam.debugStrategy.x;
