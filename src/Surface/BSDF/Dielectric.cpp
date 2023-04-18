@@ -36,7 +36,7 @@ bool refract(Vec3f& wt, const Vec3f& wi, const Vec3f& n, float eta)
     return true;
 }
 
-float fresnelDielectric(float cosTi, float eta)
+float FresnelDielectric(float cosTi, float eta)
 {
     cosTi = glm::clamp(cosTi, -1.0f, 1.0f);
     if (cosTi < 0.0f)
@@ -69,7 +69,7 @@ Spectrum DielectricBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const
 
     if (Math::sameHemisphere(wo, wi))
     {
-        float fr = fresnelDielectric(Math::absDot(wh, wi), ior);
+        float fr = FresnelDielectric(Math::absDot(wh, wi), ior);
         return (whCosWo * whCosWi < 1e-7f) ? Spectrum(0.0f) : baseColor * distrib.d(wh) * distrib.g(wo, wi) / (4.0f * whCosWo * whCosWi) * fr;
     }
     else
@@ -80,7 +80,7 @@ Spectrum DielectricBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const
         float dHdWi = whCosWi / denom;
 
         denom *= glm::abs(wi.z * wo.z);
-        float fr = fresnelDielectric(glm::dot(wh, wi), eta);
+        float fr = FresnelDielectric(glm::dot(wh, wi), eta);
         float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
 
         return (denom < 1e-7f) ?
@@ -101,7 +101,7 @@ float DielectricBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const
         if (glm::dot(wo, wh) < 0)
             return 0;
 
-        float fr = fresnelDielectric(Math::absDot(wh, wi), ior);
+        float fr = FresnelDielectric(Math::absDot(wh, wi), ior);
         return distrib.pdf(wh, wo) / (4.0f * Math::absDot(wh, wo)) * fr;
     }
     else
@@ -111,7 +111,7 @@ float DielectricBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const
         if (Math::sameHemisphere(wh, wo, wi))
             return 0;
 
-        float trans = 1.0f - fresnelDielectric(Math::absDot(wh, wo), eta);
+        float trans = 1.0f - FresnelDielectric(Math::absDot(wh, wo), eta);
         float dHdWi = Math::absDot(wh, wi) / Math::square(glm::dot(wh, wo) + eta * glm::dot(wh, wi));
         return distrib.pdf(wh, wo) * dHdWi * trans;
     }
@@ -122,7 +122,7 @@ std::optional<BSDFSample> DielectricBSDF::sample(const SurfaceIntr &intr, const 
     auto &wo = intr.wo;
     if (approxDelta)
     {
-        float refl = fresnelDielectric(wo.z, ior);
+        float refl = FresnelDielectric(wo.z, ior);
         float trans = 1 - refl;
 
         if (u.x < refl)
@@ -147,7 +147,7 @@ std::optional<BSDFSample> DielectricBSDF::sample(const SurfaceIntr &intr, const 
         Vec3f wh = distrib.sampleWm(wo, { u.y, u.z });
         if (wh.z < 0.0f)
             wh = -wh;
-        float refl = fresnelDielectric(glm::dot(wh, wo), ior);
+        float refl = FresnelDielectric(glm::dot(wh, wo), ior);
         float trans = 1.0f - refl;
 
         if (u.x < refl)

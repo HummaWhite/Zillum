@@ -229,9 +229,10 @@ BSDFPtr makeLayeredBSDF() {
     auto normalMap = TextureLoader::fromU8x3("res/texture/alien-metal_normal.png", false);
 
     auto diffuse = new LambertBSDF(ColorMap(baseColor * .75f));
-    auto met = new MetallicWorkflowBSDF(ColorMap(baseColor * .75f), 1.f, .2f);
+    auto met = new MetalBSDF(ColorMap(baseColor * .75f), .2f, 1.5f, .5f);
+    auto met2 = new MetalBSDF(ColorMap(baseColor * .75f), 0.f, 1.5f, .5f);
     auto dielec = new DielectricBSDF(Spectrum(1.f), 0.1f, 1.5f);
-    auto dielec2 = new DielectricBSDF(Spectrum(1.f), 0.f, 1.2f);
+    auto dielec2 = new DielectricBSDF(Spectrum(1.f), 0.f, 1.5f);
     auto tdielec = new ThinDielectricBSDF(Spectrum(1.f), 1.5f);
     auto tdielec2 = new ThinDielectricBSDF(Spectrum(1.f), 4.f);
     auto fake = new FakeBSDF;
@@ -239,13 +240,22 @@ BSDFPtr makeLayeredBSDF() {
     auto bdiffuse = new LambertBSDF(ColorMap(Spectrum(0.1f)));
     auto bmet = new MetallicWorkflowBSDF(ColorMap(Spectrum(.3f, .1f, .05f)), 1.f, .5f);
 
-    auto layeredBSDF = std::make_shared<LayeredBSDF2>();
+    //ColorMap albedo(baseColor * .75f);
+    ColorMap albedo(Spectrum(1.f));
+    //ColorMap albedo(Spectrum(0.f));
+    auto layeredBSDF = std::make_shared<LayeredBSDF>(.1f, 0.5f, albedo, 1);
+    layeredBSDF->top = dielec;
+    layeredBSDF->bottom = met;
+    //layeredBSDF->maxDepth = 20;
+    return layeredBSDF;
+
+    auto layeredBSDF2 = std::make_shared<LayeredBSDF2>();
     //layeredBSDF->addBSDF(fake);
-    layeredBSDF->addBSDF(dielec, nullptr);
-    layeredBSDF->addBSDF(bmet, normalMap);
+    layeredBSDF2->addBSDF(dielec, nullptr);
+    layeredBSDF2->addBSDF(bmet, normalMap);
     //layeredBSDF->addBSDF(diffuse, nullptr);
     //layeredBSDF->addBSDF(bmet, nullptr);
-    return layeredBSDF;
+    return layeredBSDF2;
 #undef baseColor
 }
 

@@ -4,9 +4,9 @@
 #include "Core/Transform.h"
 
 struct PhaseSample {
-	PhaseSample(Vec3f w, float pdf) : wi(w), pdf(pdf), p(pdf) {}
+	PhaseSample(Vec3f w, float pdf) : w(w), pdf(pdf), p(pdf) {}
 	float p;
-	Vec3f wi;
+	Vec3f w;
 	float pdf;
 };
 

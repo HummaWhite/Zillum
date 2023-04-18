@@ -95,14 +95,14 @@ public:
 	int type;
 };
 
-// Vec3f dir, Spectrum bsdf, float pdf, BSDFType type, float eta
+// Vec3f w, Spectrum bsdf, float pdf, BSDFType type, float eta
 struct BSDFSample {
 	BSDFSample() : type(BSDFType::AllMask) {}
 
 	BSDFSample(const Vec3f &dir, const Spectrum& bsdf, float pdf, BSDFType type, float eta = 1.0f) :
-		dir(dir), pdf(pdf), type(type), bsdf(bsdf), eta(eta) {}
+		w(dir), pdf(pdf), type(type), bsdf(bsdf), eta(eta) {}
 
-	Vec3f dir;
+	Vec3f w;
 	Spectrum bsdf;
 	float pdf;
 	BSDFType type;
@@ -164,6 +164,28 @@ public:
 
 private:
 	ColorMap<Vec3f> baseColor;
+};
+
+class MetalBSDF : public BSDF {
+public:
+	MetalBSDF(const ColorMap<Vec3f>& baseColor, float roughness, float eta, float k) :
+		baseColor(baseColor), roughness(roughness), eta(eta), k(k),
+		distrib(roughness, true),
+		BSDF((roughness <= 0.014f ? BSDFType::Delta : BSDFType::Glossy) | BSDFType::Reflection) {}
+
+	Spectrum bsdf(const SurfaceIntr& intr, TransportMode mode) const;
+	float pdf(const SurfaceIntr& intr, TransportMode mode) const;
+	std::optional<BSDFSample> sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode) const;
+
+private:
+	bool approxDelta() const { return roughness <= 0.014f; }
+
+private:
+	ColorMap<Vec3f> baseColor;
+	const float roughness;
+	float eta;
+	float k;
+	GTR2Distrib distrib;
 };
 
 class MetallicWorkflowBSDF: public BSDF {
@@ -326,7 +348,7 @@ class LayeredBSDF : public BSDF {
 public:
 	LayeredBSDF(float thickness, float g, const ColorMap<Vec3f> &albedo, int nSamples) :
 		top(nullptr), bottom(nullptr), thickness(thickness), g(g),
-		albedo(albedo), nSamples(nSamples), BSDF(BSDFType::None) {}
+		albedo(albedo), nSamples(nSamples), maxDepth(8), BSDF(BSDFType::None) {}
 
 	Spectrum bsdf(const SurfaceIntr &intr, TransportMode mode) const;
 	float pdf(const SurfaceIntr& intr, TransportMode mode) const;
@@ -340,6 +362,7 @@ public:
 	ColorMap<Vec3f> albedo;
 	Texture3fPtr normalMap;
 	int nSamples;
+	int maxDepth;
 };
 
 class LayeredBSDF2 : public BSDF {
@@ -362,4 +385,5 @@ private:
 };
 
 bool refract(Vec3f &wt, const Vec3f &wi, const Vec3f &n, float eta);
-float fresnelDielectric(float cosTi, float eta);
+float FresnelDielectric(float cosTi, float eta);
+float FresnelConductor(float cosI, float eta, float k);

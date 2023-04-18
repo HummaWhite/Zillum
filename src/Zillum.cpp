@@ -56,7 +56,7 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
         integ->mParam.maxDepth = maxDepth;
         integ->mParam.MIS = true;
         integ->mParam.directWeight = 0.f;
-        integ->mParam.sampleDirect = true;
+        integ->mParam.sampleDirect = false;
         mIntegrator = integ;
         scramble = false;
     }

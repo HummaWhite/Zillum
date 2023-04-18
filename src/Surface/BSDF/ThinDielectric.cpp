@@ -5,7 +5,7 @@ Spectrum ThinDielectricBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) c
 }
 
 std::optional<BSDFSample> ThinDielectricBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const {
-    float refl = fresnelDielectric(intr.wo.z, ior);
+    float refl = FresnelDielectric(intr.wo.z, ior);
     float trans = 1.0f - refl;
     if (refl < 1.0f) {
         refl += trans * trans * refl / (1.0f - refl * refl);

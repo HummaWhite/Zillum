@@ -42,7 +42,7 @@ struct SurfaceInfo {
 			return std::nullopt;
 		}
 		else {
-			sample->dir = Transform::localToWorld(n, sample->dir);
+			sample->w = Transform::localToWorld(n, sample->w);
 			return sample;
 		}
 	}
