@@ -247,8 +247,8 @@ BSDFPtr makeLayeredBSDF() {
     ColorMap albedo(Spectrum(1.f));
     //ColorMap albedo(Spectrum(0.f));
     auto layeredBSDF = std::make_shared<LayeredBSDF>(0.01f, 0.4f, albedo, 1);
-    layeredBSDF->top = fake;
-    layeredBSDF->bottom = bmet;
+    layeredBSDF->top = dielec2;
+    layeredBSDF->bottom = bmet2;
     layeredBSDF->maxDepth = 20;
     return layeredBSDF;
 

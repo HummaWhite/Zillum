@@ -38,12 +38,119 @@ Spectrum LayeredBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sam
     float zExt = (ext == ent) ? zEnt : thickness - zEnt;
 
     Spectrum f(0.f);
+    Spectrum alb = albedo.get(uv);
 
     if (Math::sameHemisphere(wo, wi)) {
         f += ent->bsdf(wo, wi, uv, mode, sampler) * float(nSamples);
     }
 
     for (int i = 0; i < nSamples; i++) {
+        auto wos = ent->sample(wo, uv, mode, sampler);
+
+        if (!wos || Math::isBlack(wos->bsdf) || wos->pdf < 1e-8f || wos->w.z == 0 ||
+            !wos->type.isTransmission()) {
+            continue;
+        }
+        auto wis = ext->sample(wi, uv, ~mode, sampler);
+        
+        if (!wis || Math::isBlack(wis->bsdf) || wis->pdf < 1e-8f || wis->w.z == 0 ||
+            !wis->type.isTransmission()) {
+            continue;
+        }
+
+        Spectrum throughput = wos->bsdf * glm::abs(wos->w.z) / wos->pdf;
+        float z = entTop ? 0 : thickness;
+        Vec3f w = wos->w;
+
+        for (int depth = 1; depth <= maxDepth; depth++) {
+            if (depth > 3) {
+                float rr = glm::max(0.f, 1.f - Math::luminance(throughput));
+                if (sampler->get1() < rr) {
+                    break;
+                }
+                throughput /= (1.f - rr);
+            }
+
+            if (Math::isBlack(alb)) {
+                z = (z == thickness) ? 0 : thickness;
+                throughput *= transmittance(thickness, w);
+            }
+            else {
+                float sigT = 1.f;
+                float dz = sampleExponential(sigT / glm::abs(w.z), sampler->get1());
+
+                if (dz == 0) {
+                    continue;
+                }
+                float zNext = (w.z > 0) ? z - dz : z + dz;
+
+                if (zNext < thickness && zNext > 0) {
+                    float weight = 1.f;
+                    if (!ext->type().isDelta()) {
+                        weight = Math::powerHeuristic(wis->pdf, HGPhasePDF(-w, -wis->w, g));
+                    }
+                    f += wis->bsdf / wis->pdf * transmittance(zNext, zExt, wis->w) * alb *
+                        HGPhaseFunction(glm::dot(w, wis->w), g) * weight * throughput;
+
+                    auto phaseSample = HGPhaseSample(-w, g, sampler->get2());
+
+                    if (phaseSample.pdf == 0 || phaseSample.w.z == 0) {
+                        continue;
+                    }
+                    throughput *= alb * phaseSample.p / phaseSample.pdf;
+                    w = phaseSample.w;
+                    z = zNext;
+
+                    if (((z > zExt && w.z > 0) || (z < zExt && w.z < 0)) && !ext->type().isDelta()) {
+                        Spectrum fExt = ext->bsdf(-w, wi, uv, mode, sampler);
+                        if (!Math::isBlack(fExt)) {
+                            float pExt = ext->pdf(-w, wi, uv, mode, sampler);
+                            float weight = Math::powerHeuristic(phaseSample.pdf, pExt);
+                            f += fExt / pExt * transmittance(z, zExt, phaseSample.w) * weight * throughput;
+                        }
+                    }
+                    continue;
+                }
+                z = glm::clamp(zNext, 0.f, thickness);
+            }
+
+            if (z == zExt) {
+                auto es = ext->sample(-w, uv, mode, sampler);
+                if (!es || Math::isBlack(es->bsdf) || es->pdf < 1e-8f || es->w.z == 0) {
+                    break;
+                }
+                throughput *= es->bsdf * glm::abs(es->w.z) / es->pdf;
+                w = es->w;
+            }
+            else {
+                if (!oth->type().isDelta()) {
+                    float weight = 1.f;
+                    if (!ext->type().isDelta()) {
+                        weight = Math::powerHeuristic(wis->pdf, oth->pdf(-w, -wis->w, uv, mode, sampler));
+                    }
+                    f += oth->bsdf(-w, -wis->w, uv, mode, sampler) * glm::abs(wis->w.z) *
+                        transmittance(thickness, wis->w) * wis->bsdf / wis->pdf * weight * throughput;
+                }
+
+                auto os = oth->sample(-w, uv, mode, sampler);
+                if (!os || Math::isBlack(os->bsdf) || os->pdf < 1e-8f || os->w.z == 0) {
+                    break;
+                }
+                throughput *= os->bsdf * glm::abs(os->w.z) / os->pdf;
+
+                if (!ext->type().isDelta()) {
+                    Spectrum fExt = ext->bsdf(-w, wi, uv, mode, sampler);
+                    if (!Math::isBlack(fExt)) {
+                        float weight = 1.f;
+                        if (!oth->type().isDelta()) {
+                            float pExt = ext->pdf(-w, wi, uv, mode, sampler);
+                            weight = Math::powerHeuristic(os->pdf, pExt);
+                        }
+                        f += fExt * transmittance(thickness, os->w) * weight * throughput;
+                    }
+                }
+            }
+        }
     }
 
     return f / float(nSamples);
@@ -116,7 +223,7 @@ std::optional<BSDFSample> LayeredBSDF::sample(Vec3f wo, Vec2f uv, TransportMode 
             float dz = sampleExponential(sigT / glm::abs(w.z), sampler->get1());
 
             if (dz == 0) {
-                return std::nullopt;
+                continue;
             }
             float zNext = (w.z > 0) ? z - dz : z + dz;
 
@@ -137,7 +244,7 @@ std::optional<BSDFSample> LayeredBSDF::sample(Vec3f wo, Vec2f uv, TransportMode 
         }
 
         BSDF* interf = (z == 0) ? top : bottom;
-        auto bsdfSample = interf->sample(-wo, uv, mode, sampler);
+        auto bsdfSample = interf->sample(-w, uv, mode, sampler);
 
         if (!bsdfSample || Math::isBlack(bsdfSample->bsdf) || bsdfSample->pdf == 0 ||
             bsdfSample->w.z == 0) {
