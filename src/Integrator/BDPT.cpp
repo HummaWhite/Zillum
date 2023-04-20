@@ -30,14 +30,14 @@ struct Vertex {
         Vec3f n = getNormal();
         wo = Transform::worldToLocal(n, wo);
         wi = Transform::worldToLocal(n, wi);
-        return bsdf->bsdf(SurfaceIntr(wo, wi, uv, sampler));
+        return bsdf->bsdf(wo, wi, uv, mode, sampler);
     }
 
     float pdf(Vec3f wo, Vec3f wi, TransportMode mode) const {
         Vec3f n = getNormal();
         wo = Transform::worldToLocal(n, wo);
         wi = Transform::worldToLocal(n, wi);
-        return bsdf->pdf(SurfaceIntr(wo, wi, uv, sampler));
+        return bsdf->pdf(wo, wi, uv, mode, sampler);
     }
 
     Vec3f pos;

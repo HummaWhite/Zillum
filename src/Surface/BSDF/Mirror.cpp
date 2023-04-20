@@ -1,14 +1,14 @@
 #include "Core/BSDF.h"
 
-Spectrum MirrorBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const {
+Spectrum MirrorBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     return Spectrum(0.0f);
 }
 
-float MirrorBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const {
+float MirrorBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     return 0.0f;
 }
 
-std::optional<BSDFSample> MirrorBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const {
-    Vec3f wi = { -intr.wo.x, -intr.wo.y, intr.wo.z };
-    return BSDFSample(wi, baseColor.get(intr.uv), 1.0f, BSDFType::Delta | BSDFType::Reflection);
+std::optional<BSDFSample> MirrorBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+    Vec3f wi = { -wo.x, -wo.y, wo.z };
+    return BSDFSample(wi, baseColor.get(uv), 1.0f, BSDFType::Delta | BSDFType::Reflection);
 }

@@ -26,18 +26,18 @@ struct SurfaceInfo {
 	Spectrum f(Vec3f n, Vec3f wo, Vec3f wi, Sampler* sampler, TransportMode mode = TransportMode::Radiance) {
 		wo = Transform::worldToLocal(n, wo);
 		wi = Transform::worldToLocal(n, wi);
-		return bsdf->bsdf(SurfaceIntr(wo, wi, uv, sampler), mode);
+		return bsdf->bsdf(wo, wi, uv, mode, sampler);
 	}
 
 	float pdf(Vec3f n, Vec3f wo, Vec3f wi, Sampler* sampler, TransportMode mode = TransportMode::Radiance) {
 		wo = Transform::worldToLocal(n, wo);
 		wi = Transform::worldToLocal(n, wi);
-		return bsdf->pdf(SurfaceIntr(wo, wi, uv, sampler), mode);
+		return bsdf->pdf(wo, wi, uv, mode, sampler);
 	}
 
 	std::optional<BSDFSample> sample(Vec3f n, Vec3f wo, Sampler* sampler, TransportMode mode = TransportMode::Radiance) {
 		wo = Transform::worldToLocal(n, wo);
-		auto sample = bsdf->sample(SurfaceIntr(wo, uv, sampler), sampler->get3(), mode);
+		auto sample = bsdf->sample(wo, uv, mode, sampler);
 		if (!sample) {
 			return std::nullopt;
 		}

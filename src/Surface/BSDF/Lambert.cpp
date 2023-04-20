@@ -1,14 +1,14 @@
 #include "Core/BSDF.h"
 
-Spectrum LambertBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const {
-    return albedo.get(intr.uv) * Math::PiInv;
+Spectrum LambertBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+    return albedo.get(uv) * Math::PiInv;
 }
 
-float LambertBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const {
-    return intr.wi.z * Math::PiInv;
+float LambertBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+    return wi.z * Math::PiInv;
 }
 
-std::optional<BSDFSample> LambertBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const {
-    Vec3f wi = Math::sampleHemisphereCosine({ u.y, u.z });
-    return BSDFSample(wi, albedo.get(intr.uv) * Math::PiInv, wi.z * Math::PiInv, BSDFType::Diffuse | BSDFType::Reflection);
+std::optional<BSDFSample> LambertBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+    Vec3f wi = Math::sampleHemisphereCosine(sampler->get2());
+    return BSDFSample(wi, albedo.get(uv) * Math::PiInv, wi.z * Math::PiInv, BSDFType::Diffuse | BSDFType::Reflection);
 }

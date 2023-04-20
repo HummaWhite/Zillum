@@ -229,24 +229,27 @@ BSDFPtr makeLayeredBSDF() {
     auto normalMap = TextureLoader::fromU8x3("res/texture/alien-metal_normal.png", false);
 
     auto diffuse = new LambertBSDF(ColorMap(baseColor * .75f));
-    auto met = new MetalBSDF(ColorMap(baseColor * .75f), .2f, 1.5f, .5f);
-    auto met2 = new MetalBSDF(ColorMap(baseColor * .75f), 0.f, 1.5f, .5f);
+    auto met = new MetalBSDF(ColorMap(baseColor * 1.2f), .2f, 1.5f, .5f);
+    auto met2 = new MetalBSDF(ColorMap(baseColor * 1.2f), 0.f, 1.5f, .5f);
+    auto met3 = new MetalBSDF(ColorMap(baseColor * 1.2f), .4f, 1.5f, .2f);
     auto dielec = new DielectricBSDF(Spectrum(1.f), 0.1f, 1.5f);
     auto dielec2 = new DielectricBSDF(Spectrum(1.f), 0.f, 1.5f);
+    auto dielec3 = new DielectricBSDF(Spectrum(1.f), 0.f, 1.f / 1.5f);
     auto tdielec = new ThinDielectricBSDF(Spectrum(1.f), 1.5f);
     auto tdielec2 = new ThinDielectricBSDF(Spectrum(1.f), 4.f);
     auto fake = new FakeBSDF;
 
     auto bdiffuse = new LambertBSDF(ColorMap(Spectrum(0.1f)));
-    auto bmet = new MetallicWorkflowBSDF(ColorMap(Spectrum(.3f, .1f, .05f)), 1.f, .5f);
+    auto bmet = new MetallicWorkflowBSDF(ColorMap(Spectrum(.3f, .1f, .05f)), 1.f, 0.5);
+    auto bmet2 = new MetalBSDF(ColorMap(Spectrum(.3f, .1f, .05f) * 4.f), .5f, 1.5f, 2.f);
 
     //ColorMap albedo(baseColor * .75f);
     ColorMap albedo(Spectrum(1.f));
     //ColorMap albedo(Spectrum(0.f));
-    auto layeredBSDF = std::make_shared<LayeredBSDF>(.1f, 0.5f, albedo, 1);
-    layeredBSDF->top = dielec;
-    layeredBSDF->bottom = met;
-    //layeredBSDF->maxDepth = 20;
+    auto layeredBSDF = std::make_shared<LayeredBSDF>(0.01f, 0.4f, albedo, 1);
+    layeredBSDF->top = fake;
+    layeredBSDF->bottom = bmet;
+    layeredBSDF->maxDepth = 20;
     return layeredBSDF;
 
     auto layeredBSDF2 = std::make_shared<LayeredBSDF2>();
@@ -265,12 +268,14 @@ ScenePtr materialTest() {
     scene->addHittable(
         std::make_shared<Object>(
             std::make_shared<Sphere>(Vec3f(0.f, 4.0f, 0.f), 1.5f, true),
+            //std::make_shared<Quad>(Vec3f(1.f, 3.f, -1.f), Vec3f(-1.f, 3.f, -1.f), Vec3f(1.f, 3.f, 1.f)),
             //std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
             //std::make_shared<MetallicWorkflowBSDF>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
             makeLayeredBSDF()
             ));
 
     scene->mCamera = std::make_shared<ThinLensCamera>(20.0f, .1f, 11.f);
+    //scene->mCamera = std::make_shared<ThinLensCamera>(20.0f, .0f, 11.f);
     scene->mCamera->setPos({ 0.0f, -8.0f, 0.0f });
     scene->mCamera->lookAt(Vec3f(0.0f, 10.0f, 0.0f));
 

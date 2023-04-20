@@ -14,49 +14,70 @@ float sampleExponential(float a, float u) {
     return -glm::log(1 - u) / a;
 }
 
-Spectrum LayeredBSDF::bsdf(const SurfaceIntr& intr, TransportMode mode) const {
+Spectrum LayeredBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     if (!top && !bottom) {
         return Spectrum(0.f);
     }
     else if (!top) {
-        return bottom->bsdf(intr, mode);
+        return bottom->bsdf(wo, wi, uv, mode, sampler);
     }
     else if (!bottom) {
-        return top->bsdf(intr, mode);
+        return top->bsdf(wo, wi, uv, mode, sampler);
     }
-    return Spectrum(0.f);
+
+    if (twoSided && wo.z < 0) {
+        wo = -wo;
+        wi = -wi;
+    }
+    bool entTop = twoSided || wo.z > 0;
+    BSDF* ent = entTop ? top : bottom;
+    BSDF* oth = entTop ? bottom : top;
+    BSDF* ext = Math::sameHemisphere(wo, wi) ? ent : oth;
+
+    float zEnt = entTop ? 0 : thickness;
+    float zExt = (ext == ent) ? zEnt : thickness - zEnt;
+
+    Spectrum f(0.f);
+
+    if (Math::sameHemisphere(wo, wi)) {
+        f += ent->bsdf(wo, wi, uv, mode, sampler) * float(nSamples);
+    }
+
+    for (int i = 0; i < nSamples; i++) {
+    }
+
+    return f / float(nSamples);
 }
 
-float LayeredBSDF::pdf(const SurfaceIntr& intr, TransportMode mode) const {
+float LayeredBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     if (!top && !bottom) {
         return 0;
     }
     else if (!top) {
-        return bottom->pdf(intr, mode);
+        return bottom->pdf(wo, wi, uv, mode, sampler);
     }
     else if (!bottom) {
-        return top->pdf(intr, mode);
+        return top->pdf(wo, wi, uv, mode, sampler);
     }
     return 0.f;
 }
 
-std::optional<BSDFSample> LayeredBSDF::sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode) const {
+std::optional<BSDFSample> LayeredBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     if (!top && !bottom) {
         return std::nullopt;
     }
     else if (!top) {
-        return bottom->sample(intr, u, mode);
+        return bottom->sample(wo, uv, mode, sampler);
     }
     else if (!bottom) {
-        return top->sample(intr, u, mode);
+        return top->sample(wo, uv, mode, sampler);
     }
     
-    auto wo = intr.wo;
     bool entTop = wo.z > 0;
     BSDF* ent = entTop ? top : bottom;
     BSDF* oth = entTop ? bottom : top;
 
-    auto ins = ent->sample(SurfaceIntr(wo, intr.uv, intr.sampler), u, mode);
+    auto ins = ent->sample(wo, uv, mode, sampler);
 
     if (!ins || ins->pdf < 1e-8f || ins->w.z == 0 || Math::isBlack(ins->bsdf)) {
         return std::nullopt;
@@ -66,17 +87,17 @@ std::optional<BSDFSample> LayeredBSDF::sample(const SurfaceIntr& intr, const Vec
         return ins;
     }
 
-    Spectrum f = ins->bsdf * glm::abs(ins->w.z);
+    Spectrum f = ins->bsdf * (ins->type.isDelta() ? 1.f : glm::abs(ins->w.z));
     float pdf = ins->pdf;
     float z = entTop ? 0.f : thickness;
     Vec3f w = ins->w;
-    Spectrum alb = albedo.get(intr.uv);
+    Spectrum alb = albedo.get(uv);
     bool delta = ins->type.isDelta();
 
     for (int depth = 1; depth <= maxDepth; depth++) {
         if (depth > 3) {
             float rr = glm::max(0.f, 1.f - Math::luminance(f) / pdf);
-            if (intr.sampler->get1() < rr) {
+            if (sampler->get1() < rr) {
                 return std::nullopt;
             }
             pdf *= 1.f - rr;
@@ -92,7 +113,7 @@ std::optional<BSDFSample> LayeredBSDF::sample(const SurfaceIntr& intr, const Vec
         }
         else {
             float sigT = 1.f;
-            float dz = sampleExponential(sigT / glm::abs(w.z), intr.sampler->get1());
+            float dz = sampleExponential(sigT / glm::abs(w.z), sampler->get1());
 
             if (dz == 0) {
                 return std::nullopt;
@@ -100,7 +121,7 @@ std::optional<BSDFSample> LayeredBSDF::sample(const SurfaceIntr& intr, const Vec
             float zNext = (w.z > 0) ? z - dz : z + dz;
 
             if (zNext < thickness && zNext > 0) {
-                auto phaseSample = HGPhaseSample(-w, g, intr.sampler->get2());
+                auto phaseSample = HGPhaseSample(-w, g, sampler->get2());
 
                 if (phaseSample.pdf == 0 || phaseSample.w.z == 0) {
                     return std::nullopt;
@@ -116,7 +137,7 @@ std::optional<BSDFSample> LayeredBSDF::sample(const SurfaceIntr& intr, const Vec
         }
 
         BSDF* interf = (z == 0) ? top : bottom;
-        auto bsdfSample = interf->sample(SurfaceIntr(-w, intr.uv, intr.sampler), u, mode);
+        auto bsdfSample = interf->sample(-wo, uv, mode, sampler);
 
         if (!bsdfSample || Math::isBlack(bsdfSample->bsdf) || bsdfSample->pdf == 0 ||
             bsdfSample->w.z == 0) {
@@ -183,9 +204,7 @@ std::optional<BSDFSample> generatePath(
             }
         }
 
-        SurfaceIntr intr;
-        intr.wo = Transform::worldToLocal(norm, wGiven);
-        auto bsdfSample = layerBSDF->sample(intr, sampler->get3(), mode);
+        auto bsdfSample = layerBSDF->sample(Transform::worldToLocal(norm, wGiven), uv, mode, sampler);
 
         if (!bsdfSample) {
             return std::nullopt;
@@ -214,18 +233,16 @@ std::optional<BSDFSample> generatePath(
     return BSDFSample(bSample.w, throughput, pdf, BSDFType::Glossy | BSDFType::Reflection);
 }
 
-Spectrum LayeredBSDF2::bsdf(const SurfaceIntr& intr, TransportMode mode) const {
-    auto wo = intr.wo;
-    auto wi = intr.wi;
+Spectrum LayeredBSDF2::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     if (wo.z < 0 || wi.z < 0) {
         return Spectrum(0.f);
     }
 
     BSDF* top = interfaces[0];
     BSDF* bottom = interfaces[1];
-    Spectrum eval = top->bsdf(intr, mode);
+    Spectrum eval = top->bsdf(wo, wi, uv, mode, sampler);
     
-    auto d1Sample = top->sample({ wi }, intr.sampler->get3(), ~mode);
+    auto d1Sample = top->sample(wi, uv, ~mode, sampler);
 
     if (!d1Sample) {
         return eval;
@@ -235,45 +252,43 @@ Spectrum LayeredBSDF2::bsdf(const SurfaceIntr& intr, TransportMode mode) const {
     }
 
     if (!top->type().isDelta()) {
-        auto d2Sample = bottom->sample({ -d1Sample->w }, intr.sampler->get3(), ~mode);
+        auto d2Sample = bottom->sample(-d1Sample->w, uv, ~mode, sampler);
 
         if (d2Sample) {
-            float connectPdf = top->pdf({ wo, -d2Sample->w }, mode);
+            float connectPdf = top->pdf(wo, -d2Sample->w, uv, mode, sampler);
             if (!Math::isNan(connectPdf) && connectPdf > 0) {
                 float pdf = d1Sample->pdf * d2Sample->pdf;
-                Spectrum thru = d1Sample->bsdf * d2Sample->bsdf * top->bsdf({ wo, -d2Sample->w }, mode);
+                Spectrum thru = d1Sample->bsdf * d2Sample->bsdf * top->bsdf(wo, -d2Sample->w, uv, mode, sampler);
                 float weight = top->type().isDelta() ? 1.f : Math::powerHeuristic(d2Sample->pdf, connectPdf);
                 //weight = 1.f;
                 eval += thru / pdf * weight;
             }
         }
     }
-    auto d3Sample = top->sample({ wo }, intr.sampler->get3(), mode);
+    auto d3Sample = top->sample(wo, uv, mode, sampler);
 
     if (d3Sample) {
         if (d3Sample->w.z > 0) {
             return eval;
         }
         float pdf = d1Sample->pdf * d3Sample->pdf;
-        Spectrum thru = d1Sample->bsdf * d3Sample->bsdf * bottom->bsdf({ -d3Sample->w, -d1Sample->w }, mode);
-        float weight = top->type().isDelta() ? 1.f : Math::powerHeuristic(pdf, bottom->pdf({ -d3Sample->w, -d1Sample->w }, mode));
+        Spectrum thru = d1Sample->bsdf * d3Sample->bsdf * bottom->bsdf(-d3Sample->w, -d1Sample->w, uv, mode, sampler);
+        float weight = top->type().isDelta() ? 1.f : Math::powerHeuristic(pdf, bottom->pdf(-d3Sample->w, -d1Sample->w, uv, mode, sampler));
         //weight = 1.f;
         eval += thru / pdf * weight;
     }
     return eval;
 }
 
-float LayeredBSDF2::pdf(const SurfaceIntr& intr, TransportMode mode) const {
-    auto wo = intr.wo;
-    auto wi = intr.wi;
+float LayeredBSDF2::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     if (wo.z < 0 || wi.z < 0) {
         return 0.f;
     }
     BSDF* top = interfaces[0];
     BSDF* bottom = interfaces[1];
-    float eval = top->pdf(intr, mode);
+    float eval = top->pdf(wo, wi, uv, mode, sampler);
     
-    auto d1Sample = top->sample({ wi }, intr.sampler->get3(), ~mode);
+    auto d1Sample = top->sample(wi, uv, ~mode, sampler);
 
     if (!d1Sample) {
         return eval;
@@ -283,10 +298,10 @@ float LayeredBSDF2::pdf(const SurfaceIntr& intr, TransportMode mode) const {
     }
 
     if (!top->type().isDelta()) {
-        auto d2Sample = bottom->sample({ -d1Sample->w }, intr.sampler->get3(), ~mode);
+        auto d2Sample = bottom->sample(-d1Sample->w, uv, ~mode, sampler);
 
         if (d2Sample) {
-            float connectPdf = top->pdf({ wo, -d2Sample->w }, mode);
+            float connectPdf = top->pdf(wo, -d2Sample->w, uv, mode);
             if (!Math::isNan(connectPdf) && connectPdf > 0) {
                 float pdf = d1Sample->pdf * d2Sample->pdf;
                 float weight = top->type().isDelta() ? 1.f : Math::powerHeuristic(d2Sample->pdf, connectPdf);
@@ -295,22 +310,23 @@ float LayeredBSDF2::pdf(const SurfaceIntr& intr, TransportMode mode) const {
             }
         }
     }
-    auto d3Sample = top->sample({ wo }, intr.sampler->get3(), mode);
+    auto d3Sample = top->sample(wo, uv, mode, sampler);
 
     if (d3Sample) {
         if (d3Sample->w.z > 0) {
             return eval;
         }
         float pdf = d1Sample->pdf * d3Sample->pdf;
-        float weight = top->type().isDelta() ? 1.f : Math::powerHeuristic(pdf, bottom->pdf({ -d3Sample->w, -d1Sample->w }, mode));
+        float weight = top->type().isDelta() ? 1.f :
+            Math::powerHeuristic(pdf, bottom->pdf(-d3Sample->w, -d1Sample->w, uv, mode, sampler));
         //weight = 1.f;
         eval += pdf * weight;
     }
     return eval;
 }
 
-std::optional<BSDFSample> LayeredBSDF2::sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode) const {
-    return generatePath(intr.wo, intr.uv, interfaces, normalMaps, intr.sampler, maxDepth, mode);
+std::optional<BSDFSample> LayeredBSDF2::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+    return generatePath(wo, uv, interfaces, normalMaps, sampler, maxDepth, mode);
 }
 
 void LayeredBSDF2::addBSDF(BSDF* bsdf, Texture3fPtr normalMap) {

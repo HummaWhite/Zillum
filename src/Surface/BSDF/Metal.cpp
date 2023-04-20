@@ -13,55 +13,39 @@ float FresnelConductor(float cosI, float eta, float k) {
     return (rPa.lengthSqr() + rPe.lengthSqr()) * .5f;
 }
 
-
-Spectrum MetalBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const {
-    if (approxDelta()) {
-        return Spectrum(0.f);
-    }
-
-    const auto &[wo, wi, uv, spTemp] = intr;
-    Vec3f h = glm::normalize(wi + wo);
-    float alpha = roughness * roughness;
-
+Spectrum MetalBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     if (!Math::sameHemisphere(wo, wi)) {
         return Spectrum(0.0f);
     }
-    float cosWo = glm::abs(wo.z);
-    float cosWi = glm::abs(wi.z);
+    Vec3f wh = glm::normalize(wi + wo);
+    float cosWo = Math::saturate(wo.z);
+    float cosWi = Math::saturate(wi.z);
 
     if (cosWo * cosWi < 1e-7f) {
         return Spectrum(0.f);
     }
+    return baseColor.get(uv) * FresnelConductor(Math::absDot(wh, wo), eta, k) *
+        distrib.d(wh) * distrib.g(wo, wi) / (4.f * cosWi * cosWo);
+}
 
+float MetalBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     Vec3f wh = glm::normalize(wo + wi);
-    float fr = FresnelConductor(Math::absDot(wh, wo), eta, k);
-    return baseColor.get(uv) * distrib.d(wh) * distrib.g(wo, wi) * fr / (4.f * cosWo * cosWi);
+    return distrib.pdf(wh, wo) / (4.0f * Math::absDot(wh, wo));
 }
 
-float MetalBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const {
-    if (!Math::sameHemisphere(intr.wo, intr.wi) || approxDelta()) {
-        return 0;
-    }
-    Vec3f wh = glm::normalize(intr.wo + intr.wi);
-    return distrib.pdf(wh, intr.wo) / (4.0f * glm::dot(wh, intr.wo));
-}
-
-std::optional<BSDFSample> MetalBSDF::sample(const SurfaceIntr& intr, const Vec3f& u, TransportMode mode) const {
-    auto& wo = intr.wo;
-
+std::optional<BSDFSample> MetalBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const {
     if (approxDelta()) {
         Vec3f wi(-wo.x, -wo.y, wo.z);
         float fr = FresnelConductor(glm::abs(wo.z), eta, k);
-        return BSDFSample(wi, baseColor.get(intr.uv) * fr, 1.f, BSDFType::Delta | BSDFType::Reflection);
+        return BSDFSample(wi, baseColor.get(uv) * fr, 1.f, BSDFType::Delta | BSDFType::Reflection);
     }
     else {
-        Vec3f wh = distrib.sampleWm(wo, { u.x, u.y });
+        Vec3f wh = distrib.sampleWm(wo, sampler->get2());
         Vec3f wi = glm::reflect(-wo, wh);
         
         if (!Math::sameHemisphere(wo, wi)) {
             return std::nullopt;
         }
-        SurfaceIntr newIntr(wo, wi, intr.uv);
-        return BSDFSample(wi, bsdf(newIntr, mode), pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection);
+        return BSDFSample(wi, bsdf(wo, wi, uv, mode), pdf(wo, wi, uv, mode), BSDFType::Glossy | BSDFType::Reflection);
     }
 }

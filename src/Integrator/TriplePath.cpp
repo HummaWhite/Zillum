@@ -88,7 +88,7 @@ Spectrum traceCameraPath(const TriplePathIntegParam &param, ScenePtr scene, Vec3
             }
         }
 
-        auto bsdfSample = surf.bsdf->sample({ surf.ns, wo, surf.uv }, sampler->get3());
+        auto bsdfSample = surf.sample(surf.ns, wo, sampler);
         if (!bsdfSample) {
             break;
         }

@@ -1,8 +1,7 @@
 #include "Core/BSDF.h"
 
-Spectrum ClearcoatBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const
+Spectrum ClearcoatBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
 {
-    const auto &[wo, wi, uv, spTemp] = intr;
     auto wh = glm::normalize(wo + wi);
 
     float cosWo = Math::saturate(wo.z);
@@ -19,21 +18,18 @@ Spectrum ClearcoatBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const
     return f * d * g * weight / denom;
 }
 
-float ClearcoatBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const
+float ClearcoatBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
 {
-    const auto &[wo, wi, uv, spTemp] = intr;
     auto wh = glm::normalize(wo + wi);
     return distrib.pdf(wh, wo) / (4.0f * glm::dot(wh, wo));
 }
 
-std::optional<BSDFSample> ClearcoatBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const
+std::optional<BSDFSample> ClearcoatBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const
 {
-    auto h = distrib.sampleWm(intr.wo, { u.y, u.z });
-    auto wi = glm::reflect(-intr.wo, h);
+    auto wh = distrib.sampleWm(wo, sampler->get2());
+    auto wi = glm::reflect(-wo, wh);
 
     if (wi.z < 0.0f)
         return std::nullopt;
-    SurfaceIntr newIntr = intr;
-    newIntr.wi = wi;
-    return BSDFSample(wi, bsdf(newIntr, mode), pdf(newIntr, mode), BSDFType::Glossy | BSDFType::Reflection);
+    return BSDFSample(wi, bsdf(wo, wi, uv, mode), pdf(wo, wi, uv, mode), BSDFType::Glossy | BSDFType::Reflection);
 }

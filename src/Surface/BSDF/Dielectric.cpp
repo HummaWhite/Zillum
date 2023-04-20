@@ -57,12 +57,11 @@ float FresnelDielectric(float cosTi, float eta)
     return (rPa * rPa + rPe * rPe) * 0.5f;
 }
 
-Spectrum DielectricBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const
+Spectrum DielectricBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
 {
     if (approxDelta)
         return Spectrum(0.0f);
 
-    const auto &[wo, wi, uv, spTemp] = intr;
     auto wh = glm::normalize(wo + wi);
     float whCosWo = Math::absDot(wh, wo);
     float whCosWi = Math::absDot(wh, wi);
@@ -89,12 +88,11 @@ Spectrum DielectricBSDF::bsdf(const SurfaceIntr &intr, TransportMode mode) const
     }
 }
 
-float DielectricBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const
+float DielectricBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
 {
     if (approxDelta)
         return 0;
 
-    const auto &[wo, wi, uv, spTemp] = intr;
     if (Math::sameHemisphere(wo, wi))
     {
         auto wh = glm::normalize(wo + wi);
@@ -117,15 +115,14 @@ float DielectricBSDF::pdf(const SurfaceIntr &intr, TransportMode mode) const
     }
 }
 
-std::optional<BSDFSample> DielectricBSDF::sample(const SurfaceIntr &intr, const Vec3f &u, TransportMode mode) const
+std::optional<BSDFSample> DielectricBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const
 {
-    auto &wo = intr.wo;
     if (approxDelta)
     {
         float refl = FresnelDielectric(wo.z, ior);
         float trans = 1 - refl;
 
-        if (u.x < refl)
+        if (sampler->get1() < refl)
         {
             Vec3f wi = { -wo.x, -wo.y, wo.z };
             return BSDFSample(wi, baseColor * refl, refl, BSDFType::Delta | BSDFType::Reflection);
@@ -144,13 +141,13 @@ std::optional<BSDFSample> DielectricBSDF::sample(const SurfaceIntr &intr, const 
     }
     else
     {
-        Vec3f wh = distrib.sampleWm(wo, { u.y, u.z });
+        Vec3f wh = distrib.sampleWm(wo, sampler->get2());
         if (wh.z < 0.0f)
             wh = -wh;
         float refl = FresnelDielectric(glm::dot(wh, wo), ior);
         float trans = 1.0f - refl;
 
-        if (u.x < refl)
+        if (sampler->get1() < refl)
         {
             auto wi = -glm::reflect(wo, wh);
             if (!Math::sameHemisphere(wo, wi))
