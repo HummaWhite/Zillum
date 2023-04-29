@@ -46,7 +46,7 @@ Spectrum DisneyMetal::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sam
     if (cosWo < 1e-10f || cosWi < 1e-10f)
         return Spectrum(0.0f);
 
-    Spectrum f = schlickF(Math::absDot(wh, wo), baseColor);
+    Spectrum f = SchlickF(Math::absDot(wh, wo), baseColor);
     float d = distrib.d(wh);
     float g = distrib.g(wo, wi);
 
@@ -81,7 +81,7 @@ Spectrum DisneyClearcoat::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode,
         return Spectrum(0.0f);
 
     Spectrum r0(0.04f);
-    Spectrum f = schlickF(Math::absDot(wh, wo), r0);
+    Spectrum f = SchlickF(Math::absDot(wh, wo), r0);
     float d = distrib.d(wh);
     float g = schlickG(cosWi, alpha) * schlickG(cosWi, alpha);
 

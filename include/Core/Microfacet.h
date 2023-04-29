@@ -46,5 +46,5 @@ float gtr1(float cosTheta, float alpha);
 
 float schlickW(float cosTheta);
 float schlickF(float cosTheta);
-Vec3f schlickF(float cosTheta, const Vec3f &f0);
-Vec3f schlickF(float cosTheta, const Vec3f &f0, float roughness);
+Vec3f SchlickF(float cosTheta, const Vec3f &f0);
+Vec3f SchlickF(float cosTheta, const Vec3f &f0, float roughness);

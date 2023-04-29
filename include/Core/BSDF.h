@@ -117,6 +117,27 @@ public:
 	virtual float pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler = nullptr) const = 0;
 	virtual std::optional<BSDFSample> sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const = 0;
 
+	Spectrum bsdf(Vec3f n, Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler = nullptr) const {
+		auto woLocal = Transform::worldToLocal(n, wo);
+		auto wiLocal = Transform::worldToLocal(n, wo);
+		return bsdf(woLocal, wiLocal, uv, mode, sampler);
+	}
+
+	float pdf(Vec3f n, Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler = nullptr) const {
+		auto woLocal = Transform::worldToLocal(n, wo);
+		auto wiLocal = Transform::worldToLocal(n, wo);
+		return pdf(woLocal, wiLocal, uv, mode, sampler);
+	}
+
+	std::optional<BSDFSample> sample(Vec3f n, Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+		auto woLocal = Transform::worldToLocal(n, wo);
+		auto s = sample(woLocal, uv, mode, sampler);
+		if (s) {
+			s->w = Transform::localToWorld(n, s->w);
+		}
+		return s;
+	}
+
 	virtual BSDFType type() const { return mType; }
 
 protected:
@@ -350,6 +371,26 @@ public:
 		top(nullptr), bottom(nullptr), thickness(thickness), g(g),
 		albedo(albedo), nSamples(nSamples), maxDepth(8), BSDF(BSDFType::None) {}
 
+	LayeredBSDF(float thickness, float g, const ColorMap<Vec3f>& albedo, int nSamples, BSDF* top, BSDF* bottom) :
+		top(top), bottom(bottom), thickness(thickness), g(g),
+		albedo(albedo), nSamples(nSamples), maxDepth(8), BSDF(BSDFType::AllMask) {
+		if (!top && !bottom) {
+			mType = BSDFType::None;
+		}
+		else if (!top) {
+			mType = bottom->type();
+		}
+		else if (!bottom) {
+			mType = top->type();
+		}
+		else {
+			int delta = (top->type().type & bottom->type().type & BSDFType::Delta);
+			delta = 0;
+			int trans = (top->type().type & bottom->type().type & BSDFType::Transmission);
+			mType = (delta ? BSDFType::Delta : BSDFType::Glossy) | trans | BSDFType::Reflection;
+		}
+	}
+
 	Spectrum bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler = nullptr) const;
 	float pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler = nullptr) const;
 	std::optional<BSDFSample> sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const;
@@ -360,7 +401,8 @@ public:
 	float thickness;
 	float g;
 	ColorMap<Vec3f> albedo;
-	Texture3fPtr normalMap;
+	Texture3fPtr topNormal;
+	Texture3fPtr bottomNormal;
 	int nSamples;
 	int maxDepth;
 	bool twoSided = false;

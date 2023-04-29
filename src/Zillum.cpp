@@ -13,7 +13,7 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
     int maxDepth;
     int spp;
     std::stringstream param(cmdParam);
-    param = std::stringstream("-path2 sobol 1000 1000 3200 8 0");
+    param = std::stringstream("-path2 sobol 1000 1000 10000 8 0");
     //param = std::stringstream("-lpath sobol 1000 1000 10000 8");
     //param = std::stringstream("-tpath sobol 1000 1000 10000 8 0");
     //param = std::stringstream("-ao2 sobol 1000 1000 1000 8 0 0.5");
@@ -49,14 +49,16 @@ void Zillum::init(const std::string &name, HINSTANCE instance, const char *cmdPa
 
     bool scramble;
     if (integType == "-path2") {
+        int option = 2;
+
         int pathsOnePass;
         param >> pathsOnePass;
         auto integ = std::make_shared<PathIntegrator2>(mScene, spp, pathsOnePass);
         integ->mParam.russianRoulette = maxDepth == 0;
         integ->mParam.maxDepth = maxDepth;
-        integ->mParam.MIS = true;
-        integ->mParam.directWeight = 0.f;
-        integ->mParam.sampleDirect = false;
+        integ->mParam.MIS = (option == 3) ? true : false;
+        integ->mParam.directWeight = (option == 1) ? 1.f : 0.f;
+        integ->mParam.sampleDirect = true;
         mIntegrator = integ;
         scramble = false;
     }

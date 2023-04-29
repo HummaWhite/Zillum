@@ -8,7 +8,7 @@ Spectrum ClearcoatBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, S
     float cosWi = Math::saturate(wi.z);
 
     float d = distrib.d(wh);
-    auto f = schlickF(Math::absDot(wh, wo), Vec3f(0.04f));
+    auto f = SchlickF(Math::absDot(wh, wo), Vec3f(0.04f));
     float g = smithG(wo, wi, 0.25f);
 
     float denom = 4.0f * cosWo * cosWi;

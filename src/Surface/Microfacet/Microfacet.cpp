@@ -60,12 +60,12 @@ float schilickF(float cosTheta, float eta)
     return f0 + (1.0f - f0) * Math::pow5(1.0f - cosTheta);
 }
 
-Vec3f schlickF(float cosTheta, const Vec3f &f0)
+Vec3f SchlickF(float cosTheta, const Vec3f &f0)
 {
     return f0 + (Vec3f(1.0f) - f0) * Math::pow5(1.0f - cosTheta);
 }
 
-Vec3f schlickF(float cosTheta, const Vec3f &f0, float roughness)
+Vec3f SchlickF(float cosTheta, const Vec3f &f0, float roughness)
 {
     return f0 + (glm::max(Vec3f(1.0f - roughness), f0) - f0) * Math::pow5(1.0f - cosTheta);
 }

@@ -224,14 +224,15 @@ ScenePtr boxScene() {
 }
 
 BSDFPtr makeLayeredBSDF() {
+//#define baseColor Spectrum(.9f, .7f, .4f)
 #define baseColor Spectrum(.9f, .5f, .9f)
 //#define baseColor Spectrum(1.f)
     auto normalMap = TextureLoader::fromU8x3("res/texture/alien-metal_normal.png", false);
 
-    auto diffuse = new LambertBSDF(ColorMap(baseColor * .75f));
-    auto met = new MetalBSDF(ColorMap(baseColor * 1.2f), .2f, 1.5f, .5f);
-    auto met2 = new MetalBSDF(ColorMap(baseColor * 1.2f), 0.f, 1.5f, .5f);
-    auto met3 = new MetalBSDF(ColorMap(baseColor * 1.2f), .4f, 1.5f, .2f);
+    auto diffuse = new LambertBSDF(ColorMap(baseColor));
+    auto met = new MetalBSDF(ColorMap(baseColor), .2f, 0.3f, .5f);
+    auto met2 = new MetalBSDF(ColorMap(baseColor), 0.f, 0.3f, .5f);
+    auto met3 = new MetalBSDF(ColorMap(baseColor), .4f, 0.3f, .5f);
     auto dielec = new DielectricBSDF(Spectrum(1.f), 0.1f, 1.5f);
     auto dielec2 = new DielectricBSDF(Spectrum(1.f), 0.f, 1.5f);
     auto dielec3 = new DielectricBSDF(Spectrum(1.f), 0.f, 1.f / 1.5f);
@@ -241,15 +242,19 @@ BSDFPtr makeLayeredBSDF() {
 
     auto bdiffuse = new LambertBSDF(ColorMap(Spectrum(0.1f)));
     auto bmet = new MetallicWorkflowBSDF(ColorMap(Spectrum(.3f, .1f, .05f)), 1.f, 0.5);
-    auto bmet2 = new MetalBSDF(ColorMap(Spectrum(.3f, .1f, .05f) * 4.f), .5f, 1.5f, 2.f);
+    auto bmet2 = new MetalBSDF(ColorMap(Spectrum(.3f, .1f, .05f)), .5f, .3f, 2.f);
+    auto bmet3 = new MetalBSDF(ColorMap(Spectrum(.3f, .1f, .05f)), .1f, .3f, 2.f);
 
     //ColorMap albedo(baseColor * .75f);
     ColorMap albedo(Spectrum(1.f));
     //ColorMap albedo(Spectrum(0.f));
-    auto layeredBSDF = std::make_shared<LayeredBSDF>(0.01f, 0.4f, albedo, 1);
-    layeredBSDF->top = dielec2;
-    layeredBSDF->bottom = bmet2;
-    layeredBSDF->maxDepth = 20;
+    //ColorMap albedo(Spectrum(.8f, .3f, .1f));
+    //return std::make_shared<MetallicWorkflowBSDF>(ColorMap(baseColor), 1.f, 0.1f);
+    //return std::make_shared<MetalBSDF>(ColorMap(baseColor), 0.1f, .2f, .2f);
+    auto layeredBSDF = std::make_shared<LayeredBSDF>(0.1f, 0.4f, albedo, 1, dielec, met);
+    //layeredBSDF->topNormal = normalMap;
+    //layeredBSDF->bottomNormal = normalMap;
+    layeredBSDF->maxDepth = 64;
     return layeredBSDF;
 
     auto layeredBSDF2 = std::make_shared<LayeredBSDF2>();
@@ -269,8 +274,6 @@ ScenePtr materialTest() {
         std::make_shared<Object>(
             std::make_shared<Sphere>(Vec3f(0.f, 4.0f, 0.f), 1.5f, true),
             //std::make_shared<Quad>(Vec3f(1.f, 3.f, -1.f), Vec3f(-1.f, 3.f, -1.f), Vec3f(1.f, 3.f, 1.f)),
-            //std::make_shared<DielectricBSDF>(Spectrum(1.0f), 0.0f, 1.5f)
-            //std::make_shared<MetallicWorkflowBSDF>(Spectrum(1.f, .8f, .5f), 1.f, .2f)
             makeLayeredBSDF()
             ));
 

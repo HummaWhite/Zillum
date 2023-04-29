@@ -58,7 +58,7 @@ Spectrum LayeredBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sam
             continue;
         }
 
-        Spectrum throughput = wos->bsdf * glm::abs(wos->w.z) / wos->pdf;
+        Spectrum throughput = wos->bsdf / wos->pdf * (wos->type.isDelta() ? 1.f : glm::abs(wos->w.z));
         float z = entTop ? 0 : thickness;
         Vec3f w = wos->w;
 
@@ -119,7 +119,7 @@ Spectrum LayeredBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sam
                 if (!es || Math::isBlack(es->bsdf) || es->pdf < 1e-8f || es->w.z == 0) {
                     break;
                 }
-                throughput *= es->bsdf * glm::abs(es->w.z) / es->pdf;
+                throughput *= es->bsdf / es->pdf * (es->type.isDelta() ? 1.f : glm::abs(es->w.z));
                 w = es->w;
             }
             else {
@@ -136,7 +136,7 @@ Spectrum LayeredBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sam
                 if (!os || Math::isBlack(os->bsdf) || os->pdf < 1e-8f || os->w.z == 0) {
                     break;
                 }
-                throughput *= os->bsdf * glm::abs(os->w.z) / os->pdf;
+                throughput *= os->bsdf / os->pdf * (os->type.isDelta() ? 1.f : glm::abs(os->w.z));
 
                 if (!ext->type().isDelta()) {
                     Spectrum fExt = ext->bsdf(-w, wi, uv, mode, sampler);
@@ -152,7 +152,6 @@ Spectrum LayeredBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sam
             }
         }
     }
-
     return f / float(nSamples);
 }
 
@@ -166,7 +165,74 @@ float LayeredBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler
     else if (!bottom) {
         return top->pdf(wo, wi, uv, mode, sampler);
     }
-    return 0.f;
+
+    bool entTop = twoSided || wo.z > 0;
+    float pdfSum = 0.f;
+
+    if (Math::sameHemisphere(wo, wi)) {
+        pdfSum += (entTop ? top->pdf(wo, wi, uv, mode, sampler) : bottom->pdf(wo, wi, uv, mode, sampler)) * nSamples;
+    }
+
+    for (int i = 0; i < nSamples; i++) {
+        if (Math::sameHemisphere(wo, wi)) {
+            BSDF* tBSDF = entTop ? top : bottom;
+            BSDF* rBSDF = entTop ? bottom : top;
+
+            auto wos = tBSDF->sample(wo, uv, mode, sampler);
+            auto wis = tBSDF->sample(wi, uv, ~mode, sampler);
+
+            if (wos && !Math::isBlack(wos->bsdf) && wos->pdf > 1e-8f && wos->type.isTransmission() &&
+                wis && !Math::isBlack(wis->bsdf) && wis->pdf > 1e-8f && wis->type.isTransmission()) {
+                if (tBSDF->type().isDelta()) {
+                    pdfSum += rBSDF->pdf(-wos->w, -wis->w, uv, mode, sampler);
+                }
+                else {
+                    auto rs = rBSDF->sample(-wos->w, uv, mode, sampler);
+                    if (rs && !Math::isBlack(rs->bsdf) && rs->pdf > 1e-8f) {
+                        if (rBSDF->type().isDelta()) {
+                            pdfSum += tBSDF->pdf(-rs->w, wi, uv, mode, sampler);
+                        }
+                        else {
+                            float rPdf = rBSDF->pdf(-wos->w, -wis->w, uv, mode, sampler);
+                            pdfSum += rPdf * Math::powerHeuristic(wis->pdf, rPdf);
+
+                            float tPdf = tBSDF->pdf(-rs->w, wi, uv, mode, sampler);
+                            pdfSum += tPdf * Math::powerHeuristic(rs->pdf, tPdf);
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            BSDF* oBSDF = entTop ? top : bottom;
+            BSDF* iBSDF = entTop ? bottom : top;
+
+            auto wos = oBSDF->sample(wo, uv, mode, sampler);
+
+            if (!wos || Math::isBlack(wos->bsdf) || wos->pdf < 1e-8f || wos->w.z == 0 ||
+                !wos->type.isTransmission()) {
+                continue;
+            }
+            auto wis = iBSDF->sample(wi, uv, ~mode, sampler);
+
+            if (!wis || Math::isBlack(wis->bsdf) || wis->pdf < 1e-8f || wis->w.z == 0 ||
+                !wis->type.isTransmission()) {
+                continue;
+            }
+
+            if (oBSDF->type().isDelta()) {
+                pdfSum += iBSDF->pdf(-wos->w, wi, uv, mode, sampler);
+            }
+            else if (iBSDF->type().isDelta()) {
+                pdfSum += oBSDF->pdf(wo, -wis->w, uv, mode, sampler);
+            }
+            else {
+                pdfSum += iBSDF->pdf(-wos->w, wi, uv, mode, sampler) * .5f +
+                    oBSDF->pdf(wo, -wis->w, uv, mode, sampler) * .5f;
+            }
+        }
+    }
+    return glm::mix(.25f * Math::PiInv, pdfSum / nSamples, .9f);
 }
 
 std::optional<BSDFSample> LayeredBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const {
@@ -184,7 +250,10 @@ std::optional<BSDFSample> LayeredBSDF::sample(Vec3f wo, Vec2f uv, TransportMode 
     BSDF* ent = entTop ? top : bottom;
     BSDF* oth = entTop ? bottom : top;
 
-    auto ins = ent->sample(wo, uv, mode, sampler);
+    Texture3fPtr entNormMap = entTop ? topNormal : bottomNormal;
+
+    auto ins = !entNormMap ? ent->sample(wo, uv, mode, sampler) :
+        ent->sample(entNormMap->getNormal(uv), wo, uv, mode, sampler);
 
     if (!ins || ins->pdf < 1e-8f || ins->w.z == 0 || Math::isBlack(ins->bsdf)) {
         return std::nullopt;
@@ -244,10 +313,12 @@ std::optional<BSDFSample> LayeredBSDF::sample(Vec3f wo, Vec2f uv, TransportMode 
         }
 
         BSDF* interf = (z == 0) ? top : bottom;
-        auto bsdfSample = interf->sample(-w, uv, mode, sampler);
+        Texture3fPtr interfNormMap = (z == 0) ? topNormal : bottomNormal;
+        auto bsdfSample = !interfNormMap ? interf->sample(-w, uv, mode, sampler) :
+            interf->sample(interfNormMap->getNormal(uv), -w, uv, mode, sampler);
 
         if (!bsdfSample || Math::isBlack(bsdfSample->bsdf) || bsdfSample->pdf == 0 ||
-            bsdfSample->w.z == 0) {
+            bsdfSample->w.z == 0 || isnan(bsdfSample->pdf)) {
             return std::nullopt;
         }
         f *= bsdfSample->bsdf;
@@ -258,6 +329,9 @@ std::optional<BSDFSample> LayeredBSDF::sample(Vec3f wo, Vec2f uv, TransportMode 
         if (bsdfSample->type.isTransmission()) {
             int roughness = delta ? BSDFType::Delta : BSDFType::Glossy;
             int direction = Math::sameHemisphere(wo, w) ? BSDFType::Reflection : BSDFType::Transmission;
+            if (Math::hasNan(f) || isnan(pdf) || pdf < 1e-8f) {
+                return std::nullopt;
+            }
             return BSDFSample(w, f, pdf, roughness | direction);
         }
         if (!bsdfSample->type.isDelta()) {

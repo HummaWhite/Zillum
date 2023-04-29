@@ -7,7 +7,6 @@
 
 #include "stbIncluder.h"
 #include "Utils/Buffer2D.h"
-//#include "../Utils/File.h"
 #include "Color.h"
 #include "Transform.h"
 
@@ -18,6 +17,10 @@ enum TextureFilterType {
 template<typename T>
 class Texture : public Buffer2D<T> {
 public:
+	T get(Vec2f uv) {
+		return get(uv.x, uv.y);
+	}
+
 	T get(float u, float v) {
 		const float Eps = FLT_MIN;
 
@@ -83,7 +86,11 @@ public:
 		}
 	}
 
-	T getSpherical(const glm::vec3 &uv) {
+	T getNormal(Vec2f uv) {
+		return get(uv) * 2.f - 1.f;
+	}
+
+	T getSpherical(Vec3f uv) {
 		if (Math::isNan(uv.x) || Math::isNan(uv.y) || Math::isNan(uv.z)) {
 			std::cout << "Texture::getSpherical: Invalid uv with NAN(s)\n";
 			return get(0.0f, 0.0f);
@@ -121,6 +128,8 @@ using TextureSpecPtr = std::shared_ptr<TextureSpec>;
 template<typename T>
 class ColorMap {
 public:
+	ColorMap() = default;
+
 	ColorMap(const T& val) : color(val) {}
 
 	ColorMap(std::shared_ptr<Texture<T>> val) : color(val) {}

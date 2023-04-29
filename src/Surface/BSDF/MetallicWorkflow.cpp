@@ -13,7 +13,7 @@ Spectrum MetallicWorkflowBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode 
     Spectrum base = baseColor.get(uv);
     Spectrum F0 = Math::lerp(Spectrum(0.04f), base, metallic);
 
-    Spectrum f = schlickF(Math::satDot(wh, wo), F0, roughness);
+    Spectrum f = SchlickF(Math::satDot(wh, wo), F0, roughness);
     float d = distrib.d(wh);
     float g = distrib.g(wo, wi);
 
