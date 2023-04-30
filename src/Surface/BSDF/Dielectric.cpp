@@ -57,7 +57,7 @@ float FresnelDielectric(float cosTi, float eta)
     return (rPa * rPa + rPe * rPe) * 0.5f;
 }
 
-Spectrum DielectricBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+Spectrum DielectricBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     if (approxDelta)
         return Spectrum(0.0f);
@@ -88,7 +88,7 @@ Spectrum DielectricBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, 
     }
 }
 
-float DielectricBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+float DielectricBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     if (approxDelta)
         return 0;
@@ -99,8 +99,9 @@ float DielectricBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Samp
         if (glm::dot(wo, wh) < 0)
             return 0;
 
-        float fr = FresnelDielectric(Math::absDot(wh, wi), ior);
-        return distrib.pdf(wh, wo) / (4.0f * Math::absDot(wh, wo)) * fr;
+        float fr = params.component.hasType(BSDFType::Reflection) ? FresnelDielectric(Math::absDot(wh, wi), ior) : 0;
+        float tr = params.component.hasType(BSDFType::Transmission) ? 1.f - fr : 0;
+        return distrib.pdf(wh, wo) / (4.0f * Math::absDot(wh, wo)) * fr / (fr + tr);
     }
     else
     {
@@ -109,23 +110,29 @@ float DielectricBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Samp
         if (Math::sameHemisphere(wh, wo, wi))
             return 0;
 
-        float trans = 1.0f - FresnelDielectric(Math::absDot(wh, wo), eta);
+        float fr = params.component.hasType(BSDFType::Reflection) ? FresnelDielectric(Math::absDot(wh, wo), eta) : 0;
+        float tr = params.component.hasType(BSDFType::Transmission) ? 1.f - fr : 0;
         float dHdWi = Math::absDot(wh, wi) / Math::square(glm::dot(wh, wo) + eta * glm::dot(wh, wi));
-        return distrib.pdf(wh, wo) * dHdWi * trans;
+        return distrib.pdf(wh, wo) * dHdWi * tr / (fr + tr);
     }
 }
 
-std::optional<BSDFSample> DielectricBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const
+std::optional<BSDFSample> DielectricBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler, BSDFType component) const
 {
+    if (!component.hasType(BSDFType::Reflection) && !component.hasType(BSDFType::Transmission))
+        return std::nullopt;
+
     if (approxDelta)
     {
-        float refl = FresnelDielectric(wo.z, ior);
-        float trans = 1 - refl;
+        float refl = component.hasType(BSDFType::Reflection) ? FresnelDielectric(wo.z, ior) : 0;
+        float trans = component.hasType(BSDFType::Transmission) ? 1 - refl : 0;
+
+        float fr = refl / (refl + trans);
 
         if (sampler->get1() < refl)
         {
             Vec3f wi = { -wo.x, -wo.y, wo.z };
-            return BSDFSample(wi, baseColor * refl, refl, BSDFType::Delta | BSDFType::Reflection);
+            return BSDFSample(wi, baseColor * fr, fr, BSDFType::Delta | BSDFType::Reflection);
         }
         else
         {
@@ -136,7 +143,7 @@ std::optional<BSDFSample> DielectricBSDF::sample(Vec3f wo, Vec2f uv, TransportMo
                 return std::nullopt;
 
             float factor = (mode == TransportMode::Radiance) ? Math::square(1.0f / eta) : 1.0f;
-            return BSDFSample(wi, baseColor * factor * trans, trans, BSDFType::Delta | BSDFType::Transmission, eta);
+            return BSDFSample(wi, baseColor * factor * (1.f - fr), 1.f - fr, BSDFType::Delta | BSDFType::Transmission, eta);
         }
     }
     else
@@ -144,10 +151,12 @@ std::optional<BSDFSample> DielectricBSDF::sample(Vec3f wo, Vec2f uv, TransportMo
         Vec3f wh = distrib.sampleWm(wo, sampler->get2());
         if (wh.z < 0.0f)
             wh = -wh;
-        float refl = FresnelDielectric(glm::dot(wh, wo), ior);
-        float trans = 1.0f - refl;
 
-        if (sampler->get1() < refl)
+        float refl = component.hasType(BSDFType::Reflection) ? FresnelDielectric(glm::dot(wh, wo), ior) : 0;
+        float trans = component.hasType(BSDFType::Transmission) ? 1 - refl : 0;
+        float fr = refl / (refl + trans);
+
+        if (sampler->get1() < fr)
         {
             auto wi = -glm::reflect(wo, wh);
             if (!Math::sameHemisphere(wo, wi))
@@ -163,7 +172,7 @@ std::optional<BSDFSample> DielectricBSDF::sample(Vec3f wo, Vec2f uv, TransportMo
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return BSDFSample(wi, r * refl, p * refl, BSDFType::Glossy | BSDFType::Reflection);
+            return BSDFSample(wi, r * fr, p * fr, BSDFType::Glossy | BSDFType::Reflection);
         }
         else
         {
@@ -192,7 +201,7 @@ std::optional<BSDFSample> DielectricBSDF::sample(Vec3f wo, Vec2f uv, TransportMo
 
             if (Math::isNan(p))
                 p = 0.0f;
-            return BSDFSample(wi, r * trans, p * trans, BSDFType::Glossy | BSDFType::Transmission, eta);
+            return BSDFSample(wi, r * (1.f - fr), p * (1.f - fr), BSDFType::Glossy | BSDFType::Transmission, eta);
         }
     }
 }

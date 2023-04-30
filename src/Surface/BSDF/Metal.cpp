@@ -13,7 +13,7 @@ float FresnelConductor(float cosI, float eta, float k) {
     return (rPa.lengthSqr() + rPe.lengthSqr()) * .5f;
 }
 
-Spectrum MetalBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+Spectrum MetalBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const {
     if (!Math::sameHemisphere(wo, wi)) {
         return Spectrum(0.0f);
     }
@@ -28,12 +28,12 @@ Spectrum MetalBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampl
         distrib.d(wh) * distrib.g(wo, wi) / (4.f * cosWi * cosWo);
 }
 
-float MetalBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+float MetalBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const {
     Vec3f wh = glm::normalize(wo + wi);
     return distrib.pdf(wh, wo) / (4.0f * Math::absDot(wh, wo));
 }
 
-std::optional<BSDFSample> MetalBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+std::optional<BSDFSample> MetalBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler, BSDFType component) const {
     if (approxDelta()) {
         Vec3f wi(-wo.x, -wo.y, wo.z);
         float fr = FresnelConductor(glm::abs(wo.z), eta, k);

@@ -36,7 +36,6 @@ int main(int argc, char* argv[]) {
 		cmdLine += argv[i] + ' ';
 	}
 
-	std::cout << cmdLine << std::endl;
 	app.init(std::string(name), instance, cmdLine.c_str());
 
 	while (true) {

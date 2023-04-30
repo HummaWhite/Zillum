@@ -1,6 +1,6 @@
 #include "Core/BSDF.h"
 
-Spectrum ClearcoatBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+Spectrum ClearcoatBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     auto wh = glm::normalize(wo + wi);
 
@@ -18,13 +18,13 @@ Spectrum ClearcoatBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, S
     return f * d * g * weight / denom;
 }
 
-float ClearcoatBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+float ClearcoatBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     auto wh = glm::normalize(wo + wi);
     return distrib.pdf(wh, wo) / (4.0f * glm::dot(wh, wo));
 }
 
-std::optional<BSDFSample> ClearcoatBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const
+std::optional<BSDFSample> ClearcoatBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler, BSDFType component) const
 {
     auto wh = distrib.sampleWm(wo, sampler->get2());
     auto wi = glm::reflect(-wo, wh);

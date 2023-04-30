@@ -233,6 +233,7 @@ BSDFPtr makeLayeredBSDF() {
     auto met = new MetalBSDF(ColorMap(baseColor), .2f, 0.3f, .5f);
     auto met2 = new MetalBSDF(ColorMap(baseColor), 0.f, 0.3f, .5f);
     auto met3 = new MetalBSDF(ColorMap(baseColor), .4f, 0.3f, .5f);
+    auto met4 = new MetallicWorkflowBSDF(ColorMap(baseColor), 1.f, .2f);
     auto dielec = new DielectricBSDF(Spectrum(1.f), 0.1f, 1.5f);
     auto dielec2 = new DielectricBSDF(Spectrum(1.f), 0.f, 1.5f);
     auto dielec3 = new DielectricBSDF(Spectrum(1.f), 0.f, 1.f / 1.5f);
@@ -246,15 +247,15 @@ BSDFPtr makeLayeredBSDF() {
     auto bmet3 = new MetalBSDF(ColorMap(Spectrum(.3f, .1f, .05f)), .1f, .3f, 2.f);
 
     //ColorMap albedo(baseColor * .75f);
-    ColorMap albedo(Spectrum(1.f));
+    //ColorMap albedo(Spectrum(1.f));
     //ColorMap albedo(Spectrum(0.f));
-    //ColorMap albedo(Spectrum(.8f, .3f, .1f));
+    ColorMap albedo(Spectrum(.8f, .3f, .1f));
     //return std::make_shared<MetallicWorkflowBSDF>(ColorMap(baseColor), 1.f, 0.1f);
     //return std::make_shared<MetalBSDF>(ColorMap(baseColor), 0.1f, .2f, .2f);
-    auto layeredBSDF = std::make_shared<LayeredBSDF>(0.1f, 0.4f, albedo, 1, dielec, met);
+    auto layeredBSDF = std::make_shared<LayeredBSDF>(0.5f, 0.4f, albedo, 1, dielec2, diffuse);
     //layeredBSDF->topNormal = normalMap;
     //layeredBSDF->bottomNormal = normalMap;
-    layeredBSDF->maxDepth = 64;
+    layeredBSDF->maxDepth = 32;
     return layeredBSDF;
 
     auto layeredBSDF2 = std::make_shared<LayeredBSDF2>();

@@ -1,6 +1,6 @@
 #include "Core/BSDF.h"
 
-Spectrum MetallicWorkflowBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+Spectrum MetallicWorkflowBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const {
     Vec3f wh = glm::normalize(wi + wo);
     float alpha = roughness * roughness;
 
@@ -30,7 +30,7 @@ Spectrum MetallicWorkflowBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode 
     return kd * base * Math::PiInv + glossy;
 }
 
-float MetallicWorkflowBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+float MetallicWorkflowBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const {
     Vec3f h = glm::normalize(wo + wi);
 
     float pdfDiff = wi.z * Math::PiInv;
@@ -38,7 +38,7 @@ float MetallicWorkflowBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode
     return Math::lerp(pdfDiff, pdfSpec, 1.0f / (2.0f - metallic));
 }
 
-std::optional<BSDFSample> MetallicWorkflowBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const {
+std::optional<BSDFSample> MetallicWorkflowBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler, BSDFType component) const {
     float spec = 1.0f / (2.0f - metallic);
     bool sampleDiff = sampler->get1() >= spec;
     

@@ -1,6 +1,6 @@
 #include "Core/BSDF.h"
 
-Spectrum DisneyDiffuse::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+Spectrum DisneyDiffuse::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     float cosWo = Math::saturate(wo.z);
     float cosWi = Math::saturate(wi.z);
@@ -26,18 +26,18 @@ Spectrum DisneyDiffuse::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, S
     return diffuse;
 }
 
-float DisneyDiffuse::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+float DisneyDiffuse::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     return wi.z * Math::PiInv;
 }
 
-std::optional<BSDFSample> DisneyDiffuse::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const
+std::optional<BSDFSample> DisneyDiffuse::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler, BSDFType component) const
 {
     Vec3f wi = Math::sampleHemisphereCosine(sampler->get2());
     return BSDFSample(wi, baseColor * Math::PiInv, wi.z * Math::PiInv, BSDFType::Diffuse | BSDFType::Reflection);
 }
 
-Spectrum DisneyMetal::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+Spectrum DisneyMetal::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     float cosWo = Math::saturate(wo.z);
     float cosWi = Math::saturate(wi.z);
@@ -56,13 +56,13 @@ Spectrum DisneyMetal::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sam
     return f * d * g / denom;
 }
 
-float DisneyMetal::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+float DisneyMetal::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     Vec3f wh = glm::normalize(wo + wi);
     return distrib.pdf(wh, wo) / (4.0f * glm::dot(wh, wo));
 }
 
-std::optional<BSDFSample> DisneyMetal::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const
+std::optional<BSDFSample> DisneyMetal::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler, BSDFType component) const
 {
     Vec3f wh = distrib.sampleWm(wo, sampler->get2());
     Vec3f wi = glm::reflect(-wo, wh);
@@ -71,7 +71,7 @@ std::optional<BSDFSample> DisneyMetal::sample(Vec3f wo, Vec2f uv, TransportMode 
     return BSDFSample(wi, bsdf(wo, wi, uv, mode), pdf(wo, wi, uv, mode), BSDFType::Glossy | BSDFType::Reflection);
 }
 
-Spectrum DisneyClearcoat::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+Spectrum DisneyClearcoat::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     auto wh = glm::normalize(wo + wi);
     float cosWo = Math::saturate(wo.z);
@@ -91,13 +91,13 @@ Spectrum DisneyClearcoat::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode,
     return f * d * g / denom;
 }
 
-float DisneyClearcoat::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+float DisneyClearcoat::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     auto wh = glm::normalize(wo + wi);
     return distrib.pdf(wh, wo) / (4.0f * glm::dot(wh, wo));
 }
 
-std::optional<BSDFSample> DisneyClearcoat::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const
+std::optional<BSDFSample> DisneyClearcoat::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler, BSDFType component) const
 {
     auto wh = distrib.sampleWm(wo, sampler->get2());
     auto wi = glm::reflect(-wo, wh);
@@ -107,7 +107,7 @@ std::optional<BSDFSample> DisneyClearcoat::sample(Vec3f wo, Vec2f uv, TransportM
     return BSDFSample(wi, bsdf(wo, wi, uv, mode), pdf(wo, wi, uv, mode), BSDFType::Glossy | BSDFType::Reflection);
 }
 
-Spectrum DisneySheen::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+Spectrum DisneySheen::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     Vec3f h = glm::normalize(wi + wo);
     float lum = Math::luminance(baseColor);
@@ -116,12 +116,12 @@ Spectrum DisneySheen::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sam
     return sheenColor * schlickW(Math::absDot(h, wo));
 }
 
-float DisneySheen::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+float DisneySheen::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     return wi.z * Math::PiInv;
 }
 
-std::optional<BSDFSample> DisneySheen::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const
+std::optional<BSDFSample> DisneySheen::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler, BSDFType component) const
 {
     Vec3f wi = Math::sampleHemisphereCosine(sampler->get2());
     return BSDFSample(wi, bsdf(wo, wi, uv, mode), wi.z * Math::PiInv, BSDFType::Diffuse | BSDFType::Reflection);
@@ -161,7 +161,7 @@ DisneyBSDF::DisneyBSDF(
     piecewiseSampler = Piecewise1D(w);
 }
 
-Spectrum DisneyBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+Spectrum DisneyBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     Spectrum r(0.0f);
     r += diffuse.bsdf(wo, wi, uv, mode) * weights[0];
@@ -172,7 +172,7 @@ Spectrum DisneyBSDF::bsdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Samp
     return r;
 }
 
-float DisneyBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler* sampler) const
+float DisneyBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Params params) const
 {
     float p = 0.0f;
     p += diffuse.pdf(wo, wi, uv, mode) * weights[0];
@@ -183,26 +183,26 @@ float DisneyBSDF::pdf(Vec3f wo, Vec3f wi, Vec2f uv, TransportMode mode, Sampler*
     return p;
 }
 
-std::optional<BSDFSample> DisneyBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler) const
+std::optional<BSDFSample> DisneyBSDF::sample(Vec3f wo, Vec2f uv, TransportMode mode, Sampler* sampler, BSDFType component) const
 {
     int comp = piecewiseSampler.sample(sampler->get2());
     std::optional<BSDFSample> s;
 
     switch (comp) {
     case 0:
-        s = diffuse.sample(wo, uv, mode, sampler);
+        s = diffuse.sample(wo, uv, mode, sampler, component);
         break;
     case 1:
-        s = metal.sample(wo, uv, mode, sampler);
+        s = metal.sample(wo, uv, mode, sampler, component);
         break;
     case 2:
-        s = clearcoat.sample(wo, uv, mode, sampler);
+        s = clearcoat.sample(wo, uv, mode, sampler, component);
         break;
     case 3:
-        s = dielectric.sample(wo, uv, mode, sampler);
+        s = dielectric.sample(wo, uv, mode, sampler, component);
         break;
     case 4:
-        s = sheen.sample(wo, uv, mode, sampler);
+        s = sheen.sample(wo, uv, mode, sampler, component);
         break;
     }
     if (s) {
