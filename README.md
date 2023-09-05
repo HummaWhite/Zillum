@@ -1,6 +1,6 @@
 # Zillum
 
-CPU Global Illumination Renderer
+CPU Physically Based Renderer
 
 - [*ZillumGL - OpenGL version*](https://github.com/HummaWhite/ZillumGL)
 - [*Blogs*](https://hummawhite.github.io/posts)
